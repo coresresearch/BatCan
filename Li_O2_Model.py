@@ -25,7 +25,7 @@ E_carbon = 1. - E_elyte_init - E_binder_init - E_oxide_init      # initial carbo
 atol = 1e-10
 rtol = 2.5e-6
 
-tspan = 7824                            # [s]
+tspan = 5000 #7824                            # [s]
 
 i_ext = -1e-3                           # [A/m2]
 
