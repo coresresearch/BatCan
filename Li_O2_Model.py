@@ -59,13 +59,11 @@ ctifile = 'LiAir.cti'
 gas = ct.Solution(ctifile,'air')
 cath_b = ct.Solution(ctifile,'graphite')
 elyte = ct.Solution(ctifile,'electrolyte')
-oxide = ct.Solution(ctifile,'Li2O2')
-inter = ct.Interface(ctifile,'cathode_surf',[elyte,oxide,cath_b])
+#oxide = ct.Solution(ctifile,'Li2O2')
+inter = ct.Interface(ctifile,'cathode_surf',[elyte,cath_b])
 air_elyte = ct.Interface(ctifile,'air_elyte',[gas,elyte])
 Li_b = ct.Solution(ctifile,'Lithium')
 Li_s = ct.Interface(ctifile,'Li_surface',[Li_b,elyte])
-#vac = ct.Solution(ctifile,'vacancy')
-#test = ct.Interface(ctifile,'oxide_bulk',[oxide,vac])
 
 oxide.TP = TP
 elyte.TP = TP
