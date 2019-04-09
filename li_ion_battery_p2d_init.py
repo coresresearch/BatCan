@@ -7,7 +7,10 @@ Created on Thu Nov  1 14:27:54 2018
 
 import numpy as np
 import cantera as ct
+import importlib
 
+import li_ion_battery_p2d_inputs
+importlib.reload(li_ion_battery_p2d_inputs)
 from li_ion_battery_p2d_inputs import Inputs
 
 # Import Cantera objects:
@@ -76,7 +79,7 @@ class anode():
 
     # Pointers
     ptr = {}
-    ptr['iFar'] = 1
+    ptr['iFar'] = 0
     ptr['X_ed'] = np.arange(0, Inputs.nshells_anode)
     ptr['rho_k_elyte'] = nshells + np.arange(0,elyte_obj.n_species)
     ptr['Phi_ed'] = nshells + elyte_obj.n_species
@@ -140,6 +143,10 @@ class anode():
     #   diffusion coefficients:
     u_Li_elyte = (Inputs.D_Li_elyte*eps_elyte/ct.gas_constant
           /Inputs.T/tau_ed**3)
+    
+#    def __init__(self, set_current):
+#        self.i_ext = set_current
+#    i_ext = []
 
     t_flag = []
 
@@ -266,60 +273,72 @@ class cathode():
 """========================================================================="""
 """========================================================================="""
 
+class current():        
+    def get_i_ext():
+        return current.i_ext
+    
+    def set_i_ext(value):
+        current.i_ext = value
+        
+    # Calculate the actual current density:
+    # The minus sign is because we begin with the charging reaction, which
+    #   delivers negative charge to the anode:
+    i_ext_set = -Inputs.C_rate*min(anode.oneC,cathode.oneC)
 
 
-# Calculate the actual current density:
-# The minus sign is because we begin with the charging reaction, which
-#   delivers negative charge to the anode:
-i_ext = -Inputs.C_rate*min(anode.oneC,cathode.oneC)
-
-SV_0 = np.zeros([anode.nSV+separator.nSV+cathode.nSV])
-
-# Set up algebraic variable vector:
-algvar = np.zeros_like(SV_0)
-
-offsets = anode.offsets
-ptr = anode.ptr
-for j in range(anode.npoints):
-    SV_0[offsets[j] + ptr['X_ed']] = \
-        np.ones([anode.nshells])*X_an_0[0]
-    algvar[offsets[j] + ptr['X_ed']] = 1
-
-    SV_0[offsets[j] + ptr['rho_k_elyte']] = \
-        elyte_obj.Y*elyte_obj.density_mass
-    algvar[offsets[j] + ptr['rho_k_elyte']] = 1
-
-    SV_0[offsets[j] + ptr['Phi_ed']] = \
-        Inputs.Phi_anode_init
-
-    SV_0[offsets[j] + ptr['Phi_dl']] = \
-        Inputs.Phi_elyte_init - Inputs.Phi_anode_init
-    algvar[offsets[j] + ptr['Phi_dl']] = 1
-
-offsets = separator.offsets
-ptr = separator.ptr
-for j in np.arange(0, separator.npoints):
-    SV_0[offsets[j] + ptr['rho_k_elyte']] = \
-        elyte_obj.Y*elyte_obj.density_mass
-    algvar[offsets[j] + ptr['rho_k_elyte']] = 1
-
-    SV_0[offsets[j] + ptr['Phi']] = \
-        Inputs.Phi_elyte_init
-
-offsets = cathode.offsets
-ptr = cathode.ptr
-for j in range(cathode.npoints):
-    SV_0[offsets[j] + ptr['X_ed']] = \
-        np.ones([cathode.nshells])*X_ca_0[0]
-    algvar[offsets[j] + ptr['X_ed']] = 1
-
-    SV_0[offsets[j] + ptr['rho_k_elyte']] = \
-        elyte_obj.Y*elyte_obj.density_mass
-    algvar[offsets[j] + ptr['rho_k_elyte']] = 1
-
-    SV_0[offsets[j] + ptr['Phi_ed']] = \
-        Inputs.Phi_anode_init + Inputs.Delta_Phi_init
-
-    SV_0[offsets[j] + ptr['Phi_dl']] = \
-        Inputs.Phi_elyte_init - (Inputs.Phi_anode_init + Inputs.Delta_Phi_init)
-    algvar[offsets[j] + ptr['Phi_dl']] = 1
+class solver_inputs():       
+    
+    SV_0 = np.zeros([anode.nSV+separator.nSV+cathode.nSV])
+    
+    # Set up algebraic variable vector:
+    algvar = np.zeros_like(SV_0)
+    
+    offsets = anode.offsets
+    ptr = anode.ptr
+    for j in range(anode.npoints):
+        SV_0[offsets[j] + ptr['X_ed']] = \
+            np.ones([anode.nshells])*X_an_0[0]
+        algvar[offsets[j] + ptr['X_ed']] = 1
+    
+        SV_0[offsets[j] + ptr['rho_k_elyte']] = \
+            elyte_obj.Y*elyte_obj.density_mass
+        algvar[offsets[j] + ptr['rho_k_elyte']] = 1
+    
+        SV_0[offsets[j] + ptr['Phi_ed']] = \
+            Inputs.Phi_anode_init
+    
+        SV_0[offsets[j] + ptr['Phi_dl']] = \
+            Inputs.Phi_elyte_init - Inputs.Phi_anode_init
+        algvar[offsets[j] + ptr['Phi_dl']] = 1
+    
+    
+    offsets = separator.offsets
+    ptr = separator.ptr
+    for j in np.arange(0, separator.npoints):
+        SV_0[offsets[j] + ptr['rho_k_elyte']] = \
+            elyte_obj.Y*elyte_obj.density_mass
+        algvar[offsets[j] + ptr['rho_k_elyte']] = 1
+    
+        SV_0[offsets[j] + ptr['Phi']] = \
+            Inputs.Phi_elyte_init
+    
+    offsets = cathode.offsets
+    ptr = cathode.ptr
+    for j in range(cathode.npoints):
+        SV_0[offsets[j] + ptr['X_ed']] = \
+            np.ones([cathode.nshells])*X_ca_0[0]
+        algvar[offsets[j] + ptr['X_ed']] = 1
+    
+        SV_0[offsets[j] + ptr['rho_k_elyte']] = \
+            elyte_obj.Y*elyte_obj.density_mass
+        algvar[offsets[j] + ptr['rho_k_elyte']] = 1
+    
+        SV_0[offsets[j] + ptr['Phi_ed']] = \
+            Inputs.Phi_anode_init + Inputs.Delta_Phi_init
+    
+        SV_0[offsets[j] + ptr['Phi_dl']] = \
+            Inputs.Phi_elyte_init - (Inputs.Phi_anode_init + Inputs.Delta_Phi_init)
+        algvar[offsets[j] + ptr['Phi_dl']] = 1
+        
+    
+print("Initalize check")

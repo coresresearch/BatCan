@@ -6,14 +6,18 @@ Created on Thu Nov  1 14:27:54 2018
 """
 
 import numpy as np
-import cantera as ct
+#import cantera as ct
 
 class Inputs():
     # These flags specify whether to include each element (anode, separator,
     #   cathode) in the simulation:
     flag_anode = 1
-    flag_sep = 1
+    flag_sep = 0
     flag_cathode = 0
+    
+    # These flags specify whether to plot various data
+    plot_profiles_flag = 1  # Plots potential and lithiation profiles
+    plot_cap_flag = 0       # Plots dis/charge capacity curves
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
@@ -24,12 +28,12 @@ class Inputs():
 
     # Set initial SOC to generalize both electrode initial lithiation
     # Fully charged = anode fully lithiated, cathode fully de-lithiated.
-    SOC_0 = 0.98
+    SOC_0 = 0.03
 
     # Number of discretized volumes in the y-direction:
     npoints_anode = 5
-    npoints_cathode = 5
-    npoints_elyte = 2
+    npoints_cathode = 0
+    npoints_elyte = 0
 
     # Number of "shells" in anode particle:
     nshells_anode = 5
@@ -50,8 +54,8 @@ class Inputs():
     Vac_species_cathode = 'V[cathode]'
 
     Phi_anode_init = 0.0
-    Phi_elyte_init = 4.0
-    Delta_Phi_init = 4.0
+    Phi_elyte_init = 2.5
+    Delta_Phi_init = 2.5
 
     # Cutoff Values for lithiation and delithiation of anode:
     SOC_max = 1 - 1e-2
@@ -100,3 +104,9 @@ class Inputs():
     C_dl_ca = 1.5       # Double-layer capacitance [F/m^2]
     sigma_ca = 7.50    # Bulk cathode electrical conductivity [S/m]
     D_Li_ca = 7.5e-16  # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
+    
+print("runner check")
+
+#if __name__ == "__main__":
+#    exec(open("li_ion_battery_p2d_init.py").read())
+#    exec(open("li_ion_battery_p2d_model.py").read())
