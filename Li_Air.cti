@@ -50,7 +50,7 @@ ideal_interface(
 	elements 	= " Li O ",
 	species	= " Li2O2(s) vacancy(s) ",
 	reactions	= "ca_surf-*",
-	site_density = (2.50e-5,'mol/cm2'),
+	site_density = (3.01e+14,'molec/cm2'),
 	phases	= "electrolyte graphite"
 	)
 
