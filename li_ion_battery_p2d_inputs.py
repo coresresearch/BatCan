@@ -17,7 +17,7 @@ class Inputs():
     
     # These flags specify whether to plot various data
     plot_profiles_flag = 1  # Plots potential and lithiation profiles
-    plot_cap_flag = 0       # Plots dis/charge capacity curves
+    plot_cap_flag = 1       # Plots dis/charge capacity curves
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
@@ -54,8 +54,8 @@ class Inputs():
     Vac_species_cathode = 'V[cathode]'
 
     Phi_anode_init = 0.0
-    Phi_elyte_init = 2.5
-    Delta_Phi_init = 2.5
+    Phi_elyte_init = 3.0
+    Delta_Phi_init = 3.0
 
     # Cutoff Values for lithiation and delithiation of anode:
     SOC_max = 1 - 1e-2
@@ -70,7 +70,7 @@ class Inputs():
     overlap_an = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
-    H_an = 50e-6        # Anode thickness [m]
+    H_an = 25e-6        # Anode thickness [m]
 
     # Other Parameters
     C_dl_an = 1.5e-2    # Double-layer capacitance [F/m^2]

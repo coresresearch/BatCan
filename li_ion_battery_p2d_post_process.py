@@ -8,6 +8,7 @@ Created on Wed Sep 26 13:59:27 2018
 from li_ion_battery_p2d_init import anode, cathode
 from li_ion_battery_p2d_init import separator as sep
 from li_ion_battery_p2d_init import anode_obj, cathode_obj, elyte_obj
+from li_ion_battery_p2d_init import current
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -42,8 +43,7 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
 #    line_style = ['v-', 'o-', '^-', 's-', 'h-', '+-']
     
     # Plot anode and double-layer potential
-    SV_plot = SV_df.plot(x='Time', y=V, ax=axes[0, yax], xlim=[0,t.iloc[-1]],
-                         ylim = [-0.1, 5.1])
+    SV_plot = SV_df.plot(x='Time', y=V, ax=axes[0, yax], xlim=[0,t.iloc[-1]])
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Voltages [V]', fontsize = fontsize)
     SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
@@ -71,6 +71,44 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
 #    SV_plot.set_ylabel('Electrolyte composition [X_Li+]')
 #    SV_plot.legend().set_visible(showlegend)
 #    SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+
+"""========================================================================="""
+
+def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag):
+    fontsize = 18
+    
+    SV_ch_df = SV_ch_df.loc[SV_ch_df['Time'] <= t_flag_ch]
+    SV_dch_df = SV_dch_df.loc[SV_dch_df['Time'] <= t_flag_dch]
+    
+    V_charge = np.array(SV_ch_df['Phi_dl1'])
+    V_discharge = np.array(SV_dch_df['Phi_dl1'])
+    t_charge = np.array(SV_ch_df['Time'])
+    t_discharge = np.array(SV_dch_df['Time'])
+    dt_charge = t_charge - t_charge[0]
+    dt_discharge = t_discharge - t_discharge[0]
+    
+    # Plot charge-discharge curve
+    Capacity_charge = -dt_charge*current.i_ext_set/3600         # A-h/m^2
+    Capacity_discharge = -dt_discharge*current.i_ext_set/3600   # A-h/m^2
+    
+    fig1, ax1 = plt.subplots(figsize = (8, 6))
+    ax1.plot(Capacity_charge, V_charge)
+    ax1.plot(Capacity_discharge, V_discharge)
+#    ax1.set_ylim((0, 0.3))
+#    ax1.set_xlim((-0.1, 20))
+    ax1.set_title('Half-cell potential vs. Capacity', fontsize = fontsize)
+    ax1.set_xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
+    ax1.set_ylabel('Voltage [V]', fontsize = fontsize)
+    ax1.legend(('Charge capacity', 'Discharge capacity'), loc=1, fontsize = 16)
+    
+    Cap_recovered = round(Capacity_discharge[-1], 2)
+    Cap_stored = Capacity_charge[-1]
+    Eta_c = round(100*Cap_recovered/Cap_stored, 1)
+    
+    ax1.text(0.01, 0.01, r"$\eta_c$="+str(Eta_c)+"% at "+str(rate_tag), 
+             fontsize = fontsize)
+    
+    return Cap_recovered, Eta_c
 
 """========================================================================="""
 

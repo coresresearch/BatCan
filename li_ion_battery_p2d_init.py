@@ -143,12 +143,12 @@ class anode():
     #   diffusion coefficients:
     u_Li_elyte = (Inputs.D_Li_elyte*eps_elyte/ct.gas_constant
           /Inputs.T/tau_ed**3)
-    
-#    def __init__(self, set_current):
-#        self.i_ext = set_current
-#    i_ext = []
 
-    t_flag = []
+    def get_tflag():
+        return anode.t_flag
+    
+    def set_tflag(value):
+        anode.t_flag = value    
 
 
     """========================================================================="""
@@ -283,7 +283,7 @@ class current():
     # Calculate the actual current density:
     # The minus sign is because we begin with the charging reaction, which
     #   delivers negative charge to the anode:
-    i_ext_set = -Inputs.C_rate*min(anode.oneC,cathode.oneC)
+    i_ext_set = -Inputs.C_rate*anode.oneC  #min(anode.oneC,cathode.oneC)
 
 
 class solver_inputs():       

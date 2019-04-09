@@ -37,7 +37,7 @@ from li_ion_battery_p2d_init import anode, cathode, separator, solver_inputs, cu
 
 #    import li_ion_battery_p2d_post_process
 #    importlib.reload(li_ion_battery_p2d_init)
-from li_ion_battery_p2d_post_process import Label_Columns, tag_strings, plot_sims
+from li_ion_battery_p2d_post_process import Label_Columns, tag_strings, plot_sims, plot_cap
 
 def main():
     
@@ -47,7 +47,7 @@ def main():
     # Close any open pyplot objects:
     plt.close()
     
-    atol1 = 1e-4; atol2 = 1e-6; atol3 = 1e-4; atol4 = 1e-4
+    atol1 = 1e-4; atol2 = 1e-4; atol3 = 1e-4; atol4 = 1e-4
     rtol1 = 1e-6; rtol2 = 1e-6; rtol3 = 1e-6; rtol4 = 1e-6
 
     # Start a timer:
@@ -94,7 +94,6 @@ def main():
     tags = tag_strings(SV_eq_df)
 
     print('Done equilibrating\n')
-    """---------------------------------"""
 
     """------------Charging-------------"""
     print('\nCharging...')
@@ -122,7 +121,7 @@ def main():
 
     t_charge, SV_charge, SV_dot_charge = charge_sim.simulate(t_f)
 
-    t_flag1 = anode.t_flag
+    t_flag_ch = anode.get_tflag()
 
     SV_charge_df = Label_Columns(t_charge, SV_charge)
     
@@ -131,7 +130,6 @@ def main():
                  'Charging', 1, fig1, axes1)
 
     print('Done charging\n')
-    """---------------------------------"""
 
     """------------Re_equilibrating-------------"""
 
@@ -169,8 +167,6 @@ def main():
 
     print('Done re-equilibrating\n')
 
-    """---------------------------------"""
-
     """------------Discharging-------------"""
 
     print('\nDischarging...')
@@ -193,7 +189,7 @@ def main():
 
     t_discharge, SV_discharge, SV_dot_discharge = Battery_discharge.simulate(t_f)
 
-    t_flag2 = anode.t_flag
+    t_flag_dch = anode.get_tflag()
 
     SV_discharge_df = Label_Columns(t_discharge, SV_discharge)
     
@@ -204,6 +200,12 @@ def main():
     print('Done discharging\n')
 
     """---------------------------------"""
+    
+# %% Plot capacity if flagged
+    
+    if inp.plot_cap_flag == 1:
+        Cap_recovered, Eta_c = plot_cap(SV_charge_df, SV_discharge_df, t_flag_ch,
+                                        t_flag_dch, rate_tag)
 
     # Calculate battery energy storage/recovery and calculate round-trip
     #   efficiency. Anode voltage is referenced to its initial equilibrium

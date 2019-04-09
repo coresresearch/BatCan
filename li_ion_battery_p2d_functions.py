@@ -26,21 +26,15 @@ from li_ion_battery_p2d_init import solver_inputs
 from li_ion_battery_p2d_init import current
 
 class Extended_Problem(Implicit_Problem):
-    
     def Battery_Func(t, SV, SV_dot):
-
         """================================================================="""
         """==========================INITIALIZE============================="""
-        """================================================================="""
-        offsets = an.offsets
-        
-        F = ct.faraday; R = ct.gas_constant; T = Inputs.T
+        offsets = an.offsets; F = ct.faraday; R = ct.gas_constant; T = Inputs.T
         
         nSV = len(SV)
         res = np.zeros([nSV])
         i_ext = current.get_i_ext()
-        print(t, i_ext)
-#        print(res)
+#        print(t, i_ext)
 
         """        anode = an.obj['electrode']
         anode_s = an.obj['surf']
@@ -53,17 +47,10 @@ class Extended_Problem(Implicit_Problem):
 # %%
         """================================================================="""
         """============================ANODE================================"""
-        """================================================================="""
-        #  --------------------------------
-        #  ANODE CURRENT COLLECTOR BOUNDARY
-        #  --------------------------------
-
         # Looking at node 1, j=0, set THIS node conditions
         j = 0; offset = int(offsets[j]); ptr = an.ptr
 
-        N_io_p = 0
-        i_io_p = 0
-        i_el_p = i_ext
+        N_io_p = 0; i_io_p = 0; i_el_p = i_ext
         
         phi_1 = {}
         
@@ -73,12 +60,12 @@ class Extended_Problem(Implicit_Problem):
         
         # Diffusive flux scaling factors
         k = np.arange(0, an.nshells+1)/an.nshells
+        i_Far_sum = 0
 
 # %%
         """============================ANODE================================"""
         """INTERIOR NODES"""
         for j in np.arange(1, an.npoints):
-
             # Save previous node outlet conditions as new inlet conditions
             N_io_m = N_io_p
             i_io_m = i_io_p
@@ -103,21 +90,18 @@ class Extended_Problem(Implicit_Problem):
             N_io_p = (-an.u_Li_elyte*rho_k_elyte_1
                       *(R*T*(rho_k_elyte_2 - rho_k_elyte_1)
                       + Inputs.z_k_elyte*F*(phi_2['el'] - phi_1['el']))*an.dyInv)
-            
-#                    (-an.u_Li_elyte*elyte.density_mole
-#                      *(R*T*(rho_k_elyte_2 - rho_k_elyte_1)
-#                      + F*(phi_2['el'] - phi_1['el']))*an.dyInv)
 
             i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
 
             i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
-#            print(i_Far_1, sdot_1)
+#            print(sdot_1)
+#            if t > 100:
+#                i_Far_sum = i_Far_sum + i_Far_1
 
             X_Li = SV[offset + ptr['X_ed']]
             DiffFlux = np.zeros([an.nshells+1])
             DiffFlux[1:-1] = an.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/an.dr
             DiffFlux[-1] = sdot_1[an.ptr['iFar']]/anode.density_mole
-#            print(DiffFlux)
 
             """Calculate the change in X_LiC6 in the particle interior."""
             res[offset + an.ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
@@ -126,7 +110,7 @@ class Extended_Problem(Implicit_Problem):
 
             """Change in electrolyte_composition"""
             res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']]
-            - (((N_io_m - N_io_p)*an.dyInv + sdot_1[nsp_an]*an.A_surf)
+            - (((N_io_m - N_io_p)*an.dyInv + sdot_1[5]*an.A_surf)
             /elyte.density_mole/an.eps_elyte))
 
             """Double-layer voltage"""
@@ -148,8 +132,6 @@ class Extended_Problem(Implicit_Problem):
         phi_1['el'] = phi_2['el']
         sdot_1 = sdot_2
 
-        # Shift forward to NEXT node (first separator node)
-
         # Shift back to THIS node, set THIS node outlet conditions
         i_el_p = 0
 
@@ -157,6 +139,9 @@ class Extended_Problem(Implicit_Problem):
         j = an.npoints-1; offset = int(an.offsets[j])
 
         i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
+#        if t > 100:
+#            i_Far_sum = i_Far_sum + i_Far_1
+#            print(i_Far_sum, i_ext)
 
         i_io_p = i_ext
         #THIS IS TEMPORARY, NON-GENERALIZED CODE:
@@ -175,7 +160,7 @@ class Extended_Problem(Implicit_Problem):
 
         """Change in electrolyte_composition"""
         res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']]
-        - (((N_io_m - N_io_p)*an.dyInv + sdot_1[nsp_an]*an.A_surf)
+        - (((N_io_m - N_io_p)*an.dyInv + sdot_1[5]*an.A_surf)
         /elyte.density_mole/an.eps_elyte))
 
         """Double-layer voltage"""
@@ -184,31 +169,24 @@ class Extended_Problem(Implicit_Problem):
 
         """Algebraic equation for ANODE electric potential boundary condition"""
         res[offset + ptr['Phi_ed']] = SV[ptr['Phi_ed']]
+        
 # %%
         """================================================================="""
         """==========================SEPARATOR=============================="""
-        """================================================================="""
-
-# %%
-        # Looking at LAST node in separator
 
 # %%
         """================================================================="""
         """===========================CATHODE==============================="""
-        """================================================================="""
-
-
 
 # %%
         """=========================CATHODE============================="""
         """current collector boundary"""
 
-#        print(res)
+
         return res
 
     """====================================================================="""
     """===========================Model Functions==========================="""
-    """====================================================================="""
     
     def set_state(offset, SV, ed, surf, el, ptr):
         X_ed = SV[offset + ptr['X_ed'][-1]]
@@ -229,11 +207,11 @@ class Extended_Problem(Implicit_Problem):
         phi['el'] = phi_elec_el
         
         return sdot, phi, X_ed, rho_k_el
-    
+
+# %%
     """====================================================================="""
     """==========================Solver Functions==========================="""
-    """====================================================================="""
-# %%
+
     def state_events(self, t, y, yd, sw):
         event1 = np.zeros([an.npoints])
         event2 = np.zeros([an.npoints])
@@ -244,7 +222,7 @@ class Extended_Problem(Implicit_Problem):
             offset = j*an.nVars
 
             event1[j] = (y[offset + an.ptr['Phi_dl']])
-#            event2[j] = ( - y[offset + an.ptr['Phi_dl']])
+            event2[j] = (5 - y[offset + an.ptr['Phi_dl']])
 
             for i in np.arange(0, an.nshells):
                 event3[i] = an.X_Li_max - y[offset + an.ptr['X_ed'][i]]
@@ -285,13 +263,19 @@ class Extended_Problem(Implicit_Problem):
 
             if not True in event_info:
                 break
+            
+    """====================================================================="""
 
     def event_switch(self, solver, event_info):
         if not all(event_info):
             solver.sw = [not solver.sw]
+            
+    """====================================================================="""
 
     def init_mode(self, solver):
-        an.t_flag = solver.t
+        an.set_tflag(solver.t)
         if current.get_i_ext() != 0:
             current.set_i_ext(0)
+            
+    """====================================================================="""
             
