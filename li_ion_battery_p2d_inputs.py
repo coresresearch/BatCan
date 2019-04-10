@@ -17,12 +17,11 @@ class Inputs():
     
     # These flags specify whether to plot various data
     plot_profiles_flag = 1  # Plots potential and lithiation profiles
-    plot_cap_flag = 1       # Plots dis/charge capacity curves
+    plot_cap_flag = 0       # Plots dis/charge capacity curves
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
     C_rate = 1
-
     # Simulation temperature (or initial temperature)
     T = 300  # [K]
 

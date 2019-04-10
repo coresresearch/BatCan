@@ -20,7 +20,7 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
         showlegend = 1
     else:
         showlegend = 0
-    fontsize = 22
+    fontsize = 12
 #    showlegend = 0
     
     t = SV_df['Time']
@@ -32,10 +32,26 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
         
     X = [X[i] for i in index.astype(int)]
     
-    index = [0]
-    index_add = np.arange(1, 9+2, 2)
-    index = np.append(index, index_add)
-    V = [V[i] for i in index.astype(int)]
+#    index = []
+#    for j in np.arange(0, anode.npoints):
+#        offset = j*2
+#        index_add = [0+offset, 1+offset]
+#        index = np.append(index, index_add)
+#        
+#    V = [V[i] for i in index.astype(int)]
+        
+#    index = [0]
+#    index_add = np.arange(1, 9+2, 2)
+#    index = np.append(index, index_add)
+#    V = [V[i] for i in index.astype(int)]
+    
+    index = []
+    for i in np.arange(0, anode.npoints):
+        offset = i*elyte_obj.n_species
+        index_add = [2 + offset]
+        index = np.append(index, index_add)
+        
+    rho_Li = [rho_k_el[i] for i in index.astype(int)]
     
     yax = yax - 1
     SV_df['Time'] = SV_df['Time']
@@ -46,9 +62,9 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
     SV_plot = SV_df.plot(x='Time', y=V, ax=axes[0, yax], xlim=[0,t.iloc[-1]])
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Voltages [V]', fontsize = fontsize)
-    SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
+#    SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
     SV_plot.legend(loc=2, bbox_to_anchor=(1.05, 1), ncol=1, borderaxespad=0,
-                   frameon=False, fontsize=16).set_visible(showlegend)
+                   frameon=False).set_visible(showlegend)
     SV_plot.tick_params(axis='both', labelsize=18)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
@@ -59,18 +75,19 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
                          ylim = [-0.1, 1.1], style = line_style)
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Anode composition $[X_{LiC_6}]$', fontsize = fontsize)
-    SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
+#    SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
     SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
-                   borderaxespad = 0, frameon = False, fontsize = 16).set_visible(showlegend)
+                   borderaxespad = 0, frameon = False).set_visible(showlegend)
     SV_plot.tick_params(axis='both', labelsize = 18)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
     # Plot elyte composition
-#    SV_plot = SV_df.plot(x = 'Time', y = X_el, ax = axes[2, yax], xlim = [0, t.iloc[-1]],
-#                                                                )
-#    SV_plot.set_ylabel('Electrolyte composition [X_Li+]')
-#    SV_plot.legend().set_visible(showlegend)
-#    SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    SV_plot = SV_df.plot(x = 'Time', y = rho_Li, ax = axes[2, yax], xlim = [0, t.iloc[-1]])
+    SV_plot.set_ylabel(r'Electrolyte composition [kmol_k/m^3]')
+    SV_plot.set_xlabel('Time [s]')
+    SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
+                   frameon = False).set_visible(showlegend)
+    SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
 """========================================================================="""
 
@@ -99,7 +116,7 @@ def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag):
     ax1.set_title('Half-cell potential vs. Capacity', fontsize = fontsize)
     ax1.set_xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
     ax1.set_ylabel('Voltage [V]', fontsize = fontsize)
-    ax1.legend(('Charge capacity', 'Discharge capacity'), loc=1, fontsize = 16)
+    ax1.legend(('Charge capacity', 'Discharge capacity'), loc=3, fontsize = 16)
     
     Cap_recovered = round(Capacity_discharge[-1], 2)
     Cap_stored = Capacity_charge[-1]
@@ -124,9 +141,16 @@ def tag_strings(SV):
 
     for j in np.arange(0, anode.npoints):
         offset = int(anode.offsets[j])
-        V_an[0+offset:1+offset] = SV_eq_labels[anode.ptr['Phi_ed']+offset:anode.ptr['Phi_dl']+offset+1]
-        X_an[0+offset:anode.nshells+offset] = SV_eq_labels[0+offset:anode.nshells+offset]
-        rho_el_an.append(SV_eq_labels[offset + anode.nshells])
+        V_an[0+offset:1+offset] = \
+            SV_eq_labels[anode.ptr['Phi_ed']+offset:anode.ptr['Phi_dl']+offset+1]
+            
+        X_an[0+offset:anode.nshells+offset] = \
+            SV_eq_labels[0+offset:anode.nshells+offset]
+            
+        rho_el_an[0+offset:elyte_obj.n_species+offset] = \
+            SV_eq_labels[anode.ptr['rho_k_elyte'][0]+offset:anode.ptr['rho_k_elyte'][-1]+offset+1]
+            
+#        rho_el_an.append(SV_eq_labels[offset + anode.nshells])
 
     for j in np.arange(0, cathode.npoints):
         offset = int(cathode.offset_vec[j])

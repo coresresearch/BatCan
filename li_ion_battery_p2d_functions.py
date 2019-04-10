@@ -55,7 +55,7 @@ class Extended_Problem(Implicit_Problem):
         phi_1 = {}
         
         # Shift forward to node 2, j=1, to set NEXT node conditions
-        sdot_2, phi_2, X_an_2, rho_k_elyte_2 = \
+        sdot_2, phi_2, X_an_2, rho_k_elyte_2, X_el_2 = \
         Extended_Problem.set_state(offset, SV, anode, anode_s, elyte, ptr)
         
         # Diffusive flux scaling factors
@@ -71,6 +71,7 @@ class Extended_Problem(Implicit_Problem):
             i_io_m = i_io_p
             i_el_m = i_el_p
             X_an_1 = X_an_2
+            X_el_1 = X_el_2
             rho_k_elyte_1 = rho_k_elyte_2
             phi_1['ed'] = phi_2['ed']
             phi_1['el'] = phi_2['el']
@@ -79,16 +80,16 @@ class Extended_Problem(Implicit_Problem):
             # Shift forward to NEXT node
             offset = int(offsets[j])
 
-            sdot_2, phi_2, X_an_2, rho_k_elyte_2 = \
+            sdot_2, phi_2, X_an_2, rho_k_elyte_2, X_el_2= \
             Extended_Problem.set_state(offset, SV, anode, anode_s, elyte, ptr)
 
             # Shift back to THIS node, set THIS node outlet conditions
             offset = int(offsets[j - 1])
 
             i_el_p = an.sigma_eff_ed*(phi_1['ed'] - phi_2['ed'])*an.dyInv
-
-            N_io_p = (-an.u_Li_elyte*rho_k_elyte_1
-                      *(R*T*(rho_k_elyte_2 - rho_k_elyte_1)
+            
+            N_io_p = (-an.u_Li_elyte*sum(rho_k_elyte_1)/elyte.mean_molecular_weight
+                      *(R*T*(X_el_2 - X_el_1)
                       + Inputs.z_k_elyte*F*(phi_2['el'] - phi_1['el']))*an.dyInv)
 
             i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
@@ -127,6 +128,7 @@ class Extended_Problem(Implicit_Problem):
         i_io_m = i_io_p
         i_el_m = i_el_p
         X_an_1 = X_an_2
+        X_el_1 = X_el_2
         rho_k_elyte_1 = rho_k_elyte_2
         phi_1['ed'] = phi_2['ed']
         phi_1['el'] = phi_2['el']
@@ -200,13 +202,14 @@ class Extended_Problem(Implicit_Problem):
         
         elyte.Y = rho_k_el/np.sum(rho_k_el)
         elyte.electric_potential = phi_elec_el
+        X_el = elyte.X
         
         sdot = surf.net_production_rates
         phi = {}
         phi['ed'] = phi_elec_ed
         phi['el'] = phi_elec_el
         
-        return sdot, phi, X_ed, rho_k_el
+        return sdot, phi, X_ed, rho_k_el, X_el
 
 # %%
     """====================================================================="""

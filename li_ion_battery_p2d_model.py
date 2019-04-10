@@ -62,7 +62,7 @@ def main():
     rate_tag = str(inp.C_rate)+"C"
     
     if inp.plot_profiles_flag == 1:
-        fig1, axes1 = plt.subplots(sharey = "row", figsize = (18, 8), nrows = 2, ncols = 3)
+        fig1, axes1 = plt.subplots(sharey = "row", figsize = (18, 8), nrows = 3, ncols = 3)
         plt.subplots_adjust(wspace = 0.15, hspace = 0.5)
         fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
         
