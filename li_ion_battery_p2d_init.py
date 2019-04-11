@@ -283,8 +283,10 @@ class current():
     # Calculate the actual current density:
     # The minus sign is because we begin with the charging reaction, which
     #   delivers negative charge to the anode:
-    i_ext_set = -Inputs.C_rate*anode.oneC  #min(anode.oneC,cathode.oneC)
-
+    if Inputs.flag_cathode == 1:
+        i_ext_set = -Inputs.C_rate*min(anode.oneC, cathode.oneC)  
+    elif Inputs.flag_cathode == 0:
+        i_ext_set = -Inputs.C_rate*anode.oneC  
 
 class solver_inputs():       
     

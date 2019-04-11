@@ -53,8 +53,8 @@ class Inputs():
     Vac_species_cathode = 'V[cathode]'
 
     Phi_anode_init = 0.0
-    Phi_elyte_init = 3.0
-    Delta_Phi_init = 3.0
+    Phi_elyte_init = 2.5
+    Delta_Phi_init = 4.2
 
     # Cutoff Values for lithiation and delithiation of anode:
     SOC_max = 1 - 1e-2
