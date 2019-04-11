@@ -94,8 +94,8 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
 def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag):
     fontsize = 18
     
-    SV_ch_df = SV_ch_df.loc[SV_ch_df['Time'] <= t_flag_ch]
-    SV_dch_df = SV_dch_df.loc[SV_dch_df['Time'] <= t_flag_dch]
+    SV_ch_df = SV_ch_df.loc[SV_ch_df['Time'] < t_flag_ch-1]
+    SV_dch_df = SV_dch_df.loc[SV_dch_df['Time'] < t_flag_dch-1]
     
     V_charge = np.array(SV_ch_df['Phi_dl1'])
     V_discharge = np.array(SV_dch_df['Phi_dl1'])
@@ -108,22 +108,33 @@ def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag):
     Capacity_charge = -dt_charge*current.i_ext_set/3600         # A-h/m^2
     Capacity_discharge = -dt_discharge*current.i_ext_set/3600   # A-h/m^2
     
-    fig1, ax1 = plt.subplots(figsize = (8, 6))
-    ax1.plot(Capacity_charge, V_charge)
-    ax1.plot(Capacity_discharge, V_discharge)
+    plt.figure(2)
+#    ax = fig.add_subplot(111)
+    plt.plot(Capacity_charge, V_charge, 'k-')
+    plt.plot(Capacity_discharge, V_discharge, 'k--')
+    plt.title('Split-cell potential vs. Capacity', fontsize = fontsize)
+    plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
+    plt.ylabel('Voltage [V]', fontsize = fontsize)
+    plt.legend(('Charge capacity', 'Discharge capacity'), loc = 3, fontsize = 16)
+    plt.show()
+    
+#    plt.figure(1, figsize = (8, 6))
+#    ax1 = plt.subplot(1, 1, 1)
+#    plt.plot(Capacity_charge, V_charge, 'r-')
+#    plt.plot(Capacity_discharge, V_discharge, 'r--')
 #    ax1.set_ylim((0, 0.3))
 #    ax1.set_xlim((-0.1, 20))
-    ax1.set_title('Half-cell potential vs. Capacity', fontsize = fontsize)
-    ax1.set_xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
-    ax1.set_ylabel('Voltage [V]', fontsize = fontsize)
-    ax1.legend(('Charge capacity', 'Discharge capacity'), loc=3, fontsize = 16)
+#    plt.title('Half-cell potential vs. Capacity', fontsize = fontsize)
+#    plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
+#    plt.ylabel('Voltage [V]', fontsize = fontsize)
+#    plt.legend(('Charge capacity', 'Discharge capacity'), loc=3, fontsize = 16)
     
     Cap_recovered = round(Capacity_discharge[-1], 2)
     Cap_stored = Capacity_charge[-1]
     Eta_c = round(100*Cap_recovered/Cap_stored, 1)
     
-    ax1.text(0.01, 0.01, r"$\eta_c$="+str(Eta_c)+"% at "+str(rate_tag), 
-             fontsize = fontsize)
+#    ax1.text(0.01, 0.01, r"$\eta_c$="+str(Eta_c)+"% at "+str(rate_tag), 
+#             fontsize = fontsize)
     
     return Cap_recovered, Eta_c
 

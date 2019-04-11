@@ -12,7 +12,7 @@ class Inputs():
     # These flags specify whether to include each element (anode, separator,
     #   cathode) in the simulation:
     flag_anode = 1
-    flag_sep = 0
+    flag_sep = 1
     flag_cathode = 0
     
     # These flags specify whether to plot various data
@@ -32,7 +32,7 @@ class Inputs():
     # Number of discretized volumes in the y-direction:
     npoints_anode = 5
     npoints_cathode = 0
-    npoints_elyte = 0
+    npoints_elyte = 2
 
     # Number of "shells" in anode particle:
     nshells_anode = 5

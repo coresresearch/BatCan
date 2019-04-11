@@ -45,7 +45,7 @@ def main():
     algvar = solver_inputs.algvar
 
     # Close any open pyplot objects:
-    plt.close()
+    plt.close('all')
     
     atol1 = 1e-4; atol2 = 1e-4; atol3 = 1e-4; atol4 = 1e-4
     rtol1 = 1e-6; rtol2 = 1e-6; rtol3 = 1e-6; rtol4 = 1e-6
@@ -206,6 +206,8 @@ def main():
     if inp.plot_cap_flag == 1:
         Cap_recovered, Eta_c = plot_cap(SV_charge_df, SV_discharge_df, t_flag_ch,
                                         t_flag_dch, rate_tag)
+        print('Cap_recovered = ', Cap_recovered, '\n')
+        print('Eta_c = ', Eta_c, '\n')
 
     # Calculate battery energy storage/recovery and calculate round-trip
     #   efficiency. Anode voltage is referenced to its initial equilibrium
@@ -228,10 +230,9 @@ def main():
 #    Cap_recovered = Capacity_discharge[-1]
 #    Eta_RT = E_recovered/E_stored
 
-#    print('Cap_recovered = ', Cap_recovered, '\n')
+    
 #    print(E_stored, '\n')
 #    print(E_recovered, '\n')
-#    print('Eta_RT = ', Eta_RT, '\n')
 
     elapsed = time.time() - t_count
     print('t_cpu=', elapsed, '\n')

@@ -95,9 +95,6 @@ class Extended_Problem(Implicit_Problem):
             i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
 
             i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
-#            print(sdot_1)
-#            if t > 100:
-#                i_Far_sum = i_Far_sum + i_Far_1
 
             X_Li = SV[offset + ptr['X_ed']]
             DiffFlux = np.zeros([an.nshells+1])
@@ -133,6 +130,16 @@ class Extended_Problem(Implicit_Problem):
         phi_1['ed'] = phi_2['ed']
         phi_1['el'] = phi_2['el']
         sdot_1 = sdot_2
+        
+        # Shift forward to NEXT node, first separator node (j=0)
+        j = 0; offset = int(sep.offsets[j])
+        
+        phi_2['el'] = SV[offset + sep.ptr['Phi']]
+        rho_k_elyte_2 = SV[offset + sep.ptr['rho_k_elyte']]
+        
+        elyte.Y = rho_k_elyte_2/np.sum(rho_k_elyte_2)
+        elyte.electric_potential = phi_2['el']
+        X_el_2 = elyte.X
 
         # Shift back to THIS node, set THIS node outlet conditions
         i_el_p = 0
@@ -141,14 +148,17 @@ class Extended_Problem(Implicit_Problem):
         j = an.npoints-1; offset = int(an.offsets[j])
 
         i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
-#        if t > 100:
-#            i_Far_sum = i_Far_sum + i_Far_1
-#            print(i_Far_sum, i_ext)
 
-        i_io_p = i_ext
-        #THIS IS TEMPORARY, NON-GENERALIZED CODE:
-        N_io_p = np.zeros_like(N_io_p)
-        N_io_p[2] = i_io_p/F
+        N_io_p = (-an.u_Li_elyte*sum(rho_k_elyte_1)/elyte.mean_molecular_weight
+                      *(R*T*(X_el_2 - X_el_1)
+                      + Inputs.z_k_elyte*F*(phi_2['el'] - phi_1['el']))*an.dyInv)
+
+        i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
+
+#        i_io_p = i_ext
+#        #THIS IS TEMPORARY, NON-GENERALIZED CODE:
+#        N_io_p = np.zeros_like(N_io_p)
+#        N_io_p[2] = i_io_p/F
 
         X_Li = SV[offset + an.ptr['X_ed']]
         DiffFlux = np.zeros([an.nshells+1])
@@ -175,10 +185,81 @@ class Extended_Problem(Implicit_Problem):
 # %%
         """================================================================="""
         """==========================SEPARATOR=============================="""
+        offsets = sep.offsets; ptr = sep.ptr
+        
+        for j in np.arange(1, sep.npoints):
+            # Save previous node outlet conditions as new inlet conditions
+            i_io_m = i_io_p
+            N_io_m = N_io_p
+            X_el_1 = X_el_2
+            phi_1['el'] = phi_2['el']
+            
+            # Set NEXT separator node conditions
+            offset = int(offsets[j])
+            
+            phi_2['el'] = SV[offset + ptr['Phi']]
+            rho_k_elyte_2 = SV[offset + ptr['rho_k_elyte']]
+        
+            elyte.Y = rho_k_elyte_2/np.sum(rho_k_elyte_2)
+            elyte.electric_potential = phi_2['el']
+            X_el_2 = elyte.X
+            
+            # Shift back to THIS node
+            offset = int(sep.offsets[j-1])
+            
+            N_io_p = (-an.u_Li_elyte*sum(rho_k_elyte_1)/elyte.mean_molecular_weight
+                      *(R*T*(X_el_2 - X_el_1)
+                      + Inputs.z_k_elyte*F*(phi_2['el'] - phi_1['el']))*an.dyInv)
+
+            i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
+        
+            """Change in electrolyte composition"""
+            res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']]
+            - (((N_io_m - N_io_p)*sep.dyInv)/elyte.density_mole/sep.eps_elyte))
+            
+            """Algebraic equation for electrolyte potential"""
+            res[offset + ptr['Phi']] = i_io_m - i_io_p
+            
+        """==========================SEPARATOR=============================="""
+        """Cathode boundary"""
+        
+        i_io_m = i_io_p
+        N_io_m = N_io_p
+        X_el_1 = X_el_2
+        phi_1['el'] = phi_2['el']
+        
+        # Shift forward to NEXT node, first cathode node (j=0)
+#        j = 0; offset = int(cat.offsets[j])
+#        sdot_2, phi_2, X_cat_2, rho_k_elyte_2, X_el_2= \
+#            Extended_Problem.set_state(offset, SV, cathode, cathode_s, elyte, cat.ptr)
+        
+        # Shift to final separator node
+        j = sep.npoints-1; offset = int(offsets[j])
+        
+#        N_io_p = (-cat.u_Li_elyte*sum(rho_k_elyte_1)/elyte.mean_molecular_weight
+#                      *(R*T*(X_el_2 - X_el_1)
+#                      + Inputs.z_k_elyte*F*(phi_2['el'] - phi_1['el']))*cat.dyInv)
+#
+#        i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
+        
+        #THIS IS TEMPORARY, NON-GENERALIZED CODE:
+        i_io_p = i_ext
+        N_io_p = np.zeros_like(N_io_p)
+        N_io_p[2] = i_io_p/F
+        
+        """Change in electrolyte composition"""
+        res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']]
+        - (((N_io_m - N_io_p)*sep.dyInv)/elyte.density_mole/sep.eps_elyte))
+            
+        """Algebraic equation for electrolyte potential"""
+        res[offset + ptr['Phi']] = i_io_m - i_io_p
 
 # %%
         """================================================================="""
         """===========================CATHODE==============================="""
+#        offsets = cat.offsets; ptr = cat.ptr
+        
+        
 
 # %%
         """=========================CATHODE============================="""
