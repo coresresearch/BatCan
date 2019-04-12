@@ -267,7 +267,11 @@ class cathode():
     u_Li_elyte = (Inputs.D_Li_elyte*eps_elyte/ct.gas_constant
           /Inputs.T/tau_ed**3)
 
-    t_flag = []
+    def get_tflag():
+        return cathode.t_flag
+    
+    def set_tflag(value):
+        cathode.t_flag = value  
 
 """========================================================================="""
 """========================================================================="""

@@ -13,7 +13,10 @@ class Inputs():
     #   cathode) in the simulation:
     flag_anode = 1
     flag_sep = 1
-    flag_cathode = 0
+    flag_cathode = 1
+    
+    # Flag to allow re-equilibration between charge/discharge
+    flag_re_equil = 1
     
     # These flags specify whether to plot various data
     plot_profiles_flag = 1  # Plots potential and lithiation profiles
@@ -30,9 +33,9 @@ class Inputs():
     SOC_0 = 0.03
 
     # Number of discretized volumes in the y-direction:
-    npoints_anode = 5
-    npoints_cathode = 0
-    npoints_elyte = 2
+    npoints_anode = 5*flag_anode
+    npoints_cathode = 5
+    npoints_elyte = 2*flag_sep
 
     # Number of "shells" in anode particle:
     nshells_anode = 5
@@ -93,14 +96,14 @@ class Inputs():
     eps_solid_ca = 0.5  # LiCoO2 volume fraction [-]
     tau_ca = 1.6  # Tortuosity - assume equal values for LiCoO2 and elyte [-]
     r_p_ca = 5e-6     # Average pore radius [m]
-    d_part_ca = 30e-6  # Average particle diameter for LiCoO2 [m]
+    d_part_ca = 6e-6  # Average particle diameter for LiCoO2 [m]
     overlap_ca = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
     H_ca = 30e-6      # Cathode thickness [m]
 
     # Other parameters:
-    C_dl_ca = 1.5       # Double-layer capacitance [F/m^2]
+    C_dl_ca = 1.5e-1       # Double-layer capacitance [F/m^2]
     sigma_ca = 7.50    # Bulk cathode electrical conductivity [S/m]
     D_Li_ca = 7.5e-16  # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
     

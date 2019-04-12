@@ -5,21 +5,30 @@ Created on Wed Sep 26 13:59:27 2018
 @author: dkorff
 """
 
+import importlib
+import li_ion_battery_p2d_init
+importlib.reload(li_ion_battery_p2d_init)
 from li_ion_battery_p2d_init import anode, cathode
 from li_ion_battery_p2d_init import separator as sep
 from li_ion_battery_p2d_init import anode_obj, cathode_obj, elyte_obj
 from li_ion_battery_p2d_init import current
+
+#import li_ion_battery_p2d_inputs
+#importlib.reload(li_ion_battery_p2d_inputs)
+#from li_ion_battery_p2d_inputs import Inputs
+
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
 
-def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
+def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_el, SV_df, stage, yax, fig, axes):
     
     if stage == 'Discharging':
         showlegend = 1
     else:
         showlegend = 0
+    showlegend = 0
     fontsize = 12
     
     t = SV_df['Time']
@@ -29,7 +38,15 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
         index_add = [0+offset, 4+offset]
         index = np.append(index, index_add)
         
-    X = [X[i] for i in index.astype(int)]
+    X_an = [X_an[i] for i in index.astype(int)]
+    
+    index = []
+    for j in np.arange(0, cathode.nshells):
+        offset = j*cathode.nshells
+        index_add = [0+offset, 4+offset]
+        index = np.append(index, index_add)
+        
+    X_cat = [X_cat[i] for i in index.astype(int)]
     
     index = []
     for i in np.arange(0, anode.npoints):
@@ -39,13 +56,19 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
         
     rho_Li = [rho_k_el[i] for i in index.astype(int)]
     
+    index = []
+    for i in np.arange(0, cathode.npoints):
+        index_add = [0*i]
+        index = np.append(index, index_add)
+        
+    V_cat = [V_cat[i] for i in index.astype(int)]
+    
     yax = yax - 1
-    SV_df['Time'] = SV_df['Time']
     
 #    line_style = ['v-', 'o-', '^-', 's-', 'h-', '+-']
     
     # Plot anode and double-layer potential
-    SV_plot = SV_df.plot(x='Time', y=V, ax=axes[0, yax], xlim=[0,t.iloc[-1]])
+    SV_plot = SV_df.plot(x='Time', y=V_cat, ax=axes[0, yax], xlim=[0,t.iloc[-1]])
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Voltages [V]', fontsize = fontsize)
 #    SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
@@ -57,7 +80,7 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
     line_style = ['r--', 'r', 'b--', 'b', 'k--', 'k', 'g--', 'g', 'y--', 'y']
     
     # Plot anode composition
-    SV_plot = SV_df.plot(x = 'Time', y = X, ax = axes[1, yax], xlim = [0, t.iloc[-1]],
+    SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes[1, yax], xlim = [0, t.iloc[-1]],
                          ylim = [-0.1, 1.1], style = line_style)
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Anode composition $[X_{LiC_6}]$', fontsize = fontsize)
@@ -67,8 +90,19 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
     SV_plot.tick_params(axis='both', labelsize = 18)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
+    # Plot cathode composition
+    SV_plot = SV_df.plot(x = 'Time', y = X_cat, ax = axes[2, yax], xlim = [0, t.iloc[-1]],
+                         ylim = [-0.1, 1.1], style = line_style)
+    SV_plot.set_title(stage, fontsize = fontsize)
+    SV_plot.set_ylabel('Cathode composition $[X_{LiCoO2}]$', fontsize = fontsize)
+#    SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
+    SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
+                   borderaxespad = 0, frameon = False).set_visible(showlegend)
+    SV_plot.tick_params(axis='both', labelsize = 18)
+    SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    
     # Plot elyte composition
-    SV_plot = SV_df.plot(x = 'Time', y = rho_Li, ax = axes[2, yax], xlim = [0, t.iloc[-1]])
+    SV_plot = SV_df.plot(x = 'Time', y = rho_Li, ax = axes[3, yax], xlim = [0, t.iloc[-1]])
     SV_plot.set_ylabel(r'Electrolyte composition [kmol_k/m^3]')
     SV_plot.set_xlabel('Time [s]')
     SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
@@ -77,26 +111,26 @@ def plot_sims(V, X, rho_k_el, SV_df, stage, yax, fig, axes):
 
 """========================================================================="""
 
-def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag):
+def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag, i_ext):
     fontsize = 18
     
-    SV_ch_df = SV_ch_df.loc[SV_ch_df['Time'] < t_flag_ch-1]
-    SV_dch_df = SV_dch_df.loc[SV_dch_df['Time'] < t_flag_dch-1]
+    SV_ch_df = SV_ch_df.loc[SV_ch_df['Time'] <= t_flag_ch-1]
+    SV_dch_df = SV_dch_df.loc[SV_dch_df['Time'] <= t_flag_dch-1]
     
-    V_charge = np.array(SV_ch_df['Phi_dl1'])
-    V_discharge = np.array(SV_dch_df['Phi_dl1'])
+    V_charge = np.array(SV_ch_df['Phi_an_dl1'])
+    V_discharge = np.array(SV_dch_df['Phi_an_dl1'])
     t_charge = np.array(SV_ch_df['Time'])
     t_discharge = np.array(SV_dch_df['Time'])
     dt_charge = t_charge - t_charge[0]
     dt_discharge = t_discharge - t_discharge[0]
     
     # Plot charge-discharge curve
-    Capacity_charge = -dt_charge*current.i_ext_set/3600         # A-h/m^2
-    Capacity_discharge = -dt_discharge*current.i_ext_set/3600   # A-h/m^2
+    Capacity_charge = -dt_charge*i_ext/3600         # A-h/m^2
+    Capacity_discharge = -dt_discharge*i_ext/3600   # A-h/m^2
     
     plt.figure(2)
-    plt.plot(Capacity_charge, V_charge, 'k-')
-    plt.plot(Capacity_discharge, V_discharge, 'k--')
+    plt.plot(Capacity_charge, V_charge, 'b-')
+    plt.plot(Capacity_discharge, V_discharge, 'b--')
     plt.title('Split-cell potential vs. Capacity', fontsize = fontsize)
     plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
     plt.ylabel('Voltage [V]', fontsize = fontsize)
@@ -120,6 +154,31 @@ def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag):
     
 #    ax1.text(0.01, 0.01, r"$\eta_c$="+str(Eta_c)+"% at "+str(rate_tag), 
 #             fontsize = fontsize)
+    
+        # Calculate battery energy storage/recovery and calculate round-trip
+#   efficiency. Anode voltage is referenced to its initial equilibrium
+#   value (i.e. in the discharged state).
+
+# NOTE: This is in W-h/m^2, per unit area of battery. For the specific
+#   capacity, you want W-h/g of anode material.
+#    E_stored = 0
+#    E_recovered = 0
+
+#    for k in np.arange(1, len(t_charge)):
+#        E_stored = (E_stored - (anode.V_cathode - 0.5*(V_charge[k] + V_charge[k-1]))
+#                    *ep.i_ext*(dt_charge[k] - dt_charge[k-1]))
+#
+#    for k in np.arange(1, len(t_discharge)):
+#        E_recovered = (E_recovered - (ep.V_cathode -
+#                        0.5*(V_discharge[k] + V_discharge[k-1]))
+#                        *ep.i_ext*(dt_discharge[k] - dt_discharge[k-1]))
+#
+#    Cap_recovered = Capacity_discharge[-1]
+#    Eta_RT = E_recovered/E_stored
+
+    
+#    print(E_stored, '\n')
+#    print(E_recovered, '\n')
     
     return Cap_recovered, Eta_c
 
@@ -167,7 +226,7 @@ def tag_strings(SV):
 
 """========================================================================="""
 
-def Label_Columns(t, SV):
+def Label_Columns(t, SV, anode_np, sep_np, cat_np):
     
     # Convert t and SV into pandas data frames
     t_df = pd.DataFrame(t)
@@ -182,7 +241,7 @@ def Label_Columns(t, SV):
     
     """Label anode points"""
     newcols = {}
-    for j in np.arange(0, anode.npoints):
+    for j in np.arange(0, anode_np):
         offset = anode.offsets[j]  # Set node offset value for loop
         
         # Loop over number of shells in anode
@@ -205,7 +264,7 @@ def Label_Columns(t, SV):
         
     """Label separator points"""
     newcols = {}
-    for j in np.arange(0, sep.npoints):
+    for j in np.arange(0, sep_np):
         offset = sep.offsets[j] # Set node offset value for loop
         
         # Loop over number of species in electrolyte
@@ -222,7 +281,7 @@ def Label_Columns(t, SV):
     
     """Label cathode points"""
     newcols = {}
-    for j in np.arange(0, cathode.npoints):
+    for j in np.arange(0, cat_np):
         offset = cathode.offsets[j]  # Set node offset value for loop
         
         # Loop over number of shells in anode
