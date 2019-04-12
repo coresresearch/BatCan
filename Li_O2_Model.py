@@ -23,12 +23,12 @@ E_oxide_init = 1e-12                    # initial oxide volume fraction [-]
 E_binder_init = 0.                      # initial binder volume fraction [-]
 E_carbon = 1. - E_elyte_init - E_binder_init - E_oxide_init      # initial carbon volume fraction [-]
 
-atol = 1e-6#1e-10
-rtol = 1e-7
+atol = 1e-8
+rtol = 1e-6
 
-tspan = 5306 #7824                                  # [s]
+tspan = 3.15e5                                      # [s]
 
-i_ext = -1                                          # [A/m2]
+i_ext = -1e-4#-1                                    # [A/m2]
 
 Nx = 1                                              # 1D model
 Ny = 1                                              # no. cells in the y-direction
@@ -102,21 +102,22 @@ SVptr['theta'] = np.arange(6, len(inter.X) + 6)  # surface coverage in SV
 
 # Store plot pointers in a common 'pltptr' dict
 pltptr = {}
-pltptr['O2'] = 2
-pltptr['Li+'] = 3
-pltptr['PF6-'] = 4
-pltptr['EC'] = 5
-pltptr['EMC'] = 6
+pltptr['O2'] = 1
+pltptr['Li+'] = 2
+pltptr['PF6-'] = 3
+pltptr['EC'] = 4
+pltptr['EMC'] = 5
 
 # Set inital values
 #rho_oxide_init = oxide.density*params['E_oxide_0']              # oxide concentraion
 rho_elyte_init = elyte.Y*elyte.density*params['E_elyte_0']      # electrolyte concentrations
-theta_init = inter.coverages                                    # surface coverages
+theta_init = [0, 1]                                             # surface coverages
 SV0 = np.r_[phi_elyte_init,rho_elyte_init,theta_init]           # store in an array
 SV_0 = np.tile(SV0,Ny)                                          # tile SV0 based on discritization
 
 # Define function to solve
 def LiO2_func(t,SV,params,objs,ptr,SVptr):
+#    print('t =',t)
 
     dSVdt = np.zeros_like(SV)
     dPhidt = np.zeros_like(SV)
@@ -142,39 +143,38 @@ def LiO2_func(t,SV,params,objs,ptr,SVptr):
 
     J_in = np.zeros(elyte.n_species)        # initialize species 'in' vector
     J_out = np.zeros(elyte.n_species)       # initialize species 'out' vector
+    
+    W_elyte = elyte.molecular_weights
+
+    J_out[1] = i_io[-1] / ct.faraday / 1 * W_elyte[1]
+    
 
     # Set potentials and surface coverages
     cath_b.electric_potential = 0
-    oxide.electric_potential = 0
+#    oxide.electric_potential = 0
     elyte.electric_potential = SV[SVptr['phi']]
+    elyte.Y = SV[SVptr['elyte']]
     inter.coverages = SV[SVptr['theta']]
-
-    J_in = air_elyte.get_net_production_rates(elyte)
-    W_elyte = elyte.molecular_weights
 
     # Calculate Faradaic current
     i_far = inter.get_net_production_rates(cath_b) * ct.faraday    # Faradaic current
     
     # Calculate available area
-    #A_int_avail = A_int - E_oxide / th_oxide          # available interface area on carbon particle
-    A_int_avail = A_int * inter.X[0]                  # available interface area on carbon particle (new method)
-#    print('s =',inter.get_net_production_rates(inter))
-
+    A_int_avail = A_int #* inter.X[0]                           # available interface area on carbon particle (new method)
+    
     # Calculate change in double layer potential
-    i_dl = (i_io[0] - i_io[-1]) / dy - i_far*A_int_avail        # double layer current
-    dPhidt = i_dl / (C_dl*A_int)                          # double layer potential
+    i_dl = (i_io[0] - i_io[-1]) / dy + i_far*A_int_avail        # double layer current
+    dPhidt = i_dl / (C_dl*A_int)                                # double layer potential
 
     # Calculate change in electrolyte concentrations
-    dRhoElytedt = (J_in - J_out) / dy + (inter.get_net_production_rates(elyte) * A_int_avail * W_elyte)
+    J_in = air_elyte.get_net_production_rates(elyte)
+    sdot_int = inter.get_net_production_rates(elyte) * A_int_avail
+    sdot_dl = np.zeros_like(sdot_int)
+    sdot_dl[1] = -i_dl / (ct.faraday*1)
+    dRhoElytedt = (J_in - J_out) / dy + (sdot_int + sdot_dl) * W_elyte
     
     # Calculate change in surface coverages
     dThetadt = inter.get_net_production_rates(inter) / inter.site_density
-    print('dTheta =',dThetadt)
-
-    # Calculate change in vacancies on carbon particles
-#    E_part = 1 - E_oxide - E_elyte                          # volume fraction of carbon particles
-#    vaca_0 = params['vaca'] / V_part * E_part               # initial number of vacancies per m3
-#    dThetadt = (-sdot[ptr['oxide']]/20 * ct.avogadro * A_int_grid) / vaca_0
 
     # Load differentials into dSVdt
     dSVdt[SVptr['phi']] = dPhidt                            # double layer potential
@@ -196,38 +196,33 @@ plt.xlabel('Time (s)')
 plt.ylabel('Double Layer Potential (V)')
 
 plt.figure(2)
-plt.plot(SV.t,SV.y[SVptr['oxide']])
+plt.plot(SV.t,SV.y[SVptr['theta'][0]])
 plt.xlabel('Time (s)')
-plt.ylabel('Oxide Concentration (kg/m3)')
-
-E_oxide = SV.y[SVptr['oxide']] / oxide.density_mass
-E_elyte = params['E_elyte_0'] - (E_oxide - params['E_oxide_0'])
+plt.ylabel('Li2O2 Surface Coverage')
 
 plt.figure(3)
-plt.plot(SV.t,E_elyte)
-plt.xlabel('Time (s)')
-plt.ylabel('Elyte Volume Fraction')
-
-A_int_avail = A_int - A_int * (1 - SV.y[SVptr['theta']])
-
-plt.figure(4)
-plt.plot(SV.t,A_int_avail)
-plt.xlabel('Time (s)')
-plt.ylabel('Available Area (m2)')
-
-plt.figure(5)
 plt.plot(SV.t,SV.y[pltptr['Li+']])
 plt.xlabel('Time (s)')
 plt.ylabel('Li+ Concentration (kg/m3)')
 
-plt.figure(6)
+plt.figure(4)
 plt.plot(SV.t,SV.y[pltptr['O2']])
 plt.xlabel('Time (s)')
 plt.ylabel('O2 Concentration (kg/m3)')
 
-#plt.figure(7)
-#plt.plot(SV.t,SV.y[-1])
-#plt.xlabel('Time (s)')
-#plt.ylabel('Surface Coverage')
+plt.figure(5)
+plt.plot(SV.t,SV.y[pltptr['PF6-']])
+plt.xlabel('Time (s)')
+plt.ylabel('PF6- Concentration (kg/m3)')
+
+plt.figure(6)
+plt.plot(SV.t,SV.y[pltptr['EC']])
+plt.xlabel('Time (s)')
+plt.ylabel('EC Concentration (kg/m3)')
+
+plt.figure(7)
+plt.plot(SV.t,SV.y[pltptr['EMC']])
+plt.xlabel('Time (s)')
+plt.ylabel('EMC Concentration (kg/m3)')
 
 plt.show()
