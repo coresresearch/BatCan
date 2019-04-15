@@ -45,9 +45,17 @@ incompressible_solid(name = "Li2O2",
     density = (2140, 'kg/m3'),
     initial_state = state( mole_fractions = 'Li2O2(b):1.0'))
 
-
 ideal_interface(
 	name 		= "cathode_surf",
+	elements 	= " Li O ",
+	species	= " Li2O2(s) vacancy(s) ",
+	reactions	= "ca_surf-*",
+	site_density = (3.01e+14,'molec/cm2'),
+	phases	= "electrolyte graphite"
+	)
+
+ideal_interface(
+	name 		= "cathode_surf_old",
 	elements 	= " ",
 	species	= " (dummy) ",
 	reactions	= "cathode-*",
@@ -87,6 +95,10 @@ ideal_interface(
 #  Species data
 #
 #-----------------------------------------------------------------------------
+
+species(name = "vacancy(s)",
+   atoms = " ",
+   thermo = const_cp(h0 = (0.0, 'kcal/mol'), s0 = (0.0, 'J/mol/K')))
 
 species(name = "O",
     atoms = " O:1 ",
@@ -286,6 +298,11 @@ species(
 	thermo 		= const_cp(h0 = (-643.998227, 'kJ/mol'), s0 = (0.0, 'J/mol/K'))) 
 
 species(	
+	name 		= "Li2O2(s)",
+	atoms 		= "Li:2, O:2",
+	thermo 		= const_cp(h0 = (-643.998227, 'kJ/mol'), s0 = (0.0, 'J/mol/K'))) 
+
+species(	
 	name 		= "Li",
 	atoms 		= "Li:1",
 	thermo 		= const_cp(cp0 = (0.0, 'J/mol/K'), h0 = (0.0, 'kJ/mol'), s0 = (0.0, 'J/mol/K')))
@@ -300,6 +317,7 @@ surface_reaction(" O2 <=> O2(e) ", [2.95e-2, 0.0, (0, 'kJ/mol')], id="air_int-1"
 
 edge_reaction("Li <=> Li+(e) + electron",   [1.3059e-7, 0.0, (1e-6, 'kJ/mol')], beta = 0.5, id="lithium-1")
 
+surface_reaction("2 electron + O2(e) + 2 Li+(e) + vacancy(s) <=> Li2O2(s)",[5.0e8, 0.0, 0.0], id = "ca_surf-1")
 
 #9.229881810E+37
 
