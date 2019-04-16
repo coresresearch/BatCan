@@ -26,12 +26,12 @@ E_carbon = 1. - E_elyte_init - E_binder_init - E_oxide_init      # initial carbo
 atol = 1e-8
 rtol = 1e-6
 
-tspan = 3.15e5                                      # [s]
+tspan = 1e-8#3.15e5                                      # [s]
 
 i_ext = -1e-4#-1                                    # [A/m2]
 
 Nx = 1                                              # 1D model
-Ny = 1                                              # no. cells in the y-direction
+Ny = 3                                              # no. cells in the y-direction
 Nvars = 3                                           # no. of variables
 th_ca = 110e-6                                      # cathode thickness [m]
 dy = th_ca/Ny                                       # [m]
@@ -48,6 +48,8 @@ A_int_grid = E_carbon * A_grid /V_part              # grid area per volume [m2/m
 C_dl = 1.1e-6                                       # double layer capacitance [F/m2]
 sigma_ca = 75.0                                     # bulk cathode electrical conductivity [S/m]
 elyte_charge = np.array([0, 1, -1, 0, 0])           # elyte species charge
+sigma_Li = -10.8*0.1                                # ionic conductivity Li+ [S/m] -- UPDATE!!!!
+sigma_PF6 = 10.8*0.1                                # ionic conductivity PF6- salt [S/m]
 
 TP = 300, 101325                                    # inital temp, pressure [K, Pa]
 
@@ -65,9 +67,15 @@ air_elyte = ct.Interface(ctifile,'air_elyte',[gas,elyte])
 Li_b = ct.Solution(ctifile,'Lithium')
 Li_s = ct.Interface(ctifile,'Li_surface',[Li_b,elyte])
 
+# Set phase temperatures
 elyte.TP = TP
 inter.TP = TP
 cath_b.TP = TP
+
+# Define electrolyte ionic conductivities
+sigma_io = np.zeros_like(elyte.X)
+sigma_io[1] = sigma_Li
+sigma_io[2] = sigma_PF6
 
 # Store these phases in a common 'objs' dict
 objs = {}
@@ -85,7 +93,7 @@ params = {}
 params['i_ext'] = i_ext
 params['T'] = TP[0]
 params['E_elyte_0'] = E_elyte_init
-params['E_oxide_0'] = E_oxide_init
+params['sigma'] = sigma_io
 params['rtol'] = rtol
 params['atol'] = atol
 
@@ -96,9 +104,9 @@ ptr['elyte'] = np.arange(0,elyte.n_species)             # electrolyte in the int
 
 # Store solution vector pointers in a common 'SVptr' dict
 SVptr = {}
-SVptr['phi'] = 0                                                    # double layer potential in solution vector SV
-SVptr['elyte'] = np.arange(1, elyte.n_species + 1)                  # electrolyte densities in solution vector SV
-SVptr['theta'] = np.arange(6, len(inter.X) + 6)  # surface coverage in SV
+SVptr['phi'] = 0                                        # double layer potential in solution vector SV
+SVptr['elyte'] = np.arange(1, elyte.n_species + 1)      # electrolyte densities in solution vector SV
+SVptr['theta'] = np.arange(6, len(inter.X) + 6)         # surface coverage in SV
 
 # Store plot pointers in a common 'pltptr' dict
 pltptr = {}
@@ -109,16 +117,14 @@ pltptr['EC'] = 4
 pltptr['EMC'] = 5
 
 # Set inital values
-#rho_oxide_init = oxide.density*params['E_oxide_0']              # oxide concentraion
 rho_elyte_init = elyte.Y*elyte.density*params['E_elyte_0']      # electrolyte concentrations
 theta_init = [0, 1]                                             # surface coverages
-SV0 = np.r_[phi_elyte_init,rho_elyte_init,theta_init]           # store in an array
-SV_0 = np.tile(SV0,Ny)                                          # tile SV0 based on discritization
+SV_single = np.r_[phi_elyte_init,rho_elyte_init,theta_init]     # store in an array
+SV_0 = np.tile(SV_single,Ny)                                    # tile SV0 based on discritization
 
 # Define function to solve
 def LiO2_func(t,SV,params,objs,ptr,SVptr):
-#    print('t =',t)
-
+    print(t)
     dSVdt = np.zeros_like(SV)
     dPhidt = np.zeros_like(SV)
     dRhoElytedt = np.zeros_like(SV)
@@ -134,52 +140,134 @@ def LiO2_func(t,SV,params,objs,ptr,SVptr):
     Li_b = objs['Li_b']
     Li_s = objs['Li_s']
 
-    # Set electronic and ionic currents, and flux terms
-    i_ext = params['i_ext']     # [A]
-    i_io = np.zeros(Ny + 1)     # initialize ionic current vector
-    i_el = np.zeros(Ny + 1)     # initialize electronic current vector
-    i_el[0] = i_ext             # electric current at air/cathode boundary
-    i_io[-1] = i_ext            # ionic current at cathode/elyte
+    W_elyte = elyte.molecular_weights                           # electrolyte species' molecular weights
 
-    J_in = np.zeros(elyte.n_species)        # initialize species 'in' vector
-    J_out = np.zeros(elyte.n_species)       # initialize species 'out' vector
-    
-    W_elyte = elyte.molecular_weights
-
-    J_out[1] = i_io[-1] / ct.faraday / 1 * W_elyte[1]
-    
-
-    # Set potentials and surface coverages
+    " --- Pre-loop --- "
+    # Set potentials and concentrations for 'next'
     cath_b.electric_potential = 0
-#    oxide.electric_potential = 0
-    elyte.electric_potential = SV[SVptr['phi']]
+    phi_elyte_next = SV[SVptr['phi']]
+#    print('phi_next =',phi_elyte_next)
     elyte.Y = SV[SVptr['elyte']]
+    rho_k_elyte_next = SV[SVptr['elyte']]
     inter.coverages = SV[SVptr['theta']]
+    
+    # Set transport properties for 'next'
+    Xk_next = elyte.X
+    Dk_next = 1 #elyte.binary_diff_coeffs
+    XT_next = elyte.density_mole
+
+    # Set transport properties for 'this'
+    rho_k_elyte_this = rho_elyte_init
+    elyte.Y = rho_k_elyte_this
+    Xk_this = elyte.X
+    Dk_this = 1 #elyte.binary_diff_coeffs
+    XT_this = elyte.density_mole
+    
+    # Mass transport and ionic current
+    Jk_down = air_elyte.get_net_production_rates(elyte)
+    Dk_down = (Dk_this + Dk_next) / 2
+    XT_down = (XT_this + XT_next) / 2
+    phi_elyte_this = elyte.electric_potential
+#    print('phi_this =',phi_elyte_this)
+#    print('-------------------------------')
+#    Jk_down = Dk_down * XT_down * (Xk_this - Xk_next) / dy
+    i_io_down = -params['sigma'] * (phi_elyte_this - phi_elyte_next) / dy
+    
+    # Initialize SV pointer offset
+    SV_move = 0
+
+    for j in np.arange(Ny - 1):
+        
+        # Old 'next' become new 'this' and old 'down' become new 'up'
+        phi_elyte_this = phi_elyte_next
+        rho_k_elyte_this = rho_k_elyte_next
+        Xk_this = Xk_next
+        Dk_this = Dk_next
+        XT_this = XT_next
+        Jk_up = Jk_down
+        i_io_up = i_io_down
+        Dk_up = Dk_down
+        XT_up = XT_down
+
+        # Set potentials and concentrations
+        cath_b.electric_potential = 0
+        elyte.electric_potential = SV[SVptr['phi']-SV_move]
+        phi_elyte_next = elyte.electric_potential
+        elyte.Y = SV[SVptr['elyte']-SV_move]
+        rho_k_elyte_next = SV[SVptr['elyte']-SV_move]
+        inter.coverages = SV[SVptr['theta']-SV_move]
+
+        # Mass transport and ionic current
+        Xk_next = elyte.X
+        Dk_next = 1 #elyte.binary_diff_coeffs
+        XT_next = elyte.density_mole
+        Dk_down = (Dk_this - Dk_next) / 2
+        XT_down = (XT_this - XT_next) / 2
+#        Jk_down = Dk_down * XT_down * (Xk_this - Xk_next) / dy
+        i_io_down = -params['sigma'] * (phi_elyte_this - phi_elyte_next) / dy
+        Jk_down = i_io_down / ct.faraday / 1 * W_elyte[1]
+
+        # Calculate Faradaic current
+        i_far = inter.get_net_production_rates(cath_b) * ct.faraday
+    
+        # Calculate change in double layer potential
+        i_dl = (i_io_down[1] - i_io_up[1]) / dy + i_far*A_int   # double layer current
+        dPhidt = i_dl / (C_dl*A_int)                            # double layer potential
+
+        # Calculate change in electrolyte concentrations
+        sdot_int = inter.get_net_production_rates(elyte) * A_int
+        sdot_dl = np.zeros_like(sdot_int)
+        sdot_dl[1] = -i_dl / (ct.faraday*1)
+        dRhoElytedt = (Jk_down - Jk_up) / dy + (sdot_int + sdot_dl) * W_elyte
+    
+        # Calculate change in surface coverages
+        dThetadt = inter.get_net_production_rates(inter) / inter.site_density
+        
+        # Load differentials into dSVdt
+        dSVdt[SVptr['phi']+SV_move] = dPhidt                    # double layer potential
+        dSVdt[SVptr['elyte']+SV_move] = dRhoElytedt             # electrolyte concentration
+        dSVdt[SVptr['theta']+SV_move] = dThetadt                # particle surface coverages
+        
+        SV_move = SV_move + len(SV_single)                      # new SV offset value
+
+    " --- Post-loop --- "
+    # Old 'next' become new 'this' and old 'down' become new 'up'
+    phi_elyte_this = phi_elyte_next
+    rho_k_elyte_this = rho_k_elyte_next
+    Xk_this = Xk_next
+    Dk_this = Dk_next
+    XT_this = XT_next
+    Jk_up = Jk_down
+    i_io_up = i_io_down
+    Dk_up = Dk_down
+
+    # BC's at separator
+    i_io_down = params['i_ext']
+    Jk_down = i_io_down / ct.faraday / 1 * W_elyte[1]
 
     # Calculate Faradaic current
-    i_far = inter.get_net_production_rates(cath_b) * ct.faraday    # Faradaic current
-    
-    # Calculate available area
-    A_int_avail = A_int #* inter.X[0]                           # available interface area on carbon particle (new method)
-    
+    i_far = inter.get_net_production_rates(cath_b) * ct.faraday
+
     # Calculate change in double layer potential
-    i_dl = (i_io[0] - i_io[-1]) / dy + i_far*A_int_avail        # double layer current
+    i_dl = (i_io_down - i_io_up[1]) / dy + i_far*A_int          # double layer current
     dPhidt = i_dl / (C_dl*A_int)                                # double layer potential
 
     # Calculate change in electrolyte concentrations
-    J_in = air_elyte.get_net_production_rates(elyte)
-    sdot_int = inter.get_net_production_rates(elyte) * A_int_avail
+    sdot_int = inter.get_net_production_rates(elyte) * A_int
     sdot_dl = np.zeros_like(sdot_int)
     sdot_dl[1] = -i_dl / (ct.faraday*1)
-    dRhoElytedt = (J_in - J_out) / dy + (sdot_int + sdot_dl) * W_elyte
-    
+    W_elyte = elyte.molecular_weights
+    dRhoElytedt = (Jk_down - Jk_up) / dy + (sdot_int + sdot_dl) * W_elyte
+
     # Calculate change in surface coverages
     dThetadt = inter.get_net_production_rates(inter) / inter.site_density
 
     # Load differentials into dSVdt
-    dSVdt[SVptr['phi']] = dPhidt                            # double layer potential
-    dSVdt[SVptr['elyte']] = dRhoElytedt                     # electrolyte concentration
-    dSVdt[SVptr['theta']] = dThetadt                        # particle surface coverages
+    dSVdt[SVptr['phi']+SV_move] = dPhidt                    # double layer potential
+    dSVdt[SVptr['elyte']+SV_move] = dRhoElytedt             # electrolyte concentration
+    dSVdt[SVptr['theta']+SV_move] = dThetadt                # particle surface coverages
+    
+    print(dSVdt)
     
     return dSVdt
 
