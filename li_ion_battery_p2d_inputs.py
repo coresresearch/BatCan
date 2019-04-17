@@ -15,6 +15,8 @@ class Inputs():
     flag_sep = 1
     flag_cathode = 1
     
+    n_comps = flag_anode + flag_sep + flag_cathode
+    
     # Flag to allow re-equilibration between charge/discharge
     flag_re_equil = 1
     
@@ -34,15 +36,15 @@ class Inputs():
 
     # Number of discretized volumes in the y-direction:
     npoints_anode = 5*flag_anode
-    npoints_cathode = 5
-    npoints_elyte = 2*flag_sep
+    npoints_cathode = 5*flag_cathode
+    npoints_elyte = 5*flag_sep
 
     # Number of "shells" in anode particle:
     nshells_anode = 5
     n_shells_cathode = 5
 
     "Cantera and CTI file info:"
-    ctifile = 'lithium_ion_battery.cti'
+    ctifile = 'lithium_ion_battery_mod.cti'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'
@@ -57,7 +59,7 @@ class Inputs():
 
     Phi_anode_init = 0.0
     Phi_elyte_init = 2.5
-    Delta_Phi_init = 4.2
+    Delta_Phi_init = 4.0
 
     # Cutoff Values for lithiation and delithiation of anode:
     SOC_max = 1 - 1e-2
@@ -103,7 +105,7 @@ class Inputs():
     H_ca = 30e-6      # Cathode thickness [m]
 
     # Other parameters:
-    C_dl_ca = 1.5e-1       # Double-layer capacitance [F/m^2]
+    C_dl_ca = 1.5e-2       # Double-layer capacitance [F/m^2]
     sigma_ca = 7.50    # Bulk cathode electrical conductivity [S/m]
     D_Li_ca = 7.5e-16  # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
     

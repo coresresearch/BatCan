@@ -35,8 +35,8 @@ import li_ion_battery_p2d_init
 importlib.reload(li_ion_battery_p2d_init)
 from li_ion_battery_p2d_init import anode, cathode, separator, solver_inputs, current
 
-#    import li_ion_battery_p2d_post_process
-#    importlib.reload(li_ion_battery_p2d_init)
+import li_ion_battery_p2d_post_process
+importlib.reload(li_ion_battery_p2d_post_process)
 from li_ion_battery_p2d_post_process import Label_Columns, tag_strings, plot_sims, plot_cap
 
 def main():
@@ -47,11 +47,8 @@ def main():
     # Close any open pyplot objects:
     plt.close('all')
     
-#    atol1 = 1e-4; atol2 = 1e-3; atol3 = 1e-4; atol4 = 1e-3
-#    rtol1 = 1e-6; rtol2 = 1e-9; rtol3 = 1e-6; rtol4 = 1e-9
-    
-    atol1 = 1e-4; atol2 = atol1; atol3 = atol1; atol4 = atol1
-    rtol1 = 1e-12; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
+    atol1 = 1e-3; atol2 = atol1; atol3 = atol1; atol4 = atol1
+    rtol1 = 1e-9; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
 
     # Start a timer:
     t_count = time.time()
@@ -65,8 +62,8 @@ def main():
     rate_tag = str(inp.C_rate)+"C"
     
     if inp.plot_profiles_flag == 1:
-        fig1, axes1 = plt.subplots(sharey = "row", figsize = (18, 8), nrows = 4, ncols = 2+inp.flag_re_equil)
-        plt.subplots_adjust(wspace = 0.15, hspace = 0.5)
+        fig1, axes1 = plt.subplots(sharey = "row", figsize = (18, 9), nrows = inp.n_comps+2, ncols = 2+inp.flag_re_equil)
+        plt.subplots_adjust(wspace = 0.15, hspace = 0.4)
         fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
         
     """----------Equilibration----------"""
@@ -76,7 +73,7 @@ def main():
 
     # Create problem instance
     current.set_i_ext(0)
-        
+    
     Battery_equil = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
     Battery_equil.external_event_detection = True
     Battery_equil.algvar = algvar
@@ -121,7 +118,6 @@ def main():
     charge_sim.rtol = rtol2
     charge_sim.verbosity = 50
     charge_sim.make_consistent('IDA_YA_YDP_INIT')
-#    charge_sim.maxh = 0.5
 
     t_charge, SV_charge, SV_dot_charge = charge_sim.simulate(t_f)
 
@@ -134,8 +130,9 @@ def main():
                              cathode.npoints)
     
     if inp.plot_profiles_flag == 1:
-        plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'], tags['rho_el_an'], SV_charge_df, 
-                 'Charging', 1, fig1, axes1)
+        plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'],
+                  tags['rho_el_an'], tags['rho_el_cat'], SV_charge_df, 
+                  'Charging', 1, fig1, axes1)
 
     print('Done charging\n')
 
@@ -172,7 +169,8 @@ def main():
                              cathode.npoints)
         
         if inp.plot_profiles_flag == 1:
-            plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'], tags['rho_el_an'], SV_req_df, 
+            plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'], 
+                      tags['rho_el_an'], tags['rho_el_cat'], SV_req_df, 
                      'Re-equilibrating', 2, fig1, axes1)
     
         print('Done re-equilibrating\n')
@@ -204,13 +202,17 @@ def main():
 
     t_discharge, SV_discharge, SV_dot_discharge = Battery_discharge.simulate(t_f)
 
-    t_flag_dch = anode.get_tflag()
+    if hasattr(anode, 't_flag'):
+        t_flag_dch = anode.get_tflag()
+    else:
+        t_flag_dch = t_discharge[-1]
 
     SV_discharge_df = Label_Columns(t_discharge, SV_discharge, anode.npoints, separator.npoints, 
                              cathode.npoints)
     
     if inp.plot_profiles_flag == 1:
-        plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'], tags['rho_el_an'], SV_discharge_df, 
+        plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'],
+                  tags['rho_el_an'], tags['rho_el_cat'], SV_discharge_df, 
                  'Discharging', 2+inp.flag_re_equil, fig1, axes1)
 
     print('Done discharging\n')
@@ -218,6 +220,9 @@ def main():
     """---------------------------------"""
     
 # %% Plot capacity if flagged
+    
+    if inp.plot_profiles_flag == 1:
+        plt.show()
     
     if inp.plot_cap_flag == 1:
         Cap_recovered, Eta_c = plot_cap(SV_charge_df, SV_discharge_df, t_flag_ch,

@@ -53,7 +53,8 @@ class Extended_Problem(Implicit_Problem):
         
         # Diffusive flux scaling factors
         k = np.arange(0, an.nshells+1)/an.nshells
-
+        
+#        i_Far_an = 0
 # %%
         """============================ANODE================================"""
         """INTERIOR NODES"""
@@ -87,6 +88,7 @@ class Extended_Problem(Implicit_Problem):
             i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
 
             i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
+#            i_Far_an += i_Far_1
 
             X_Li = SV[offset + ptr['X_ed']]
             DiffFlux = np.zeros([an.nshells+1])
@@ -109,6 +111,7 @@ class Extended_Problem(Implicit_Problem):
 
             """Algebraic equation for ANODE electric potential boundary condition"""
             res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
+            
 # %%
         """============================ANODE================================"""
         """Separator boundary"""
@@ -140,14 +143,16 @@ class Extended_Problem(Implicit_Problem):
         j = an.npoints-1; offset = int(an.offsets[j])
 
         i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
+#        i_Far_an += i_Far_1
 
         N_io_p = (-an.u_Li_elyte*sum(rho_k_elyte_1)/elyte.mean_molecular_weight
                       *(R*T*(X_el_2 - X_el_1)
                       + Inputs.z_k_elyte*F*(phi_2['el'] - phi_1['el']))*an.dyInv)
 
         i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
+#        i_an_sep = i_io_p
 
-#        #THIS IS TEMPORARY, NON-GENERALIZED CODE:
+        #THIS IS TEMPORARY, NON-GENERALIZED CODE:
 #        i_io_p = i_ext
 #        N_io_p = np.zeros_like(N_io_p)
 #        N_io_p[2] = i_io_p/F
@@ -156,8 +161,6 @@ class Extended_Problem(Implicit_Problem):
         DiffFlux = np.zeros([an.nshells+1])
         DiffFlux[1:-1] = an.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/an.dr
         DiffFlux[-1] = sdot_1[an.ptr['iFar']]/anode.density_mole
-
-#        print(i_Far_1, i_el_m, i_el_p, DiffFlux)
     
         """Calculate the change in X_LiC6 in the particle interior."""
         res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
@@ -175,8 +178,6 @@ class Extended_Problem(Implicit_Problem):
 
         """Algebraic equation for ANODE electric potential boundary condition"""
         res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
-#        (i_el_m - i_el_p + i_io_m - i_io_p)
-#        SV[ptr['Phi_ed']]
         
 # %%
         """================================================================="""
@@ -236,7 +237,7 @@ class Extended_Problem(Implicit_Problem):
         
         # THIS IS TEMPORARY, NON-GENERALIZED CODE:
 #        i_io_p = i_ext
-#        N_io_p = np.zeros_like(N_io_p)
+#        N_io_p = np.zeros_like(elyte.species_names)
 #        N_io_p[2] = i_io_p/F
         
         N_io_p = (-cat.u_Li_elyte*sum(rho_k_elyte_1)/elyte.mean_molecular_weight
@@ -244,6 +245,7 @@ class Extended_Problem(Implicit_Problem):
                       + Inputs.z_k_elyte*F*(phi_2['el'] - phi_1['el']))*cat.dyInv)
 
         i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
+#        i_cat_sep = i_io_p
         
         """Change in electrolyte composition"""
         res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']]
@@ -251,8 +253,6 @@ class Extended_Problem(Implicit_Problem):
             
         """Algebraic equation for electrolyte potential"""
         res[offset + ptr['Phi']] = i_io_m - i_io_p
-#        SV[an.ptr['Phi_ed']]
-#        i_io_m - i_io_p
 
 # %%
         """================================================================="""
@@ -260,6 +260,8 @@ class Extended_Problem(Implicit_Problem):
         offsets = cat.offsets; ptr = cat.ptr
         
         k = np.arange(0, cat.nshells+1)/cat.nshells
+        
+#        i_Far_cat = 0
         
         """=========================CATHODE============================="""
         """INTERIOR NODES"""
@@ -295,6 +297,7 @@ class Extended_Problem(Implicit_Problem):
             i_io_p = np.dot(N_io_p, Inputs.z_k_elyte)*F
             
             i_Far_1 = sdot_1[ptr['iFar']]*F*cat.A_surf/cat.dyInv
+#            i_Far_cat += i_Far_1
             
             X_Li = SV[offset + ptr['X_ed']]
             DiffFlux = np.zeros([cat.nshells+1])
@@ -302,18 +305,18 @@ class Extended_Problem(Implicit_Problem):
             DiffFlux[-1] = sdot_1[ptr['iFar']]/cathode.density_mole
             
             """Calculate the change in X_LiCoO2 in the particle interior"""
-            res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']])
-            """- ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
-            *cat.A_surf/cat.eps_ed/cat.V_shell))"""
+            res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
+            - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
+            *cat.A_surf/cat.eps_ed/cat.V_shell))
             
             """Change in electrolyte composition"""
-            res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']])
-            """- (((N_io_m - N_io_p)*cat.dyInv + sdot_1[5]*cat.A_surf)
-            /elyte.density_mole/cat.eps_elyte))"""
+            res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']]
+            - (((N_io_m - N_io_p)*cat.dyInv + sdot_1[5]*cat.A_surf)
+            /elyte.density_mole/cat.eps_elyte))
             
             """Double-layer voltage"""
-            res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']])
-            """- (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)"""
+            res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
+            - (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)
             
             """Algebraic equation for CATHODE electric potential"""
             res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
@@ -339,30 +342,30 @@ class Extended_Problem(Implicit_Problem):
         i_el_p = i_ext
         
         i_Far_1 = sdot_1[ptr['iFar']]*F*cat.A_surf/cat.dyInv
+#        i_Far_cat += i_Far_1
+#        print(i_ext, i_Far_an, -i_an_sep, i_cat_sep, i_Far_cat, -i_ext)
         
         X_Li = SV[offset + ptr['X_ed']]
         DiffFlux = np.zeros([cat.nshells+1])
         DiffFlux[1:-1] = cat.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/cat.dr
         DiffFlux[-1] = sdot_1[ptr['iFar']]/cathode.density_mole
-                
+                        
         """Calculate the change in X_LiCoO2 in the particle interior"""
-        res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']])
-        """- ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
-        *cat.A_surf/cat.eps_ed/cat.V_shell))"""
+        res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
+        - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
+        *cat.A_surf/cat.eps_ed/cat.V_shell))
         
         """Change in electrolyte composition"""
-        res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']])
-        """- (((N_io_m - N_io_p)*cat.dyInv + sdot_1[5]*cat.A_surf)
-        /elyte.density_mole/cat.eps_elyte))"""
+        res[offset + ptr['rho_k_elyte']] = (SV_dot[offset + ptr['rho_k_elyte']]
+        - (((N_io_m - N_io_p)*cat.dyInv + sdot_1[5]*cat.A_surf)
+        /elyte.density_mole/cat.eps_elyte))
         
         """Double-layer voltage"""
-        res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']])
-        """- (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)"""
+        res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
+        - (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)
         
         """Algebraic equation for CATHODE electric potential"""
         res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
-#        SV[an.ptr['Phi_ed']]
-#        (i_el_m - i_el_p + i_io_m - i_io_p)
 
         return res
 
@@ -403,28 +406,29 @@ class Extended_Problem(Implicit_Problem):
         event2 = np.zeros([an.npoints])
         event3 = np.zeros([an.nshells])
         event4 = np.zeros([an.nshells])
-
+        offsets = an.offsets
         for j in np.arange(0, an.npoints):
-            offset = j*an.nVars
+            offset = int(offsets[j])
 
-            event1[j] = (y[offset + an.ptr['Phi_dl']])
-            event2[j] = (5 - y[offset + an.ptr['Phi_dl']])
+#            event1[j] = y[offset + an.ptr['Phi_dl']] 
+#            event2[j] = 5 - y[offset + an.ptr['Phi_dl']]
 
             for i in np.arange(0, an.nshells):
                 event3[i] = an.X_Li_max - y[offset + an.ptr['X_ed'][i]]
                 event4[i] = y[offset + an.ptr['X_ed'][i]] - an.X_Li_min
             
         # Cathode events
+        offsets = cat.offsets    
         event5 = np.zeros([cat.npoints])
         event6 = np.zeros([cat.npoints])
         event7 = np.zeros([cat.nshells])
         event8 = np.zeros([cat.nshells])
         
         for j in np.arange(0, cat.npoints):
-            offset = j*cat.nVars
+            offset = int(offsets[j])
             
-            event5[j] = y[offset + cat.ptr['Phi_dl']]
-            event6[j] = 5 - y[offset + cat.ptr['Phi_dl']]
+#            event5[j] = 5 - y[offset + cat.ptr['Phi_ed']]
+#            event6[j] = y[offset + cat.ptr['Phi_ed']]
             
             for i in np.arange(0, cat.nshells):
                 event7[i] = cat.X_Li_max - y[offset + cat.ptr['X_ed'][i]]

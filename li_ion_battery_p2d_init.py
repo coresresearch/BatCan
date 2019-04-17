@@ -41,10 +41,8 @@ X_an_0 = anode_obj.X
 if hasattr(Inputs, 'X_elyte_init'):
     elyte_obj.X = X_elyte_init
 
-
-
 # Initial conditions: UPDATE TO GENERALIZE FOR MULT. SPECIES - DK 8/31/18
-LiCoO2_0 = 1- Inputs.SOC_0; CoO2_0 = 1 - LiCoO2_0
+LiCoO2_0 = 1 - Inputs.SOC_0; CoO2_0 = 1 - LiCoO2_0
 X_ca_init = '{}:{}, {}:{}'.format(Inputs.Li_species_cathode, LiCoO2_0,
         Inputs.Vac_species_cathode, CoO2_0)
 
