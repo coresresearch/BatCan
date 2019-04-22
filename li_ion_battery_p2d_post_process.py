@@ -169,8 +169,8 @@ def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag, i_ext):
     SV_ch_df = SV_ch_df.loc[SV_ch_df['Time'] <= t_flag_ch-1]
     SV_dch_df = SV_dch_df.loc[SV_dch_df['Time'] <= t_flag_dch-1]
     
-    V_charge = np.array(SV_ch_df['Phi_an_dl1'])
-    V_discharge = np.array(SV_dch_df['Phi_an_dl1'])
+    V_charge = np.array(SV_ch_df['Phi_cat1'])
+    V_discharge = np.array(SV_dch_df['Phi_cat1'])
     t_charge = np.array(SV_ch_df['Time'])
     t_discharge = np.array(SV_dch_df['Time'])
     dt_charge = t_charge - t_charge[0]
@@ -183,9 +183,9 @@ def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag, i_ext):
     plt.figure(2, figsize = (8, 6))
     plt.plot(Capacity_charge, V_charge, 'b-')
     plt.plot(Capacity_discharge, V_discharge, 'b--')
-    plt.xlim((-0.5, 30))
+#    plt.xlim((-0.5, 30))
 #    plt.ylim((1, 4))
-    plt.title('Split-cell potential vs. Capacity', fontsize = fontsize)
+    plt.title('Potential vs. Capacity', fontsize = fontsize)
     plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
     plt.ylabel('Voltage [V]', fontsize = fontsize)
     plt.legend(('Charge', 'Discharge'), loc = 3, fontsize = 14)

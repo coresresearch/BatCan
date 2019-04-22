@@ -47,10 +47,10 @@ def main():
     algvar = solver_inputs.algvar
 
     # Close any open pyplot objects:
-    plt.close('all')
+#    plt.close('all')
     
     atol1 = 1e-3; atol2 = atol1; atol3 = atol1; atol4 = atol1
-    rtol1 = 1e-15; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
+    rtol1 = 1e-9; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
 
     # Start a timer:
     t_count = time.time()
@@ -135,10 +135,11 @@ def main():
 
     t_charge, SV_charge, SV_dot_charge = charge_sim.simulate(t_f)
 
-    if hasattr(anode, 't_flag'):
-        t_flag_ch = anode.get_tflag()
-    else:
-        t_flag_ch = t_charge[-1]
+#    if hasattr(anode, 't_flag'):
+#        t_flag_ch = anode.get_tflag()
+#    else:
+#        t_flag_ch = t_charge[-1]
+    t_flag_ch = anode.get_tflag()
 
     SV_charge_df = Label_Columns(t_charge, SV_charge, anode.npoints, separator.npoints, 
                              cathode.npoints)
@@ -230,10 +231,11 @@ def main():
 
     t_discharge, SV_discharge, SV_dot_discharge = Battery_discharge.simulate(t_f)
 
-    if hasattr(anode, 't_flag'):
-        t_flag_dch = anode.get_tflag()
-    else:
-        t_flag_dch = t_discharge[-1]
+#    if hasattr(anode, 't_flag'):
+#        t_flag_dch = anode.get_tflag()
+#    else:
+#        t_flag_dch = t_discharge[-1]
+    t_flag_dch = anode.get_tflag()
 
     SV_discharge_df = Label_Columns(t_discharge, SV_discharge, anode.npoints, separator.npoints, 
                              cathode.npoints)

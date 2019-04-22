@@ -21,14 +21,15 @@ class Inputs():
     flag_re_equil = 1
     
     # These flags specify whether to plot various data
-    plot_potential_profiles = 1  # Plots potential profiles
-    plot_electrode_profiles = 1  # Plots solid phase mole fraction profiles
-    plot_elyte_profiles = 1      # Plots concentration of Li+ in elyte phase
-    plot_cap_flag = 0       # Plots dis/charge capacity curves
+    plot_profiles_flag = 0
+    plot_potential_profiles = 1*plot_profiles_flag  # Plots potential profiles
+    plot_electrode_profiles = 1*plot_profiles_flag  # Plots solid phase mole fraction profiles
+    plot_elyte_profiles = 1*plot_profiles_flag      # Plots concentration of Li+ in elyte phase
+    plot_cap_flag = 1       # Plots dis/charge capacity curves
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 1
+    C_rate = 10
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -74,7 +75,7 @@ class Inputs():
 
     # Cutoff Values for lithiation and delithiation of anode:
     Li_an_min = 5.75e-03; Li_an_max = 7.98e-01
-    Li_cat_min = 3.59e-01; Li_cat_max = 9.85e-01
+    Li_cat_min = 4.59e-01; Li_cat_max = 9.85e-01
 #    SOC_max = 1 - 1e-2
 #    SOC_min = 1 - SOC_max
 
@@ -115,7 +116,7 @@ class Inputs():
     overlap_ca = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
-    H_ca = 70e-6      # Cathode thickness [m]
+    H_ca = 30e-6      # Cathode thickness [m]
 
     # Other parameters:
     C_dl_ca = 1.5e-2       # Double-layer capacitance [F/m^2]
