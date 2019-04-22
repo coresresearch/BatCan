@@ -37,7 +37,9 @@ from li_ion_battery_p2d_init import anode, cathode, separator, solver_inputs, cu
 
 import li_ion_battery_p2d_post_process
 importlib.reload(li_ion_battery_p2d_post_process)
-from li_ion_battery_p2d_post_process import Label_Columns, tag_strings, plot_sims, plot_cap
+from li_ion_battery_p2d_post_process import Label_Columns, tag_strings
+from li_ion_battery_p2d_post_process import plot_potential, plot_electrode, plot_elyte
+from li_ion_battery_p2d_post_process import plot_cap
 
 def main():
     
@@ -61,10 +63,22 @@ def main():
     
     rate_tag = str(inp.C_rate)+"C"
     
-    if inp.plot_profiles_flag == 1:
-        fig1, axes1 = plt.subplots(sharey = "row", figsize = (18, 9), nrows = inp.n_comps+2, ncols = 2+inp.flag_re_equil)
+    if inp.plot_potential_profiles == 1:
+        fig1, axes1 = plt.subplots(sharey="row", figsize=(18,9), nrows=1, ncols = 2+inp.flag_re_equil)
         plt.subplots_adjust(wspace = 0.15, hspace = 0.4)
         fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
+        
+    if inp.plot_electrode_profiles == 1:
+        fig2, axes2 = plt.subplots(sharey="row", figsize=(18,9), nrows=2,
+                                    ncols=2+inp.flag_re_equil)
+        plt.subplots_adjust(wspace=0.15, hspace=0.4)
+        fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
+        
+    if inp.plot_elyte_profiles == 1:
+        fig3, axes3 = plt.subplots(sharey="row", figsize=(18,9), nrows=2,
+                                    ncols=2+inp.flag_re_equil)
+        plt.subplots_adjust(wspace=0.15, hspace=0.4)
+        fig3.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
         
     """----------Equilibration----------"""
 
@@ -129,10 +143,17 @@ def main():
     SV_charge_df = Label_Columns(t_charge, SV_charge, anode.npoints, separator.npoints, 
                              cathode.npoints)
     
-    if inp.plot_profiles_flag == 1:
-        plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'],
-                  tags['rho_el_an'], tags['rho_el_cat'], SV_charge_df, 
+    if inp.plot_potential_profiles == 1:
+        plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_charge_df, 
                   'Charging', 1, fig1, axes1)
+        
+    if inp.plot_electrode_profiles == 1:
+        plot_electrode(tags['X_an'], tags['X_cat'], SV_charge_df, 
+                       'Charging', 1, fig2, axes2)
+        
+    if inp.plot_elyte_profiles == 1:
+        plot_elyte(tags['rho_el_an'], tags['rho_el_cat'], SV_charge_df,
+                   'Charging', 1, fig3, axes3)
 
     print('Done charging\n')
 
@@ -168,10 +189,17 @@ def main():
         SV_req_df = Label_Columns(t_req, SV_req, anode.npoints, separator.npoints, 
                              cathode.npoints)
         
-        if inp.plot_profiles_flag == 1:
-            plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'], 
-                      tags['rho_el_an'], tags['rho_el_cat'], SV_req_df, 
-                     'Re-equilibrating', 2, fig1, axes1)
+        if inp.plot_potential_profiles == 1:
+            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_req_df, 
+                           'Re-equilibrating', 2, fig1, axes1)
+        
+        if inp.plot_electrode_profiles == 1:
+            plot_electrode(tags['X_an'], tags['X_cat'], SV_req_df, 
+                           'Re-equilibrating', 2, fig2, axes2)
+            
+        if inp.plot_elyte_profiles == 1:
+            plot_elyte(tags['rho_el_an'], tags['rho_el_cat'], SV_req_df,
+                       'Re-equilibrating', 2, fig3, axes3)
     
         print('Done re-equilibrating\n')
     else:
@@ -210,19 +238,23 @@ def main():
     SV_discharge_df = Label_Columns(t_discharge, SV_discharge, anode.npoints, separator.npoints, 
                              cathode.npoints)
     
-    if inp.plot_profiles_flag == 1:
-        plot_sims(tags['Phi_an'], tags['Phi_cat'], tags['X_an'], tags['X_cat'],
-                  tags['rho_el_an'], tags['rho_el_cat'], SV_discharge_df, 
-                 'Discharging', 2+inp.flag_re_equil, fig1, axes1)
+    if inp.plot_potential_profiles == 1:
+        plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_discharge_df, 
+                  'Discharging', 2+inp.flag_re_equil, fig1, axes1)
+        
+    if inp.plot_electrode_profiles == 1:
+        plot_electrode(tags['X_an'], tags['X_cat'], SV_discharge_df, 
+                       'Discharging', 2+inp.flag_re_equil, fig2, axes2)
+        
+    if inp.plot_elyte_profiles == 1:
+        plot_elyte(tags['rho_el_an'], tags['rho_el_cat'], SV_discharge_df,
+                   'Discharging', 2+inp.flag_re_equil, fig3, axes3)
 
     print('Done discharging\n')
 
     """---------------------------------"""
     
 # %% Plot capacity if flagged
-    
-    if inp.plot_profiles_flag == 1:
-        plt.show()
     
     if inp.plot_cap_flag == 1:
         Cap_recovered, Eta_c = plot_cap(SV_charge_df, SV_discharge_df, t_flag_ch,

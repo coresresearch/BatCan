@@ -221,6 +221,18 @@ class cathode():
     ptr['rho_k_elyte'] = nshells + np.arange(0,elyte_obj.n_species)
     ptr['Phi_ed'] = nshells + elyte_obj.n_species
     ptr['Phi_dl'] = nshells + elyte_obj.n_species + 1
+    
+    ptr_vec = {}
+    ptr_vec['X_ed'] = ptr['X_ed']
+    ptr_vec['rho_k_elyte'] = ptr['rho_k_elyte']
+    ptr_vec['Phi_ed'] = ptr['Phi_ed']
+    ptr_vec['Phi_dl'] = ptr['Phi_dl']
+    for i in np.arange(1, npoints):
+        ptr_vec['X_ed'] = np.append(ptr_vec['X_ed'], ptr['X_ed'] + i*nVars)
+        ptr_vec['rho_k_elyte'] = np.append(ptr_vec['rho_k_elyte'], 
+                                           ptr['rho_k_elyte'] + i*nVars)
+        ptr_vec['Phi_ed'] = np.append(ptr_vec['Phi_ed'], ptr['Phi_ed'] + i*nVars)
+        ptr_vec['Phi_dl'] = np.append(ptr_vec['Phi_dl'], ptr['Phi_dl'] + i*nVars)
 
     # Cathode/elyte interface area per unit volume
     #   [m^2 interface / m_3 total electrode volume]

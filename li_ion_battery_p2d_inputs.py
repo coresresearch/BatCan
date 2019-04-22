@@ -21,7 +21,9 @@ class Inputs():
     flag_re_equil = 1
     
     # These flags specify whether to plot various data
-    plot_profiles_flag = 1  # Plots potential and lithiation profiles
+    plot_potential_profiles = 1  # Plots potential profiles
+    plot_electrode_profiles = 1  # Plots solid phase mole fraction profiles
+    plot_elyte_profiles = 1      # Plots concentration of Li+ in elyte phase
     plot_cap_flag = 0       # Plots dis/charge capacity curves
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges

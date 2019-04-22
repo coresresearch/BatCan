@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 
-def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_an, rho_k_cat, SV_df, stage, yax, fig, axes):
+def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
     
     if stage == 'Discharging':
         showlegend = 1
@@ -32,39 +32,6 @@ def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_an, rho_k_cat, SV_df, stage, yax, 
     fontsize = 12
     
     t = SV_df['Time']
-    index = []
-    for j in np.arange(0, anode.nshells):
-        offset = j*anode.nshells
-        index_add = [0+offset, 4+offset]
-        index = np.append(index, index_add)
-        
-    X_an = [X_an[i] for i in index.astype(int)]
-    
-#    index = []
-#    for j in np.arange(0, cathode.nshells):
-#        offset = j*cathode.nshells
-#        index_add = [0+offset, 4+offset]
-#        index = np.append(index, index_add)
-#        
-#    X_cat = [X_cat[i] for i in index.astype(int)]
-    
-    index = []
-    for i in np.arange(0, anode.npoints):
-        offset = i*elyte_obj.n_species
-        index_add = [2 + offset]
-        index = np.append(index, index_add)
-        
-    rho_Li_an = [rho_k_an[i] for i in index.astype(int)]
-    
-    index = []
-    for i in np.arange(0, cathode.npoints):
-        offset = i*elyte_obj.n_species
-        index_add = [2 + offset]
-        index = np.append(index, index_add)
-
-    rho_Li_cat = [rho_k_cat[i] for i in index.astype(int)]
-    
-#    rho_Li = np.concatenate((rho_Li_an, rho_Li_cat))
     
     index = []
     for i in np.arange(0, cathode.npoints):
@@ -78,7 +45,7 @@ def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_an, rho_k_cat, SV_df, stage, yax, 
 #    line_style = ['v-', 'o-', '^-', 's-', 'h-', '+-']
     
     # Plot anode and double-layer potential
-    SV_plot = SV_df.plot(x='Time', y=V, ax=axes[0, yax], xlim=[0,t.iloc[-1]])
+    SV_plot = SV_df.plot(x='Time', y=V, ax=axes[yax], xlim=[0,t.iloc[-1]])
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Voltages [V]', fontsize = fontsize)
     SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(showlegend)
@@ -86,13 +53,44 @@ def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_an, rho_k_cat, SV_df, stage, yax, 
                    frameon=False).set_visible(showlegend)
 #    SV_plot.tick_params(axis='both', labelsize=18)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+
+"""========================================================================="""
+
+def plot_electrode(X_an, X_cat, SV_df, stage, yax, fig, axes):
+    
+    t = SV_df['Time']
+    fontsize = 12
+    
+    if stage == 'Discharging':
+        showlegend = 1
+    else:
+        showlegend = 0
+    showlegend = 0
+    
+    yax = yax - 1
+    
+    index = []
+    for i in np.arange(0, anode.npoints):
+        offset = i*anode.nshells
+        index_add = [0+offset, anode.nshells-1+offset]
+        index = np.append(index, index_add)
+        
+    X_an = [X_an[i] for i in index.astype(int)]
+    
+    index = []
+    for i in np.arange(0, cathode.npoints):
+        offset = i*cathode.nshells
+        index_add = [0+offset, cathode.nshells-1+offset]
+        index = np.append(index, index_add)
+        
+    X_cat = [X_cat[i] for i in index.astype(int)]
     
     line_style = ['r--', 'r', 'b--', 'b', 'k--', 'k', 'g--', 'g', 'y--', 'y']
     
     # Plot anode composition
-    SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes[1, yax], xlim = [0, t.iloc[-1]],
+    SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes[0, yax], xlim = [0, t.iloc[-1]],
                          ylim = [-0.1, 1.1], style = line_style)
-#    SV_plot.set_title(stage, fontsize = fontsize)
+    SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('$[X_{LiC_6}]$', fontsize = fontsize)
     SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(showlegend)
     SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
@@ -101,9 +99,9 @@ def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_an, rho_k_cat, SV_df, stage, yax, 
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
     # Plot cathode composition
-    SV_plot = SV_df.plot(x = 'Time', y = X_cat, ax = axes[2, yax], xlim = [0, t.iloc[-1]],
+    SV_plot = SV_df.plot(x = 'Time', y = X_cat, ax = axes[1, yax], xlim = [0, t.iloc[-1]],
                          ylim = [-0.1, 1.1], style = line_style)
-#    SV_plot.set_title(stage, fontsize = fontsize)
+    SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('$[X_{LiCoO2}]$', fontsize = fontsize)
     SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(0)
     SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
@@ -111,25 +109,57 @@ def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_an, rho_k_cat, SV_df, stage, yax, 
 #    SV_plot.tick_params(axis='both', labelsize = 18)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
+    return
+
+"""========================================================================="""
+
+def plot_elyte(rho_k_an, rho_k_cat, SV_df, stage, yax, fig, axes):
+    
+    t = SV_df['Time']
+    fontsize = 12
+    
     if stage == 'Discharging':
         showlegend = 1
     else:
         showlegend = 0
+    showlegend = 0
+    
+    yax = yax - 1
+    
+    index = []
+    for i in np.arange(0, anode.npoints):
+        offset = i*elyte_obj.n_species
+        index_add = [2+offset]
+        index = np.append(index, index_add)
+        
+    rho_Li_an = [rho_k_an[i] for i in index.astype(int)]
+    
+    index = []
+    for i in np.arange(0, cathode.npoints):
+        offset = i*elyte_obj.n_species
+        index_add = [2+offset]
+        index = np.append(index, index_add)
+        
+    rho_Li_cat = [rho_k_cat[i] for i in index.astype(int)]
     
     # Plot elyte composition
-    SV_plot = SV_df.plot(x = 'Time', y = rho_Li_an, ax = axes[3, yax], xlim = [0, t.iloc[-1]])
+    SV_plot = SV_df.plot(x = 'Time', y = rho_Li_an, ax = axes[0, yax], xlim = [0, t.iloc[-1]])
+    SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel(r'$\left[\frac{kmol_k}{m^3}\right]_{anode}$', fontsize = fontsize)
     SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
     SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                    frameon = False).set_visible(showlegend)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
-    SV_plot = SV_df.plot(x = 'Time', y = rho_Li_cat, ax = axes[4, yax], xlim = [0, t.iloc[-1]])
+    SV_plot = SV_df.plot(x = 'Time', y = rho_Li_cat, ax = axes[1, yax], xlim = [0, t.iloc[-1]])
+    SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel(r'$\left[\frac{kmol_k}{m^3}\right]_{cathode}$', fontsize = fontsize)
     SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
     SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                    frameon = False).set_visible(showlegend)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    
+    return
 
 """========================================================================="""
 
