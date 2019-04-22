@@ -27,17 +27,26 @@ class Inputs():
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
     C_rate = 1
+    
+    # Set number of charge/discharge cycles to run
+    n_cycles = 1
+    
+    # Flag to determine whether to use a constant dr or constant dv 
+    #   discretization of the electrode particles
+    particle_method = 'dr'
+    
     # Simulation temperature (or initial temperature)
     T = 300  # [K]
 
     # Set initial SOC to generalize both electrode initial lithiation
     # Fully charged = anode fully lithiated, cathode fully de-lithiated.
+    # Range of value is from 0 to 1.
     SOC_0 = 0.03
 
     # Number of discretized volumes in the y-direction:
     npoints_anode = 5*flag_anode
     npoints_cathode = 5*flag_cathode
-    npoints_elyte = 5*flag_sep
+    npoints_elyte = 2*flag_sep
 
     # Number of "shells" in anode particle:
     nshells_anode = 5
@@ -62,8 +71,10 @@ class Inputs():
     Delta_Phi_init = 4.0
 
     # Cutoff Values for lithiation and delithiation of anode:
-    SOC_max = 1 - 1e-2
-    SOC_min = 1 - SOC_max
+    Li_an_min = 5.75e-03; Li_an_max = 7.98e-01
+    Li_cat_min = 3.59e-01; Li_cat_max = 9.85e-01
+#    SOC_max = 1 - 1e-2
+#    SOC_min = 1 - SOC_max
 
     "Anode geometry and transport"
     # Microstructure
@@ -102,7 +113,7 @@ class Inputs():
     overlap_ca = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
-    H_ca = 30e-6      # Cathode thickness [m]
+    H_ca = 70e-6      # Cathode thickness [m]
 
     # Other parameters:
     C_dl_ca = 1.5e-2       # Double-layer capacitance [F/m^2]

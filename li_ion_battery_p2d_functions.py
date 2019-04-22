@@ -34,6 +34,7 @@ class Extended_Problem(Implicit_Problem):
         nSV = len(SV)
         res = np.zeros([nSV])
         i_ext = current.get_i_ext()
+#        print(t, i_ext)
 
 #        nsp_an = anode.n_species; nsp_cat = cathode.n_species
 
@@ -47,14 +48,17 @@ class Extended_Problem(Implicit_Problem):
         
         phi_1 = {}
         
+#        print(SV[an.ptr_vec['Phi_ed']], SV[an.ptr_vec['Phi_dl']] + SV[an.ptr_vec['Phi_ed']])
+        
         # Shift forward to node 2, j=1, to set NEXT node conditions
         sdot_2, phi_2, X_an_2, rho_k_elyte_2, X_el_2 = \
-        Extended_Problem.set_state(offset, SV, anode, anode_s, elyte, ptr)
+        Extended_Problem.set_state(offset, SV, anode, anode_s, elyte,
+                                   conductor, ptr)
         
         # Diffusive flux scaling factors
         k = np.arange(0, an.nshells+1)/an.nshells
         
-#        i_Far_an = 0
+        i_Far_vec = np.zeros([an.npoints + cat.npoints])
 # %%
         """============================ANODE================================"""
         """INTERIOR NODES"""
@@ -74,7 +78,8 @@ class Extended_Problem(Implicit_Problem):
             offset = int(offsets[j])
 
             sdot_2, phi_2, X_an_2, rho_k_elyte_2, X_el_2= \
-            Extended_Problem.set_state(offset, SV, anode, anode_s, elyte, ptr)
+            Extended_Problem.set_state(offset, SV, anode, anode_s, elyte, 
+                                       conductor, ptr)
 
             # Shift back to THIS node, set THIS node outlet conditions
             offset = int(offsets[j - 1])
@@ -88,7 +93,7 @@ class Extended_Problem(Implicit_Problem):
             i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
 
             i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
-#            i_Far_an += i_Far_1
+            i_Far_vec[j - 1] = i_Far_1
 
             X_Li = SV[offset + ptr['X_ed']]
             DiffFlux = np.zeros([an.nshells+1])
@@ -143,7 +148,7 @@ class Extended_Problem(Implicit_Problem):
         j = an.npoints-1; offset = int(an.offsets[j])
 
         i_Far_1 = sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
-#        i_Far_an += i_Far_1
+        i_Far_vec[j] = i_Far_1
 
         N_io_p = (-an.u_Li_elyte*sum(rho_k_elyte_1)/elyte.mean_molecular_weight
                       *(R*T*(X_el_2 - X_el_1)
@@ -228,7 +233,8 @@ class Extended_Problem(Implicit_Problem):
         # Shift forward to NEXT node, first cathode node (j=0)
         j = 0; offset = int(cat.offsets[j])
         sdot_2, phi_2, X_cat_2, rho_k_elyte_2, X_el_2= \
-            Extended_Problem.set_state(offset, SV, cathode, cathode_s, elyte, cat.ptr)
+            Extended_Problem.set_state(offset, SV, cathode, cathode_s, elyte, 
+                                       conductor, cat.ptr)
         
         # Shift to final separator node
         j = sep.npoints-1; offset = int(offsets[j])
@@ -261,7 +267,7 @@ class Extended_Problem(Implicit_Problem):
         
         k = np.arange(0, cat.nshells+1)/cat.nshells
         
-#        i_Far_cat = 0
+        i_Far_cat = 0
         
         """=========================CATHODE============================="""
         """INTERIOR NODES"""
@@ -283,7 +289,8 @@ class Extended_Problem(Implicit_Problem):
             offset = int(offsets[j])
             
             sdot_2, phi_2, X_cat_2, rho_k_elyte_2, X_el_2 = \
-            Extended_Problem.set_state(offset, SV, cathode, cathode_s, elyte, ptr)
+            Extended_Problem.set_state(offset, SV, cathode, cathode_s, elyte, 
+                                       conductor, ptr)
             
             # Shift back to THIS node, set THIS node outlet conditions
             offset = int(offsets[j-1])
@@ -297,13 +304,13 @@ class Extended_Problem(Implicit_Problem):
             i_io_p = np.dot(N_io_p, Inputs.z_k_elyte)*F
             
             i_Far_1 = sdot_1[ptr['iFar']]*F*cat.A_surf/cat.dyInv
-#            i_Far_cat += i_Far_1
+            i_Far_vec[an.npoints + j - 1] = i_Far_1
             
             X_Li = SV[offset + ptr['X_ed']]
             DiffFlux = np.zeros([cat.nshells+1])
             DiffFlux[1:-1] = cat.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/cat.dr
             DiffFlux[-1] = sdot_1[ptr['iFar']]/cathode.density_mole
-            
+
             """Calculate the change in X_LiCoO2 in the particle interior"""
             res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
             - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
@@ -320,6 +327,7 @@ class Extended_Problem(Implicit_Problem):
             
             """Algebraic equation for CATHODE electric potential"""
             res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
+#            print(i_el_m, i_el_p, i_io_m, i_io_p)
         
 # %%
         """=========================CATHODE============================="""
@@ -342,8 +350,7 @@ class Extended_Problem(Implicit_Problem):
         i_el_p = i_ext
         
         i_Far_1 = sdot_1[ptr['iFar']]*F*cat.A_surf/cat.dyInv
-#        i_Far_cat += i_Far_1
-#        print(i_ext, i_Far_an, -i_an_sep, i_cat_sep, i_Far_cat, -i_ext)
+        i_Far_vec[-1] = i_Far_1
         
         X_Li = SV[offset + ptr['X_ed']]
         DiffFlux = np.zeros([cat.nshells+1])
@@ -366,14 +373,16 @@ class Extended_Problem(Implicit_Problem):
         
         """Algebraic equation for CATHODE electric potential"""
         res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
-
+        
+#        print(SV)
+        
         return res
 
     """====================================================================="""
     """===========================Model Functions==========================="""
     """====================================================================="""
     
-    def set_state(offset, SV, ed, surf, el, ptr):
+    def set_state(offset, SV, ed, surf, el, conductor, ptr):
         X_ed = SV[offset + ptr['X_ed'][-1]]
         rho_k_el = SV[offset + ptr['rho_k_elyte']]
         
@@ -382,6 +391,8 @@ class Extended_Problem(Implicit_Problem):
         
         ed.X = [X_ed, 1 - X_ed]
         ed.electric_potential = phi_elec_ed
+        
+        conductor.electric_potential = phi_elec_ed
         
         elyte.Y = rho_k_el/np.sum(rho_k_el)
         elyte.electric_potential = phi_elec_el
@@ -410,8 +421,8 @@ class Extended_Problem(Implicit_Problem):
         for j in np.arange(0, an.npoints):
             offset = int(offsets[j])
 
-#            event1[j] = y[offset + an.ptr['Phi_dl']] 
-#            event2[j] = 5 - y[offset + an.ptr['Phi_dl']]
+            event1[j] = y[offset + an.ptr['Phi_dl']] 
+            event2[j] = 5 - y[offset + an.ptr['Phi_dl']]
 
             for i in np.arange(0, an.nshells):
                 event3[i] = an.X_Li_max - y[offset + an.ptr['X_ed'][i]]
@@ -427,8 +438,8 @@ class Extended_Problem(Implicit_Problem):
         for j in np.arange(0, cat.npoints):
             offset = int(offsets[j])
             
-#            event5[j] = 5 - y[offset + cat.ptr['Phi_ed']]
-#            event6[j] = y[offset + cat.ptr['Phi_ed']]
+            event5[j] = y[offset + cat.ptr['Phi_dl']]
+            event6[j] = 5 - y[offset + cat.ptr['Phi_ed']]
             
             for i in np.arange(0, cat.nshells):
                 event7[i] = cat.X_Li_max - y[offset + cat.ptr['X_ed'][i]]

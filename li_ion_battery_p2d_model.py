@@ -48,7 +48,7 @@ def main():
     plt.close('all')
     
     atol1 = 1e-3; atol2 = atol1; atol3 = atol1; atol4 = atol1
-    rtol1 = 1e-9; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
+    rtol1 = 1e-15; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
 
     # Start a timer:
     t_count = time.time()

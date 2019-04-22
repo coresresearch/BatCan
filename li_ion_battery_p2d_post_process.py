@@ -78,7 +78,7 @@ def plot_sims(V_an, V_cat, X_an, X_cat, rho_k_an, rho_k_cat, SV_df, stage, yax, 
 #    line_style = ['v-', 'o-', '^-', 's-', 'h-', '+-']
     
     # Plot anode and double-layer potential
-    SV_plot = SV_df.plot(x='Time', y=V_cat, ax=axes[0, yax], xlim=[0,t.iloc[-1]])
+    SV_plot = SV_df.plot(x='Time', y=V, ax=axes[0, yax], xlim=[0,t.iloc[-1]])
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Voltages [V]', fontsize = fontsize)
     SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(showlegend)

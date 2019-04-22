@@ -26,7 +26,8 @@ cathode_surf_obj = ct.Interface(Inputs.ctifile,Inputs.cathode_surf_phase,
 
 
 # Anode initial conditions:
-LiC6_0 = Inputs.SOC_0; C6_0 = 1 - LiC6_0
+LiC6_0 = Inputs.Li_an_min + Inputs.SOC_0*(Inputs.Li_an_max - Inputs.Li_an_min)
+C6_0 = 1 - LiC6_0
 X_an_init = '{}:{}, {}:{}'.format(Inputs.Li_species_anode, LiC6_0,
     Inputs.Vac_species_anode, C6_0)
 
@@ -42,7 +43,8 @@ if hasattr(Inputs, 'X_elyte_init'):
     elyte_obj.X = X_elyte_init
 
 # Initial conditions: UPDATE TO GENERALIZE FOR MULT. SPECIES - DK 8/31/18
-LiCoO2_0 = 1 - Inputs.SOC_0; CoO2_0 = 1 - LiCoO2_0
+LiCoO2_0 = Inputs.Li_cat_max - Inputs.SOC_0*(Inputs.Li_cat_max - Inputs.Li_cat_min)
+CoO2_0 = 1 - LiCoO2_0
 X_ca_init = '{}:{}, {}:{}'.format(Inputs.Li_species_cathode, LiCoO2_0,
         Inputs.Vac_species_cathode, CoO2_0)
 
@@ -82,6 +84,18 @@ class anode():
     ptr['rho_k_elyte'] = nshells + np.arange(0,elyte_obj.n_species)
     ptr['Phi_ed'] = nshells + elyte_obj.n_species
     ptr['Phi_dl'] = nshells + elyte_obj.n_species + 1
+    
+    ptr_vec = {}
+    ptr_vec['X_ed'] = ptr['X_ed']
+    ptr_vec['rho_k_elyte'] = ptr['rho_k_elyte']
+    ptr_vec['Phi_ed'] = ptr['Phi_ed']
+    ptr_vec['Phi_dl'] = ptr['Phi_dl']
+    for i in np.arange(1, npoints):
+        ptr_vec['X_ed'] = np.append(ptr_vec['X_ed'], ptr['X_ed'] + i*nVars)
+        ptr_vec['rho_k_elyte'] = np.append(ptr_vec['rho_k_elyte'], 
+                                           ptr['rho_k_elyte'] + i*nVars)
+        ptr_vec['Phi_ed'] = np.append(ptr_vec['Phi_ed'], ptr['Phi_ed'] + i*nVars)
+        ptr_vec['Phi_dl'] = np.append(ptr_vec['Phi_dl'], ptr['Phi_dl'] + i*nVars)
 
     # Anode/elyte interface area per unit volume
     #   [m^2 interface / m_3 total electrode volume]
@@ -99,8 +113,8 @@ class anode():
     # Store parameters as class object attributes:
     T = Inputs.T
     C_dl = Inputs.C_dl_an
-    X_Li_max = Inputs.SOC_max
-    X_Li_min = Inputs.SOC_min
+    X_Li_max = Inputs.Li_an_max
+    X_Li_min = Inputs.Li_an_min
     D_Li_ed = Inputs.D_Li_an
 
     # Geometric parameters:
@@ -225,8 +239,8 @@ class cathode():
     #  Store Parameters in the Class object:
     T = Inputs.T
     C_dl = Inputs.C_dl_ca
-    X_Li_max = Inputs.SOC_max
-    X_Li_min = Inputs.SOC_min
+    X_Li_max = Inputs.Li_cat_max
+    X_Li_min = Inputs.Li_cat_min
     D_Li_ed = Inputs.D_Li_ca
 
     # Geometric parameters:
@@ -286,6 +300,7 @@ class current():
     # The minus sign is because we begin with the charging reaction, which
     #   delivers negative charge to the anode:
     if Inputs.flag_cathode == 1:
+#        print(anode.oneC, cathode.oneC)
         i_ext_set = -Inputs.C_rate*min(anode.oneC, cathode.oneC)  
     elif Inputs.flag_cathode == 0:
         i_ext_set = -Inputs.C_rate*anode.oneC  
