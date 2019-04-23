@@ -22,15 +22,18 @@ import numpy as np
 import pandas as pd
 
 
-def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
+def plot_potential(V_an, V_cat, SV_df, stage, yax, t_flag, fig, axes):
     
     if stage == 'Discharging':
         showlegend = 1
     else:
         showlegend = 0
-    showlegend = 0
+#    showlegend = 0
     fontsize = 12
     
+    if t_flag:
+        SV_df = SV_df.loc[SV_df['Time'] <= t_flag-1]
+        
     t = SV_df['Time']
     
     index = []
@@ -65,7 +68,7 @@ def plot_electrode(X_an, X_cat, SV_df, stage, yax, fig, axes):
         showlegend = 1
     else:
         showlegend = 0
-    showlegend = 0
+#    showlegend = 0
     
     yax = yax - 1
     
@@ -122,7 +125,7 @@ def plot_elyte(rho_k_an, rho_k_cat, SV_df, stage, yax, fig, axes):
         showlegend = 1
     else:
         showlegend = 0
-    showlegend = 0
+#    showlegend = 0
     
     yax = yax - 1
     

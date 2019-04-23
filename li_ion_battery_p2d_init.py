@@ -312,7 +312,7 @@ class current():
     # The minus sign is because we begin with the charging reaction, which
     #   delivers negative charge to the anode:
     if Inputs.flag_cathode == 1:
-#        print(anode.oneC, cathode.oneC)
+        print(anode.oneC, cathode.oneC)
         i_ext_set = -Inputs.C_rate*min(anode.oneC, cathode.oneC)  
     elif Inputs.flag_cathode == 0:
         i_ext_set = -Inputs.C_rate*anode.oneC  

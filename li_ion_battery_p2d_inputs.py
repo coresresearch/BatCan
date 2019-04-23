@@ -21,15 +21,23 @@ class Inputs():
     flag_re_equil = 1
     
     # These flags specify whether to plot various data
-    plot_profiles_flag = 0
+    plot_profiles_flag = 1
     plot_potential_profiles = 1*plot_profiles_flag  # Plots potential profiles
     plot_electrode_profiles = 1*plot_profiles_flag  # Plots solid phase mole fraction profiles
     plot_elyte_profiles = 1*plot_profiles_flag      # Plots concentration of Li+ in elyte phase
-    plot_cap_flag = 1       # Plots dis/charge capacity curves
+    plot_cap_flag = 0       # Plots dis/charge capacity curves
+    
+    # Options for plots
+    
+    # phi_time sets the options for the potential plot. 0 will plot a charge/
+    #   discharge profile on a single axes. 1 will plot potential over time
+    #   including the re-equilibration step (assuming re-equilibration is
+    #   turned on).
+    phi_time = 0*plot_potential_profiles
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 10
+    C_rate = 1
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -98,12 +106,12 @@ class Inputs():
 
     "Electrolyte geometry and transport"
     # Separator thickness [m]
-    H_elyte = 100e-6
+    H_elyte = 25-6
     # Elyte species bulk diffusion coefficients [m^2/s]
     D_Li_elyte = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     z_k_elyte = np.array([0., 0., 1., -1.])
 
-    eps_elyte_sep = 0.85      # Separator electrolyte volume fraction
+    eps_elyte_sep = 0.5      # Separator electrolyte volume fraction
     tau_sep = 1.6  # Tortuosity of separator
     sigma_sep = 50.0  # Bulk ionic conductivity of separator [S/m]
 
@@ -116,7 +124,7 @@ class Inputs():
     overlap_ca = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
-    H_ca = 30e-6      # Cathode thickness [m]
+    H_ca = 50e-6      # Cathode thickness [m]
 
     # Other parameters:
     C_dl_ca = 1.5e-2       # Double-layer capacitance [F/m^2]
