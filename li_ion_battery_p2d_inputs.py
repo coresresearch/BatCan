@@ -17,6 +17,11 @@ class Inputs():
     
     n_comps = flag_anode + flag_sep + flag_cathode
     
+    # Number of discretized volumes in the y-direction:
+    npoints_anode = 5*flag_anode
+    npoints_cathode = 5*flag_cathode
+    npoints_elyte = 3*flag_sep
+    
     # Flag to allow re-equilibration between charge/discharge
     flag_re_equil = 1
     
@@ -54,17 +59,14 @@ class Inputs():
     # Range of value is from 0 to 1.
     SOC_0 = 0.03
 
-    # Number of discretized volumes in the y-direction:
-    npoints_anode = 5*flag_anode
-    npoints_cathode = 5*flag_cathode
-    npoints_elyte = 2*flag_sep
-
     # Number of "shells" in anode particle:
     nshells_anode = 5
     n_shells_cathode = 5
 
     "Cantera and CTI file info:"
-    ctifile = 'lithium_ion_battery_mod.cti'
+    ctifile = 'lithium_ion_battery_ideal_LCO.cti'
+#    ctifile = 'lithium_ion_battery_updated.cti'
+#    ctifile = 'lithium_ion_battery_mod.cti'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'
@@ -76,16 +78,17 @@ class Inputs():
     Vac_species_anode = 'V[anode]'
     Li_species_cathode = 'Li[cathode]'
     Vac_species_cathode = 'V[cathode]'
+    
+    Li_species_elyte = 'Li+[elyt]'
 
     Phi_anode_init = 0.0
     Phi_elyte_init = 2.5
     Delta_Phi_init = 4.0
 
     # Cutoff Values for lithiation and delithiation of anode:
-    Li_an_min = 5.75e-03; Li_an_max = 7.98e-01
-    Li_cat_min = 4.59e-01; Li_cat_max = 9.85e-01
-#    SOC_max = 1 - 1e-2
-#    SOC_min = 1 - SOC_max
+    Li_an_min = 0.01; Li_an_max = 1 - Li_an_min
+#    Li_cat_min = 0.46; Li_cat_max = 0.98
+    Li_cat_min = 0.01; Li_cat_max = 1 - Li_cat_min
 
     "Anode geometry and transport"
     # Microstructure
@@ -103,10 +106,11 @@ class Inputs():
     sigma_an = 75.0     # Bulk anode electrical conductivity [S/m]
 
     D_Li_an = 7.5e-16   # Bulk diffusion coefficient for Li in graphite [m^2/s]
+    D_Li_an_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
 
     "Electrolyte geometry and transport"
     # Separator thickness [m]
-    H_elyte = 25-6
+    H_elyte = 25e-6
     # Elyte species bulk diffusion coefficients [m^2/s]
     D_Li_elyte = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     z_k_elyte = np.array([0., 0., 1., -1.])
@@ -120,16 +124,17 @@ class Inputs():
     eps_solid_ca = 0.5  # LiCoO2 volume fraction [-]
     tau_ca = 1.6  # Tortuosity - assume equal values for LiCoO2 and elyte [-]
     r_p_ca = 5e-6     # Average pore radius [m]
-    d_part_ca = 6e-6  # Average particle diameter for LiCoO2 [m]
+    d_part_ca = 5e-6  # Average particle diameter for LiCoO2 [m]
     overlap_ca = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
-    H_ca = 50e-6      # Cathode thickness [m]
+    H_ca = 25e-6      # Cathode thickness [m]
 
     # Other parameters:
     C_dl_ca = 1.5e-2       # Double-layer capacitance [F/m^2]
     sigma_ca = 7.50    # Bulk cathode electrical conductivity [S/m]
     D_Li_ca = 7.5e-16  # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
+    D_Li_cat_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     
 print("runner check")
 

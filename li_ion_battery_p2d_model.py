@@ -44,13 +44,14 @@ from li_ion_battery_p2d_post_process import plot_cap
 def main():
     
     SV_0 = solver_inputs.SV_0
+    SV_dot_0 = np.zeros_like(SV_0)
     algvar = solver_inputs.algvar
 
     # Close any open pyplot objects:
     plt.close('all')
     
-    atol1 = 1e-3; atol2 = atol1; atol3 = atol1; atol4 = atol1
-    rtol1 = 1e-9; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
+    atol1 = np.ones_like(SV_0)*1e-6; atol2 = atol1; atol3 = atol1; atol4 = atol1
+    rtol1 = 1e-6; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
 
     # Start a timer:
     t_count = time.time()
@@ -59,204 +60,222 @@ def main():
     #   (i.e. 3600 seconds divided by the C-rate):
     t_0 = 0
     t_f = 3600/inp.C_rate
-    SV_dot_0 = np.zeros_like(SV_0)
     
     rate_tag = str(inp.C_rate)+"C"
     
     """----------Figures----------"""
     
     if inp.plot_potential_profiles == 1:
-        fig1, axes1 = plt.subplots(sharey="row", figsize=(18,9), nrows=1, ncols = 2+(inp.flag_re_equil*inp.phi_time))
+        fig1, axes1 = plt.subplots(sharey="row", figsize=(12,6), nrows=1, ncols = 2+(inp.flag_re_equil*inp.phi_time))
         plt.subplots_adjust(wspace = 0.15, hspace = 0.4)
         fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
         
     if inp.plot_electrode_profiles == 1:
-        fig2, axes2 = plt.subplots(sharey="row", figsize=(18,9), nrows=2,
-                                    ncols=2+inp.flag_re_equil)
+        nrows = inp.flag_anode + inp.flag_cathode
+        ncols = 2 + inp.flag_re_equil
+        fig2, axes2 = plt.subplots(sharey="row", figsize=(18,9), nrows=nrows,
+                                   ncols=ncols)
         plt.subplots_adjust(wspace=0.15, hspace=0.4)
-        fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
+        fig2.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
         
     if inp.plot_elyte_profiles == 1:
-        fig3, axes3 = plt.subplots(sharey="row", figsize=(18,9), nrows=2,
-                                    ncols=2+inp.flag_re_equil)
+        nrows = inp.flag_anode + inp.flag_cathode + inp.flag_sep
+        ncols = 2 + inp.flag_re_equil
+        fig3, axes3 = plt.subplots(sharey="row", figsize=(18,9), nrows=nrows,
+                                    ncols=ncols)
         plt.subplots_adjust(wspace=0.15, hspace=0.4)
         fig3.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
         
-    """----------Equilibration----------"""
-
-    # Equilibrate by integrating at zero current:
-    print('\nEquilibrating...')
-
-    # Create problem instance
-    current.set_i_ext(0)
-    
-    Battery_equil = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-    Battery_equil.external_event_detection = True
-    Battery_equil.algvar = algvar
-
-    # Simulation parameters
-    equil_sim = IDA(Battery_equil)           # Create simulation instance
-    equil_sim.atol = atol1                 # Solver absolute tolerance
-    equil_sim.rtol = rtol1                  # Solver relative tolerance
-    equil_sim.verbosity = 50
-    equil_sim.make_consistent('IDA_YA_YDP_INIT')
-
-    t_eq, SV_eq, SV_dot_eq = equil_sim.simulate(t_f)
-
-    # Put solution into pandas dataframe with labeled columns
-    SV_eq_df = Label_Columns(t_eq, SV_eq, anode.npoints, separator.npoints, 
-                             cathode.npoints)
-
-    # Obtain tag strings for dataframe columns
-    tags = tag_strings(SV_eq_df)
-
-    print('Done equilibrating\n')
-
-    """------------Charging-------------"""
-    print('\nCharging...')
-
-    # New initial conditions are the final equilibrium conditions
-    t_0 = 0
-    SV_0 = SV_eq[-1, :]
-    SV_dot_0 = SV_dot_eq[-1 :]
-
-    # Charge the battery
-    current.set_i_ext(current.i_ext_set)
-
-    # Create problem instance
-    Battery_charge = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-    Battery_charge.external_event_detection = True
-    Battery_charge.algvar = algvar
-
-    # Simulation parameters
-    charge_sim = IDA(Battery_charge)
-    charge_sim.atol = atol2
-    charge_sim.rtol = rtol2
-    charge_sim.verbosity = 50
-    charge_sim.make_consistent('IDA_YA_YDP_INIT')
-
-    t_charge, SV_charge, SV_dot_charge = charge_sim.simulate(t_f)
-
-    t_flag_ch = anode.get_tflag()
-
-    SV_charge_df = Label_Columns(t_charge, SV_charge, anode.npoints, separator.npoints, 
-                             cathode.npoints)
-    
-    if inp.plot_potential_profiles == 1:
-        plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_charge_df, 
-                  'Charging', 1, t_flag_ch, fig1, axes1)
+#        fig4, axes4 = plt.subplots(sharey="row", figsize=(18,9), nrows = 5,
+#                                   ncols=2+inp.flag_re_equil)
         
-    if inp.plot_electrode_profiles == 1:
-        plot_electrode(tags['X_an'], tags['X_cat'], SV_charge_df, 
-                       'Charging', 1, fig2, axes2)
-        
-    if inp.plot_elyte_profiles == 1:
-        plot_elyte(tags['rho_el_an'], tags['rho_el_cat'], SV_charge_df,
-                   'Charging', 1, fig3, axes3)
-
-    print('Done charging\n')
-
-    """------------Re_equilibrating-------------"""
+    for cycle in np.arange(0, inp.n_cycles):
+        """----------Equilibration----------"""
     
-    if inp.flag_re_equil == 1:
-        # New initial conditions are the final charge conditions
-        SV_0 = SV_charge[-1, :]
-        SV_dot_0 = SV_dot_charge[-1, :]
+        # Equilibrate by integrating at zero current:
+        print('\nEquilibrating...')
     
-        # Equilibrate again. Note - this is a specific choice to reflect
-        #   equilibration after the charging steps. We may want, at times, to
-        #   simulate a situation where the battery is not equilibrated between
-        #   charge and discharge, or is equilibrated for a shorter amount of time.
-    
-        print('\nRe-equilibrating...')
-        
+        # Create problem instance
         current.set_i_ext(0)
-    
-        Battery_re_equil = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-        Battery_re_equil.external_event_detection = True
-        Battery_re_equil.algvar = algvar
+            
+        Battery_equil = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
+        Battery_equil.external_event_detection = True
+        Battery_equil.algvar = algvar
     
         # Simulation parameters
-        re_equil_sim = IDA(Battery_re_equil)
-        re_equil_sim.atol = atol3
-        re_equil_sim.rtol = rtol3
-        re_equil_sim.verbosity = 50
-        re_equil_sim.make_consistent('IDA_YA_YDP_INIT')
+        equil_sim = IDA(Battery_equil)           # Create simulation instance
+        equil_sim.atol = atol1                 # Solver absolute tolerance
+        equil_sim.rtol = rtol1                  # Solver relative tolerance
+        equil_sim.verbosity = 50
+        equil_sim.make_consistent('IDA_YA_YDP_INIT')
     
-        t_req, SV_req, SV_dot_req = re_equil_sim.simulate(t_f)
+        t_eq, SV_eq, SV_dot_eq = equil_sim.simulate(0.1*t_f)
     
-        SV_req_df = Label_Columns(t_req, SV_req, anode.npoints, separator.npoints, 
-                             cathode.npoints)
+        # Put solution into pandas dataframe with labeled columns
+        SV_eq_df = Label_Columns(t_eq, SV_eq, anode.npoints, separator.npoints, 
+                                 cathode.npoints)
+    
+        # Obtain tag strings for dataframe columns
+        tags = tag_strings(SV_eq_df)
+    
+        print('Done equilibrating\n')
+    
+        """------------Charging-------------"""
+        print('\nCharging...')
+    
+        # New initial conditions are the final equilibrium conditions
+        t_0 = 0
+        SV_0 = SV_eq[-1, :]
+        SV_dot_0 = SV_dot_eq[-1 :]
+    
+        # Charge the battery
+        current.set_i_ext(current.i_ext_set)
+    
+        # Create problem instance
+        Battery_charge = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
+        Battery_charge.external_event_detection = True
+        Battery_charge.algvar = algvar
+    
+        # Simulation parameters
+        charge_sim = IDA(Battery_charge)
+        charge_sim.atol = atol2
+        charge_sim.rtol = rtol2
+        charge_sim.verbosity = 50
+        charge_sim.make_consistent('IDA_YA_YDP_INIT')
+    
+        t_charge, SV_charge, SV_dot_charge = charge_sim.simulate(t_f)
+    
+        t_flag_ch = t_charge[-1]
         
-        if inp.plot_potential_profiles*inp.phi_time == 1:
-            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_req_df, 
-                           'Re-equilibrating', 2, None, fig1, axes1)
+        if hasattr(anode, 'get_tflag'):
+            t_flag_ch = anode.get_tflag()
+    
+        SV_charge_df = Label_Columns(t_charge, SV_charge, anode.npoints, 
+                                     separator.npoints, cathode.npoints)
         
+        if inp.plot_potential_profiles == 1:
+            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_charge_df, 
+                      'Charging', 0, t_flag_ch, fig1, axes1)
+            
         if inp.plot_electrode_profiles == 1:
-            plot_electrode(tags['X_an'], tags['X_cat'], SV_req_df, 
-                           'Re-equilibrating', 2, fig2, axes2)
+            plot_electrode(tags['X_an'], tags['X_cat'], SV_charge_df, 
+                           'Charging', 0, fig2, axes2)
+        
+        if inp.plot_elyte_profiles == 1:
+            plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_charge_df,
+                       'Charging', 0, fig3, axes3)
+    
+        print('Done charging\n')
+    
+        """------------Re_equilibrating-------------"""
+        
+        if inp.flag_re_equil == 1:
+            # New initial conditions are the final charge conditions
+            SV_0 = SV_charge[-2, :]
+            SV_dot_0 = SV_dot_charge[-2, :]
+        
+            # Equilibrate again. Note - this is a specific choice to reflect
+            #   equilibration after the charging steps. We may want, at times, to
+            #   simulate a situation where the battery is not equilibrated between
+            #   charge and discharge, or is equilibrated for a shorter amount of time.
+        
+            print('\nRe-equilibrating...')
+            
+            current.set_i_ext(0)
+            
+            Battery_re_equil = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
+            Battery_re_equil.external_event_detection = True
+            Battery_re_equil.algvar = algvar
+        
+            # Simulation parameters
+            re_equil_sim = IDA(Battery_re_equil)
+            re_equil_sim.atol = atol3
+            re_equil_sim.rtol = rtol3
+            re_equil_sim.verbosity = 50
+            re_equil_sim.make_consistent('IDA_YA_YDP_INIT')
+        
+            t_req, SV_req, SV_dot_req = re_equil_sim.simulate(t_f)
+        
+            SV_req_df = Label_Columns(t_req, SV_req, anode.npoints, separator.npoints, 
+                                 cathode.npoints)
+            
+            if inp.plot_potential_profiles*inp.phi_time == 1:
+                plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_req_df, 
+                               'Re-equilibrating', 1, None, fig1, axes1)
+            
+            if inp.plot_electrode_profiles == 1:
+                plot_electrode(tags['X_an'], tags['X_cat'], SV_req_df, 
+                               'Re-equilibrating', 1, fig2, axes2)
+                
+            if inp.plot_elyte_profiles == 1:
+                plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_req_df,
+                           'Re-equilibrating', 1, fig3, axes3)
+        
+            print('Done re-equilibrating\n')
+        else:
+            SV_req = SV_charge
+            SV_dot_req = SV_dot_charge
+            
+            SV_req_df = SV_req
+    
+        """------------Discharging-------------"""
+    
+        print('\nDischarging...')
+    
+        SV_0 = SV_req[-1, :]
+        SV_dot_0 = SV_dot_req[-1, :]
+    
+        current.set_i_ext(-current.i_ext_set)
+    
+        Battery_discharge = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
+        Battery_discharge.external_event_detection = True
+        Battery_discharge.algvar = algvar
+    
+        # Simulation parameters
+        Battery_discharge = IDA(Battery_discharge)
+        Battery_discharge.atol = atol4
+        Battery_discharge.rtol = rtol4
+        Battery_discharge.verbosity = 50
+        Battery_discharge.make_consistent('IDA_YA_YDP_INIT')
+    
+        t_discharge, SV_discharge, SV_dot_discharge = Battery_discharge.simulate(t_f)
+        
+        t_flag_dch = t_discharge[-1]
+        
+        if hasattr(anode, 'get_tflag'):
+            t_flag_dch = anode.get_tflag()
+    
+        SV_discharge_df = Label_Columns(t_discharge, SV_discharge, anode.npoints, separator.npoints, 
+                                 cathode.npoints)
+        
+        if inp.plot_potential_profiles == 1:
+            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_discharge_df, 
+                      'Discharging', 1+(inp.flag_re_equil*inp.phi_time), t_flag_dch, fig1, axes1)
+            
+        if inp.plot_electrode_profiles == 1:
+            plot_electrode(tags['X_an'], tags['X_cat'], SV_discharge_df, 
+                           'Discharging', 1+inp.flag_re_equil, fig2, axes2)
             
         if inp.plot_elyte_profiles == 1:
-            plot_elyte(tags['rho_el_an'], tags['rho_el_cat'], SV_req_df,
-                       'Re-equilibrating', 2, fig3, axes3)
+            plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_discharge_df,
+                       'Discharging', 1+inp.flag_re_equil, fig3, axes3)
     
-        print('Done re-equilibrating\n')
-    else:
-        SV_req = SV_charge
-        SV_dot_req = SV_dot_charge
+        print('Done discharging\n')
+    
+        """---------------------------------"""
         
-        SV_req_df = SV_req
-
-    """------------Discharging-------------"""
-
-    print('\nDischarging...')
-
-    SV_0 = SV_req[-1, :]
-    SV_dot_0 = SV_dot_req[-1, :]
-
-    current.set_i_ext(-current.i_ext_set)
-
-    Battery_discharge = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-    Battery_discharge.external_event_detection = True
-    Battery_discharge.algvar = algvar
-
-    # Simulation parameters
-    Battery_discharge = IDA(Battery_discharge)
-    Battery_discharge.atol = atol4
-    Battery_discharge.rtol = rtol4
-    Battery_discharge.verbosity = 50
-    Battery_discharge.make_consistent('IDA_YA_YDP_INIT')
-
-    t_discharge, SV_discharge, SV_dot_discharge = Battery_discharge.simulate(t_f)
-
-    t_flag_dch = anode.get_tflag()
-
-    SV_discharge_df = Label_Columns(t_discharge, SV_discharge, anode.npoints, separator.npoints, 
-                             cathode.npoints)
-    
-    if inp.plot_potential_profiles == 1:
-        plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_discharge_df, 
-                  'Discharging', 2+(inp.flag_re_equil*inp.phi_time), t_flag_dch, fig1, axes1)
+        SV_0 = SV_discharge[-1, :]
+        SV_dot_0 = np.zeros_like(SV_0)
         
-    if inp.plot_electrode_profiles == 1:
-        plot_electrode(tags['X_an'], tags['X_cat'], SV_discharge_df, 
-                       'Discharging', 2+inp.flag_re_equil, fig2, axes2)
+    # %% Plot capacity if flagged
         
-    if inp.plot_elyte_profiles == 1:
-        plot_elyte(tags['rho_el_an'], tags['rho_el_cat'], SV_discharge_df,
-                   'Discharging', 2+inp.flag_re_equil, fig3, axes3)
-
-    print('Done discharging\n')
-
-    """---------------------------------"""
-    
-# %% Plot capacity if flagged
-    
-    if inp.plot_cap_flag == 1:
-        Cap_recovered, Eta_c = plot_cap(SV_charge_df, SV_discharge_df, t_flag_ch,
-                                        t_flag_dch, rate_tag, current.i_ext_set)
-        print('Cap_recovered = ', Cap_recovered, '\n')
-        print('Eta_c = ', Eta_c, '\n')
+        plt.show('all')
+        
+        if inp.plot_cap_flag == 1:
+            Cap_recovered, Eta_c = plot_cap(SV_charge_df, SV_discharge_df, t_flag_ch,
+                                            t_flag_dch, rate_tag, current.i_ext_set)
+            print('Cap_recovered = ', Cap_recovered, '\n')
+            print('Eta_c = ', Eta_c, '\n')
 
     elapsed = time.time() - t_count
     print('t_cpu=', elapsed, '\n')
