@@ -147,10 +147,6 @@ class Extended_Problem(Implicit_Problem):
         j = an.npoints-1; offset = int(an.offsets[j])
 
         i_Far_1 = -sdot_1[ptr['iFar']]*F*an.A_surf/an.dyInv
-        
-#        i_io_p = i_ext
-#        N_io_p = np.zeros([elyte.n_species])
-#        N_io_p[2] = i_io_p/F
 
         C_k = (X_k_el_2*rho_el_2+ X_k_el_1*rho_el_1)/2.
         C_0 = (rho_el_2 + rho_el_1)/2.
@@ -184,8 +180,6 @@ class Extended_Problem(Implicit_Problem):
 
         """Algebraic equation for ANODE electric potential boundary condition"""
         res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
-#        (i_el_m - i_el_p + i_io_m - i_io_p)
-#        SV[an.ptr['Phi_ed']]
         
 # %%
         """================================================================="""
@@ -259,10 +253,6 @@ class Extended_Problem(Implicit_Problem):
                   + Inputs.z_k_elyte*F*C_k*(phi_2['el'] - phi_1['el']))*dyInv_boundary)
 
         i_io_p = np.dot(N_io_p,Inputs.z_k_elyte)*F
-        
-#        i_io_p = i_ext
-#        N_io_p = np.zeros([elyte.n_species])
-#        N_io_p[2] = i_io_p/F
                 
         """Change in electrolyte composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -380,7 +370,7 @@ class Extended_Problem(Implicit_Problem):
         
         """Algebraic equation for CATHODE electric potential"""
         res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
-                
+                        
         return res
 
     """====================================================================="""
@@ -440,21 +430,22 @@ class Extended_Problem(Implicit_Problem):
         event7 = cat.X_Li_max - y[cat.ptr_vec['X_ed']]
         event8 = y[cat.ptr_vec['X_ed']] - cat.X_Li_min
                
-        # Separator events
-        event9 = np.zeros([sep.npoints])
-        event10 = np.zeros([sep.npoints])
+        # Electrolyte events
+        event9  = np.zeros([an.npoints*elyte.n_species])
+        event10 = np.zeros([an.npoints*elyte.n_species])
+        event11 = np.zeros([cat.npoints*elyte.n_species])
+        event12 = np.zeros([cat.npoints*elyte.n_species])
         
-#        event9 = 1 - y[sep.ptr_vec['X_k_elyte'][an.ptr['iFar']]]
-#        
-#        for j in np.arange(0, sep.npoints):
-#            offset = an.npoints*an.nVars
-#            event9[j] = 0.995 - y[offset + sep.ptr['X_k_elyte'][an.ptr['iFar']]]
-#            event10[j] = y[offset + sep.ptr['X_k_elyte'][an.ptr['iFar']]] -0.005
+        event9  = 1 - y[an.ptr_vec['X_k_elyte']]
+        event10 = y[an.ptr_vec['X_k_elyte']]
+        
+        event11 = 1 - y[cat.ptr_vec['X_k_elyte']]
+        event12 = y[cat.ptr_vec['X_k_elyte']]
 
         # Concatenate events into one array
         events = np.concatenate((event1, event2, event3, event4, 
                                  event5, event6, event7, event8, 
-                                 event9, event10))
+                                 event9, event10, event11, event12))
 
         return events
 
@@ -463,10 +454,51 @@ class Extended_Problem(Implicit_Problem):
     def handle_event(self, solver, event_info):
         
         state_info = event_info[0] #We are only interested in state events info
-
-        if not all(state_info):
-            an.set_tflag(solver.t)
-            print('Cutoff')
+        event_ptr = {}
+        event_ptr['An_phi1'] = an.npoints
+        event_ptr['An_phi2'] = event_ptr['An_phi1'] + an.npoints
+        event_ptr['An_Xed1'] = event_ptr['An_phi2'] + an.npoints*an.nshells
+        event_ptr['An_Xed2'] = event_ptr['An_Xed1'] + an.npoints*an.nshells
+        
+        event_ptr['Cat_phi1'] = event_ptr['An_Xed2'] + cat.npoints
+        event_ptr['Cat_phi2'] = event_ptr['Cat_phi1'] + cat.npoints
+        event_ptr['Cat_Xed1'] = event_ptr['Cat_phi2'] + cat.npoints*cat.nshells
+        event_ptr['Cat_Xed2'] = event_ptr['Cat_Xed1'] + cat.npoints*cat.nshells
+        
+        event_ptr['An_el1'] = event_ptr['Cat_Xed2'] + an.npoints*elyte.n_species
+        event_ptr['An_el2'] = event_ptr['An_el1'] + an.npoints*elyte.n_species
+        event_ptr['Cat_el1'] = event_ptr['An_el2'] + cat.npoints*elyte.n_species
+        event_ptr['Cat_el2'] = event_ptr['Cat_el1'] + cat.npoints*elyte.n_species
+        
+        if any(state_info[0:event_ptr['An_phi1']]):
+            print('Cutoff: anode double-layer flipped sign')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_phi1']:event_ptr['An_phi2']]):
+            print('Cutoff: anode double-layer blew up')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_phi2']:event_ptr['An_Xed1']]):
+            print('Cutoff: Anode shell fully lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_Xed1']:event_ptr['An_Xed2']]):
+            print('Cutoff: Anode shell fully de-lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_Xed2']:event_ptr['Cat_phi1']]):
+            print('Cutoff: Cathode double layer flipped sign')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_phi1']:event_ptr['Cat_phi2']]):
+            print('Cutoff: Cell potential went over 5 V')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_phi2']:event_ptr['Cat_Xed1']]):
+            print('Cutoff: Cathode shell fully lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_Xed1']:event_ptr['Cat_Xed2']]):
+            print('Cutoff: Cathode shell fully de-lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_el1']:event_ptr['An_el2']]):
+            print('Cutoff: Li+ in electrolyte for anode depleted')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_el1']:event_ptr['Cat_el2']]):
+            print('Cutoff: Li+ in electrolyte for cathode depleted')
             raise TerminateSimulation
 
     """====================================================================="""

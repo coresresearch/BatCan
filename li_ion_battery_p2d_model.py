@@ -50,8 +50,8 @@ def main():
     # Close any open pyplot objects:
     plt.close('all')
     
-    atol1 = np.ones_like(SV_0)*1e-6; atol2 = atol1; atol3 = atol1; atol4 = atol1
-    rtol1 = 1e-6; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
+    atol1 = np.ones_like(SV_0)*1e-9; atol2 = atol1; atol3 = atol1; atol4 = atol1
+    rtol1 = 1e-4; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
 
     # Start a timer:
     t_count = time.time()
@@ -66,7 +66,7 @@ def main():
     """----------Figures----------"""
     
     if inp.plot_potential_profiles == 1:
-        fig1, axes1 = plt.subplots(sharey="row", figsize=(12,6), nrows=1, ncols = 2+(inp.flag_re_equil*inp.phi_time))
+        fig1, axes1 = plt.subplots(sharey="row", figsize=(14,6), nrows=1, ncols = 2+(inp.flag_re_equil*inp.phi_time))
         plt.subplots_adjust(wspace = 0.15, hspace = 0.4)
         fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
         
@@ -145,17 +145,12 @@ def main():
     
         t_charge, SV_charge, SV_dot_charge = charge_sim.simulate(t_f)
     
-        t_flag_ch = t_charge[-1]
-        
-        if hasattr(anode, 'get_tflag'):
-            t_flag_ch = anode.get_tflag()
-    
         SV_charge_df = Label_Columns(t_charge, SV_charge, anode.npoints, 
                                      separator.npoints, cathode.npoints)
         
         if inp.plot_potential_profiles == 1:
             plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_charge_df, 
-                      'Charging', 0, t_flag_ch, fig1, axes1)
+                      'Charging', 0, fig1, axes1)
             
         if inp.plot_electrode_profiles == 1:
             plot_electrode(tags['X_an'], tags['X_cat'], SV_charge_df, 
@@ -239,18 +234,13 @@ def main():
         Battery_discharge.make_consistent('IDA_YA_YDP_INIT')
     
         t_discharge, SV_discharge, SV_dot_discharge = Battery_discharge.simulate(t_f)
-        
-        t_flag_dch = t_discharge[-1]
-        
-        if hasattr(anode, 'get_tflag'):
-            t_flag_dch = anode.get_tflag()
     
         SV_discharge_df = Label_Columns(t_discharge, SV_discharge, anode.npoints, separator.npoints, 
                                  cathode.npoints)
         
         if inp.plot_potential_profiles == 1:
             plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_discharge_df, 
-                      'Discharging', 1+(inp.flag_re_equil*inp.phi_time), t_flag_dch, fig1, axes1)
+                      'Discharging', 1+(inp.flag_re_equil*inp.phi_time), fig1, axes1)
             
         if inp.plot_electrode_profiles == 1:
             plot_electrode(tags['X_an'], tags['X_cat'], SV_discharge_df, 
@@ -271,11 +261,8 @@ def main():
         
         plt.show('all')
         
-        if inp.plot_cap_flag == 1:
-            Cap_recovered, Eta_c = plot_cap(SV_charge_df, SV_discharge_df, t_flag_ch,
-                                            t_flag_dch, rate_tag, current.i_ext_set)
-            print('Cap_recovered = ', Cap_recovered, '\n')
-            print('Eta_c = ', Eta_c, '\n')
+        plot_cap(SV_charge_df, SV_discharge_df, rate_tag, current.i_ext_set,
+                 inp.plot_cap_flag, tags)
 
     elapsed = time.time() - t_count
     print('t_cpu=', elapsed, '\n')

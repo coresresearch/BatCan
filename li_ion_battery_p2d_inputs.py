@@ -64,9 +64,9 @@ class Inputs():
     n_shells_cathode = 5
 
     "Cantera and CTI file info:"
-    ctifile = 'lithium_ion_battery_ideal_LCO.cti'
+#    ctifile = 'lithium_ion_battery_ideal_LCO.cti'
 #    ctifile = 'lithium_ion_battery_updated.cti'
-#    ctifile = 'lithium_ion_battery_mod.cti'
+    ctifile = 'lithium_ion_battery_mod.cti'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'
@@ -86,9 +86,8 @@ class Inputs():
     Delta_Phi_init = 4.0
 
     # Cutoff Values for lithiation and delithiation of anode:
-    Li_an_min = 0.01; Li_an_max = 1 - Li_an_min
-#    Li_cat_min = 0.46; Li_cat_max = 0.98
-    Li_cat_min = 0.01; Li_cat_max = 1 - Li_cat_min
+    Li_an_min = 0.005; Li_an_max = 1 - Li_an_min
+    Li_cat_min = 0.005; Li_cat_max = 1 - Li_cat_min
 
     "Anode geometry and transport"
     # Microstructure
@@ -136,7 +135,7 @@ class Inputs():
     D_Li_ca = 7.5e-16  # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
     D_Li_cat_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     
-print("runner check")
+print("Runner check")
 
 #if __name__ == "__main__":
 #    exec(open("li_ion_battery_p2d_init.py").read())

@@ -20,17 +20,15 @@ from li_ion_battery_p2d_inputs import Inputs
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-from math import floor, ceil
 
-def plot_potential(V_an, V_cat, SV_df, stage, yax, t_flag, fig, axes):
+def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
     
     if stage == 'Discharging':
         showlegend = 1
     else:
         showlegend = 0
-    fontsize = 12
+    fontsize = 26
     
-#    SV_df = SV_df.loc[SV_df['Time'] <= t_flag-1]
     t = SV_df['Time']
     
     if Inputs.flag_cathode:
@@ -56,7 +54,7 @@ def plot_potential(V_an, V_cat, SV_df, stage, yax, t_flag, fig, axes):
     SV_plot = SV_df.plot(x='Time', y=V, ax=axes[yax], xlim=[0,t.iloc[-1]])
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Voltages [V]', fontsize = fontsize)
-    SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(showlegend)
+    SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(True)
     SV_plot.legend(loc=2, bbox_to_anchor=(1.05, 1), ncol=1, borderaxespad=0,
                    frameon=False).set_visible(showlegend)
     SV_plot.tick_params(axis='both', labelsize=18)
@@ -94,12 +92,11 @@ def plot_electrode(X_an, X_cat, SV_df, stage, yax, fig, axes):
         # Plot anode composition
         SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes_an,
                              xlim = [0, t.iloc[-1]], ylim = [-0.1, 1.1])
-#        SV_plot.set_title(stage, fontsize = fontsize)
+        SV_plot.set_title(stage, fontsize = fontsize)
         SV_plot.set_ylabel('$X_{LiC_6}$', fontsize = fontsize)
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(True)
+        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
                        borderaxespad = 0, frameon = False).set_visible(False)
-#        SV_plot.legend((str(rate_tag)), loc = 3, fontsize = 14)
         SV_plot.tick_params(axis='both', labelsize = 18)
         SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
@@ -115,9 +112,9 @@ def plot_electrode(X_an, X_cat, SV_df, stage, yax, fig, axes):
         # Plot cathode composition
         SV_plot = SV_df.plot(x = 'Time', y = X_cat_1, ax = axes_cat, xlim = [0, t.iloc[-1]],
                              ylim = [-0.1, 1.1])
-        SV_plot.set_title(stage, fontsize = fontsize)
-        SV_plot.set_ylabel('$[X_{LiCoO2}]$', fontsize = fontsize)
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(0)
+        SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
+        SV_plot.set_ylabel('$X_{LiCoO2}$', fontsize = fontsize)
+        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(True)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
                        borderaxespad = 0, frameon = False).set_visible(showlegend)
         SV_plot.tick_params(axis='both', labelsize = 18)
@@ -130,7 +127,7 @@ def plot_electrode(X_an, X_cat, SV_df, stage, yax, fig, axes):
 def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV_df, stage, yax, fig, axes):
     
     t = SV_df['Time']
-    fontsize = 12
+    fontsize = 22
     
     if stage == 'Discharging':
         showlegend = 1
@@ -170,10 +167,8 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV_df, stage, yax, fig, axes):
     
     if Inputs.flag_anode and Inputs.flag_cathode:
         max_val = max(max(SV_df[rho_Li_an].max()), max(SV_df[rho_Li_cat].max()))
-#        ymax = ceil(max_val) - (ceil(max_val) - max_val)*0.9
         ymax = max_val + max_val/10
         min_val = min(min(SV_df[rho_Li_an].min()), min(SV_df[rho_Li_cat].min()))
-#        ymin = floor(min_val) + (min_val - floor(min_val))*0.9
         ymin = min_val - min_val/10
         
         if yax > 0:
@@ -188,75 +183,72 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV_df, stage, yax, fig, axes):
         SV_plot = SV_df.plot(x = 'Time', y = rho_Li_an, ax = axes_an, 
                              xlim = [0, t.iloc[-1]], ylim = [ymin, ymax])
         SV_plot.set_title(stage, fontsize = fontsize)
-        SV_plot.set_ylabel(r'$X_{Li^+, an}$', fontsize = fontsize)  # \left[\frac{kmol_k}{m^3}\right]_{anode}
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
+        SV_plot.set_ylabel(r'$X_{Li^+, an}$', fontsize = fontsize)
+        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                        frameon = False).set_visible(showlegend)
+        SV_plot.tick_params(axis='both', labelsize = 18)
         SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
     if Inputs.flag_cathode:
         # Plot elyte composition in cathode
         SV_plot = SV_df.plot(x = 'Time', y = rho_Li_cat, ax = axes_cat, 
                              xlim = [0, t.iloc[-1]], ylim = [ymin, ymax])
-        SV_plot.set_title(stage, fontsize = fontsize)
-        SV_plot.set_ylabel(r'$X_{Li^+, cat}$', fontsize = fontsize)  # \left[\frac{kmol_k}{m^3}\right]_{cathode}
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
+        SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
+        SV_plot.set_ylabel(r'$X_{Li^+, cat}$', fontsize = fontsize)
+        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                        frameon = False).set_visible(showlegend)
+        SV_plot.tick_params(axis='both', labelsize = 18)
         SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         
     if Inputs.flag_sep:
         # Plot elyte composition in separator
         SV_plot = SV_df.plot(x = 'Time', y = rho_Li_sep, ax = axes_sep, 
                              xlim = [0, t.iloc[-1]], ylim = [ymin, ymax])
-        SV_plot.set_title(stage, fontsize = fontsize)
-        SV_plot.set_ylabel(r'$X_{Li^+, sep}$', fontsize = fontsize)  # \left[\frac{kmol_k}{m^3}\right]_{cathode}
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize)
+        SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
+        SV_plot.set_ylabel(r'$X_{Li^+, sep}$', fontsize = fontsize)
+        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(True)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                        frameon = False).set_visible(showlegend)
+        SV_plot.tick_params(axis='both', labelsize = 18)
         SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
     return
 
 """========================================================================="""
 
-def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag, i_ext):
+def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
     fontsize = 18
     
-    SV_ch_df = SV_ch_df.loc[SV_ch_df['Time'] <= t_flag_ch-1]
-    SV_dch_df = SV_dch_df.loc[SV_dch_df['Time'] <= t_flag_dch-1]
-    
-    if Inputs.flag_cathode:
-        V_charge = np.array(SV_ch_df['Phi_cat5'])
-        V_discharge = np.array(SV_dch_df['Phi_cat5'])
-        t_charge = np.array(SV_ch_df['Time'])
-        t_discharge = np.array(SV_dch_df['Time'])
-        dt_charge = t_charge - t_charge[0]
-        dt_discharge = t_discharge - t_discharge[0]
-    elif Inputs.flag_anode and not Inputs.flag_cathode:
-        V_charge = np.array(SV_ch_df['Phi_an_dl3'])
-        V_discharge = np.array(SV_dch_df['Phi_an_dl3'])
-        t_charge = np.array(SV_ch_df['Time'])
-        t_discharge = np.array(SV_dch_df['Time'])
-        dt_charge = t_charge - t_charge[0]
-        dt_discharge = t_discharge - t_discharge[0]
+    V_ch = np.array(SV_ch_df[tags['Phi_cat'][-2]])
+    V_dch = np.array(SV_dch_df[tags['Phi_cat'][-2]])
+    t_ch = np.array(SV_ch_df['Time'])
+    t_dch = np.array(SV_dch_df['Time'])
+    dt_ch = t_ch - t_ch[0]
+    dt_dch = t_dch - t_dch[0]
     
     # Plot charge-discharge curve
-    Capacity_charge = -dt_charge*i_ext/3600         # A-h/m^2
-    Capacity_discharge = -dt_discharge*i_ext/3600   # A-h/m^2
+    Capacity_charge = -dt_ch*i_ext/3600         # A-h/m^2
+    Capacity_discharge = -dt_dch*i_ext/3600   # A-h/m^2
     
-    plt.figure(2, figsize = (8, 6))
-    plt.plot(Capacity_charge, V_charge, 'g-')
-    plt.plot(Capacity_discharge, V_discharge, 'g--')
-    plt.title('Potential vs. Capacity', fontsize = fontsize)
-    plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
-    plt.ylabel('Voltage [V]', fontsize = fontsize)
-    plt.legend(('Charge', 'Discharge'), loc = 3, fontsize = 14)
-    plt.show()
+    if flag_plot:
+        plt.figure(2, figsize = (8, 6))
+        plt.plot(Capacity_charge, V_ch, 'g-')
+        plt.plot(Capacity_discharge, V_dch, 'g--')
+        plt.title('Potential vs. Capacity', fontsize = fontsize)
+        plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
+        plt.ylabel('Voltage [V]', fontsize = fontsize)
+        plt.legend(('Charge', 'Discharge'), loc = 3, fontsize = 14)
+        plt.show()
     
     Cap_recovered = round(Capacity_discharge[-1], 2)
-    Cap_stored = Capacity_charge[-1]
+    Cap_stored = round(Capacity_charge[-1], 2)
     Eta_c = round(100*Cap_recovered/Cap_stored, 1)
+    
+    print('Capacity stored:', Cap_stored, 'A-h/m^2')
+    print('Capacity recovered:', Cap_recovered, 'A-h/m^2')
+    print('Coulombic Efficiency:', Eta_c, '\n')
     
 #    ax1.text(0.01, 0.01, r"$\eta_c$="+str(Eta_c)+"% at "+str(rate_tag), 
 #             fontsize = fontsize)
@@ -267,26 +259,25 @@ def plot_cap(SV_ch_df, SV_dch_df, t_flag_ch, t_flag_dch, rate_tag, i_ext):
 
 # NOTE: This is in W-h/m^2, per unit area of battery. For the specific
 #   capacity, you want W-h/g of anode material.
-#    E_stored = 0
-#    E_recovered = 0
-#
-#    for k in np.arange(1, len(t_charge)):
-#        E_stored = (E_stored - (anode.V_cathode - 0.5*(V_charge[k] + V_charge[k-1]))
-#                    *ep.i_ext*(dt_charge[k] - dt_charge[k-1]))
-#
-#    for k in np.arange(1, len(t_discharge)):
-#        E_recovered = (E_recovered - (ep.V_cathode -
-#                        0.5*(V_discharge[k] + V_discharge[k-1]))
-#                        *ep.i_ext*(dt_discharge[k] - dt_discharge[k-1]))
-#
-#    Cap_recovered = Capacity_discharge[-1]
-#    Eta_RT = E_recovered/E_stored
-#
-#    
-#    print(E_stored, '\n')
-#    print(E_recovered, '\n')
+    E_st = 0
+    E_rec = 0
+
+    for k in np.arange(1, len(t_ch)):
+        E_st = E_st - 0.5*(V_ch[k] + V_ch[k-1])*i_ext*(dt_ch[k] - dt_ch[k-1])
+
+    for k in np.arange(1, len(t_dch)):
+        E_rec = E_rec - 0.5*(V_dch[k]+V_dch[k-1])*i_ext*(dt_dch[k]-dt_dch[k-1])
     
-    return Cap_recovered, Eta_c
+    
+    Eta_RT = round(100*E_rec/E_st, 1)
+    E_st = round(E_st, 2)
+    E_rec = round(E_rec, 2)
+
+    print('Energy stored:', E_st, 'W-h/m^2')
+    print('Energy recovered:', E_rec, 'W-h/m^2')
+    print('Energetic efficiency:', Eta_RT, '\n')
+    
+    return
 
 """========================================================================="""
 

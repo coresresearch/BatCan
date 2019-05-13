@@ -205,7 +205,6 @@ ideal_interface(
     species      = "(dummy)",           # dummy entry for global kinetics
     site_density = (1.0e-2, 'mol/cm2'))    # dummy entry for global kinetics
 
-#edge_reaction("Li[cathode] <=> Li+[elyt] + V[cathode] + electron", [1e-35, 0.0, (0, 'kJ/mol')], rate_coeff_type = "exchangecurrentdensity", beta = 0.5,id="cathode_reaction")
 edge_reaction("Li+[elyt] + V[cathode] + electron <=> Li[cathode]", [100, 0.0, (0, 'kJ/mol')], rate_coeff_type = "exchangecurrentdensity", beta = 0.5,id="cathode_reaction")
 
 # Dummy species
