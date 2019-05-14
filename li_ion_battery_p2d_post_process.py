@@ -250,9 +250,6 @@ def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
     print('Capacity recovered:', Cap_recovered, 'A-h/m^2')
     print('Coulombic Efficiency:', Eta_c, '\n')
     
-#    ax1.text(0.01, 0.01, r"$\eta_c$="+str(Eta_c)+"% at "+str(rate_tag), 
-#             fontsize = fontsize)
-    
 # Calculate battery energy storage/recovery and calculate round-trip
 #   efficiency. Anode voltage is referenced to its initial equilibrium
 #   value (i.e. in the discharged state).

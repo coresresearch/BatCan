@@ -19,21 +19,27 @@ Created on Thu Jul 19 12:47:07 2018
 import numpy as np
 import time
 import importlib
+import cantera as ct
 from matplotlib import pyplot as plt
 
 from assimulo.solvers import IDA
+from assimulo.problem import Implicit_Problem
+from assimulo.exception import TerminateSimulation
 
 import li_ion_battery_p2d_functions
 importlib.reload(li_ion_battery_p2d_functions)
-from li_ion_battery_p2d_functions import Extended_Problem
+from li_ion_battery_p2d_functions import setup_plots
 
 import li_ion_battery_p2d_inputs
 importlib.reload(li_ion_battery_p2d_inputs)
-from li_ion_battery_p2d_inputs import Inputs as inp
+from li_ion_battery_p2d_inputs import Inputs
 
 import li_ion_battery_p2d_init
 importlib.reload(li_ion_battery_p2d_init)
-from li_ion_battery_p2d_init import anode, cathode, separator, solver_inputs, current
+from li_ion_battery_p2d_init import anode as an
+from li_ion_battery_p2d_init import cathode as cat
+from li_ion_battery_p2d_init import separator as sep
+from li_ion_battery_p2d_init import solver_inputs, current
 
 import li_ion_battery_p2d_post_process
 importlib.reload(li_ion_battery_p2d_post_process)
@@ -50,8 +56,8 @@ def main():
     # Close any open pyplot objects:
     plt.close('all')
     
-    atol1 = np.ones_like(SV_0)*1e-9; atol2 = atol1; atol3 = atol1; atol4 = atol1
-    rtol1 = 1e-4; rtol2 = rtol1; rtol3 = rtol1; rtol4 = rtol1    
+    atol = np.ones_like(SV_0)*1e-9
+    rtol = 1e-4    
 
     # Start a timer:
     t_count = time.time()
@@ -59,37 +65,15 @@ def main():
     # Calculate the time span, which should be enough to charge or discharge fully
     #   (i.e. 3600 seconds divided by the C-rate):
     t_0 = 0
-    t_f = 3600/inp.C_rate
+    t_f = 3600/Inputs.C_rate
     
-    rate_tag = str(inp.C_rate)+"C"
+    rate_tag = str(Inputs.C_rate)+"C"
     
     """----------Figures----------"""
-    
-    if inp.plot_potential_profiles == 1:
-        fig1, axes1 = plt.subplots(sharey="row", figsize=(14,6), nrows=1, ncols = 2+(inp.flag_re_equil*inp.phi_time))
-        plt.subplots_adjust(wspace = 0.15, hspace = 0.4)
-        fig1.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
+
+    fig1, axes1, fig2, axes2, fig3, axes3 = setup_plots(plt, rate_tag)
         
-    if inp.plot_electrode_profiles == 1:
-        nrows = inp.flag_anode + inp.flag_cathode
-        ncols = 2 + inp.flag_re_equil
-        fig2, axes2 = plt.subplots(sharey="row", figsize=(18,9), nrows=nrows,
-                                   ncols=ncols)
-        plt.subplots_adjust(wspace=0.15, hspace=0.4)
-        fig2.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
-        
-    if inp.plot_elyte_profiles == 1:
-        nrows = inp.flag_anode + inp.flag_cathode + inp.flag_sep
-        ncols = 2 + inp.flag_re_equil
-        fig3, axes3 = plt.subplots(sharey="row", figsize=(18,9), nrows=nrows,
-                                    ncols=ncols)
-        plt.subplots_adjust(wspace=0.15, hspace=0.4)
-        fig3.text(0.15, 0.8, rate_tag, fontsize=20, bbox=dict(facecolor='white', alpha=0.5))
-        
-#        fig4, axes4 = plt.subplots(sharey="row", figsize=(18,9), nrows = 5,
-#                                   ncols=2+inp.flag_re_equil)
-        
-    for cycle in np.arange(0, inp.n_cycles):
+    for cycle in np.arange(0, Inputs.n_cycles):
         """----------Equilibration----------"""
     
         # Equilibrate by integrating at zero current:
@@ -98,22 +82,22 @@ def main():
         # Create problem instance
         current.set_i_ext(0)
             
-        Battery_equil = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-        Battery_equil.external_event_detection = True
-        Battery_equil.algvar = algvar
+        battery_eq = li_ion(li_ion.res_fun, SV_0, SV_dot_0, t_0)
+        battery_eq.external_event_detection = True
+        battery_eq.algvar = algvar
     
         # Simulation parameters
-        equil_sim = IDA(Battery_equil)           # Create simulation instance
-        equil_sim.atol = atol1                 # Solver absolute tolerance
-        equil_sim.rtol = rtol1                  # Solver relative tolerance
-        equil_sim.verbosity = 50
-        equil_sim.make_consistent('IDA_YA_YDP_INIT')
+        sim_eq = IDA(battery_eq)           # Create simulation instance
+        sim_eq.atol = atol                   # Solver absolute tolerance
+        sim_eq.rtol = rtol                  # Solver relative tolerance
+        sim_eq.verbosity = 50
+        sim_eq.make_consistent('IDA_YA_YDP_INIT')
     
-        t_eq, SV_eq, SV_dot_eq = equil_sim.simulate(0.1*t_f)
+        t_eq, SV_eq, SV_dot_eq = sim_eq.simulate(0.1*t_f)
     
         # Put solution into pandas dataframe with labeled columns
-        SV_eq_df = Label_Columns(t_eq, SV_eq, anode.npoints, separator.npoints, 
-                                 cathode.npoints)
+        SV_eq_df = Label_Columns(t_eq, SV_eq, an.npoints, sep.npoints, 
+                                 cat.npoints)
     
         # Obtain tag strings for dataframe columns
         tags = tag_strings(SV_eq_df)
@@ -132,42 +116,42 @@ def main():
         current.set_i_ext(current.i_ext_set)
     
         # Create problem instance
-        Battery_charge = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-        Battery_charge.external_event_detection = True
-        Battery_charge.algvar = algvar
+        battery_ch = li_ion(li_ion.res_fun, SV_0, SV_dot_0, t_0)
+        battery_ch.external_event_detection = True
+        battery_ch.algvar = algvar
     
         # Simulation parameters
-        charge_sim = IDA(Battery_charge)
-        charge_sim.atol = atol2
-        charge_sim.rtol = rtol2
-        charge_sim.verbosity = 50
-        charge_sim.make_consistent('IDA_YA_YDP_INIT')
+        sim_ch = IDA(battery_ch)
+        sim_ch.atol = atol
+        sim_ch.rtol = rtol
+        sim_ch.verbosity = 50
+        sim_ch.make_consistent('IDA_YA_YDP_INIT')
     
-        t_charge, SV_charge, SV_dot_charge = charge_sim.simulate(t_f)
+        t_ch, SV_ch, SV_dot_ch = sim_ch.simulate(t_f)
     
-        SV_charge_df = Label_Columns(t_charge, SV_charge, anode.npoints, 
-                                     separator.npoints, cathode.npoints)
+        SV_ch_df = Label_Columns(t_ch, SV_ch, an.npoints, 
+                                     sep.npoints, cat.npoints)
         
-        if inp.plot_potential_profiles == 1:
-            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_charge_df, 
+        if Inputs.plot_potential_profiles == 1:
+            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_ch_df, 
                       'Charging', 0, fig1, axes1)
             
-        if inp.plot_electrode_profiles == 1:
-            plot_electrode(tags['X_an'], tags['X_cat'], SV_charge_df, 
+        if Inputs.plot_electrode_profiles == 1:
+            plot_electrode(tags['X_an'], tags['X_cat'], SV_ch_df, 
                            'Charging', 0, fig2, axes2)
         
-        if inp.plot_elyte_profiles == 1:
-            plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_charge_df,
+        if Inputs.plot_elyte_profiles == 1:
+            plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_ch_df,
                        'Charging', 0, fig3, axes3)
     
         print('Done charging\n')
     
         """------------Re_equilibrating-------------"""
         
-        if inp.flag_re_equil == 1:
+        if Inputs.flag_re_equil == 1:
             # New initial conditions are the final charge conditions
-            SV_0 = SV_charge[-2, :]
-            SV_dot_0 = SV_dot_charge[-2, :]
+            SV_0 = SV_ch[-2, :]
+            SV_dot_0 = SV_dot_ch[-2, :]
         
             # Equilibrate again. Note - this is a specific choice to reflect
             #   equilibration after the charging steps. We may want, at times, to
@@ -178,38 +162,38 @@ def main():
             
             current.set_i_ext(0)
             
-            Battery_re_equil = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-            Battery_re_equil.external_event_detection = True
-            Battery_re_equil.algvar = algvar
+            battery_req = li_ion(li_ion.res_fun, SV_0, SV_dot_0, t_0)
+            battery_req.external_event_detection = True
+            battery_req.algvar = algvar
         
             # Simulation parameters
-            re_equil_sim = IDA(Battery_re_equil)
-            re_equil_sim.atol = atol3
-            re_equil_sim.rtol = rtol3
-            re_equil_sim.verbosity = 50
-            re_equil_sim.make_consistent('IDA_YA_YDP_INIT')
+            sim_req = IDA(battery_req)
+            sim_req.atol = atol
+            sim_req.rtol = rtol
+            sim_req.verbosity = 50
+            sim_req.make_consistent('IDA_YA_YDP_INIT')
         
-            t_req, SV_req, SV_dot_req = re_equil_sim.simulate(t_f)
+            t_req, SV_req, SV_dot_req = sim_req.simulate(t_f)
         
-            SV_req_df = Label_Columns(t_req, SV_req, anode.npoints, separator.npoints, 
-                                 cathode.npoints)
+            SV_req_df = Label_Columns(t_req, SV_req, an.npoints, sep.npoints, 
+                                 cat.npoints)
             
-            if inp.plot_potential_profiles*inp.phi_time == 1:
+            if Inputs.plot_potential_profiles*Inputs.phi_time == 1:
                 plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_req_df, 
                                'Re-equilibrating', 1, None, fig1, axes1)
             
-            if inp.plot_electrode_profiles == 1:
+            if Inputs.plot_electrode_profiles == 1:
                 plot_electrode(tags['X_an'], tags['X_cat'], SV_req_df, 
                                'Re-equilibrating', 1, fig2, axes2)
                 
-            if inp.plot_elyte_profiles == 1:
+            if Inputs.plot_elyte_profiles == 1:
                 plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_req_df,
                            'Re-equilibrating', 1, fig3, axes3)
         
             print('Done re-equilibrating\n')
         else:
-            SV_req = SV_charge
-            SV_dot_req = SV_dot_charge
+            SV_req = SV_ch
+            SV_dot_req = SV_dot_ch
             
             SV_req_df = SV_req
     
@@ -222,53 +206,432 @@ def main():
     
         current.set_i_ext(-current.i_ext_set)
     
-        Battery_discharge = Extended_Problem(Extended_Problem.Battery_Func, SV_0, SV_dot_0, t_0)
-        Battery_discharge.external_event_detection = True
-        Battery_discharge.algvar = algvar
+        battery_dch = li_ion(li_ion.res_fun, SV_0, SV_dot_0, t_0)
+        battery_dch.external_event_detection = True
+        battery_dch.algvar = algvar
     
         # Simulation parameters
-        Battery_discharge = IDA(Battery_discharge)
-        Battery_discharge.atol = atol4
-        Battery_discharge.rtol = rtol4
-        Battery_discharge.verbosity = 50
-        Battery_discharge.make_consistent('IDA_YA_YDP_INIT')
+        sim_dch = IDA(battery_dch)
+        sim_dch.atol = atol
+        sim_dch.rtol = rtol
+        sim_dch.verbosity = 50
+        sim_dch.make_consistent('IDA_YA_YDP_INIT')
     
-        t_discharge, SV_discharge, SV_dot_discharge = Battery_discharge.simulate(t_f)
+        t_dch, SV_dch, SV_dot_dch = sim_dch.simulate(t_f)
     
-        SV_discharge_df = Label_Columns(t_discharge, SV_discharge, anode.npoints, separator.npoints, 
-                                 cathode.npoints)
+        SV_dch_df = Label_Columns(t_dch, SV_dch, an.npoints, sep.npoints, 
+                                 cat.npoints)
         
-        if inp.plot_potential_profiles == 1:
-            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_discharge_df, 
-                      'Discharging', 1+(inp.flag_re_equil*inp.phi_time), fig1, axes1)
+        if Inputs.plot_potential_profiles == 1:
+            plot_potential(tags['Phi_an'], tags['Phi_cat'], SV_dch_df, 
+                      'Discharging', 1+(Inputs.flag_re_equil*Inputs.phi_time), fig1, axes1)
             
-        if inp.plot_electrode_profiles == 1:
-            plot_electrode(tags['X_an'], tags['X_cat'], SV_discharge_df, 
-                           'Discharging', 1+inp.flag_re_equil, fig2, axes2)
+        if Inputs.plot_electrode_profiles == 1:
+            plot_electrode(tags['X_an'], tags['X_cat'], SV_dch_df, 
+                           'Discharging', 1+Inputs.flag_re_equil, fig2, axes2)
             
-        if inp.plot_elyte_profiles == 1:
-            plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_discharge_df,
-                       'Discharging', 1+inp.flag_re_equil, fig3, axes3)
+        if Inputs.plot_elyte_profiles == 1:
+            plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_dch_df,
+                       'Discharging', 1+Inputs.flag_re_equil, fig3, axes3)
     
         print('Done discharging\n')
     
         """---------------------------------"""
         
-        SV_0 = SV_discharge[-1, :]
+        SV_0 = SV_dch[-1, :]
         SV_dot_0 = np.zeros_like(SV_0)
         
     # %% Plot capacity if flagged
         
         plt.show('all')
         
-        plot_cap(SV_charge_df, SV_discharge_df, rate_tag, current.i_ext_set,
-                 inp.plot_cap_flag, tags)
+        plot_cap(SV_ch_df, SV_dch_df, rate_tag, current.i_ext_set,
+                 Inputs.plot_cap_flag, tags)
 
     elapsed = time.time() - t_count
     print('t_cpu=', elapsed, '\n')
     plt.show()
     
-    return SV_eq_df, SV_charge_df, SV_req_df, SV_discharge_df
+    return SV_eq_df, SV_ch_df, SV_req_df, SV_dch_df
+
+"============================================================================="
+"============================================================================="
+"============================================================================="
+
+import li_ion_battery_p2d_init
+importlib.reload(li_ion_battery_p2d_init)
+from li_ion_battery_p2d_init import anode_obj as anode
+from li_ion_battery_p2d_init import anode_surf_obj as anode_s
+from li_ion_battery_p2d_init import elyte_obj as elyte
+from li_ion_battery_p2d_init import cathode_obj as cathode
+from li_ion_battery_p2d_init import cathode_surf_obj as cathode_s
+from li_ion_battery_p2d_init import conductor_obj as conductor
+
+import li_ion_battery_p2d_functions
+importlib.reload(li_ion_battery_p2d_functions)
+from li_ion_battery_p2d_functions import set_state
+from li_ion_battery_p2d_functions import set_state_sep
+from li_ion_battery_p2d_functions import dilute_flux as elyte_flux
+from li_ion_battery_p2d_functions import solid_flux
+
+class li_ion(Implicit_Problem):
+    def res_fun(t, SV, SV_dot):
+        """================================================================="""
+        """==========================INITIALIZE============================="""
+        offsets = an.offsets; F = ct.faraday
+        
+        nSV = len(SV)
+        res = np.zeros([nSV])
+        i_ext = current.get_i_ext()
+
+# %%
+        """================================================================="""
+        """============================ANODE================================"""
+        # Looking at node 0, CC boundary "outlet" conditions
+        j = 0; offset = int(offsets[j]); ptr = an.ptr
+
+        N_io_p = 0; i_io_p = 0; i_el_p = i_ext
+        
+        s1 = {}; s2 = {}
+                
+        # Shift forward to node 1, j=0, to set FIRST node conditions
+        s2 = set_state(offset, SV, anode, anode_s, elyte, conductor, ptr)
+        
+        # Diffusive flux scaling factors
+        k = np.arange(0, an.nshells+1)/an.nshells
+                        
+# %%
+        """============================ANODE================================"""
+        """INTERIOR NODES"""
+        for j in np.arange(1, an.npoints):
+            # Save previous node outlet conditions as new inlet conditions
+            N_io_m = N_io_p
+            i_io_m = i_io_p
+            i_el_m = i_el_p
+            s1 = s2
+
+            # Shift forward to NEXT node
+            offset = int(offsets[j])
+
+            s2 = set_state(offset, SV, anode, anode_s, elyte, conductor, ptr)
+
+            # Shift back to THIS node, set THIS node outlet conditions
+            offset = int(offsets[j - 1])
+
+            i_el_p = an.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*an.dyInv
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, an.dyInv, an)
+
+            i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
+
+            DiffFlux = solid_flux(SV, offset, ptr, s1, an)
+
+            """Calculate the change in X_LiC6 in the particle interior."""
+            res[offset + an.ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
+            - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
+            * an.A_surf/an.eps_ed/an.V_shell))
+
+            """Change in electrolyte_composition"""
+            res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
+            - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf)
+            /s1['rho_el']/an.eps_elyte))
+
+            """Double-layer voltage"""
+            res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
+            - (-i_Far_1 + i_io_m - i_io_p)*an.dyInv/an.C_dl/an.A_surf)
+
+            """Algebraic equation for ANODE electric potential boundary condition"""
+            res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
+            
+# %%
+        """============================ANODE================================"""
+        """Separator boundary"""
+        # Save previous node outlet conditions as new inlet conditions
+        N_io_m = N_io_p
+        i_io_m = i_io_p
+        i_el_m = i_el_p
+        s1 = s2
+     
+        # Shift forward to NEXT node, first separator node (j=0)
+        j = 0; offset = int(sep.offsets[j])
+
+        s2 = set_state_sep(offset, SV, elyte, sep.ptr)
+
+        # Shift back to THIS node, set THIS node outlet conditions
+        i_el_p = 0
+
+        # Set j to final ANODE node
+        j = an.npoints-1; offset = int(an.offsets[j])
+
+        i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
+        
+        dyInv_boundary = 1/(0.5*(1/an.dyInv + 1/sep.dyInv))
+            
+        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an)
+        
+        DiffFlux = solid_flux(SV, offset, ptr, s1, an)
+    
+        """Calculate the change in X_LiC6 in the particle interior."""
+        res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
+        - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
+        * an.A_surf/an.eps_ed/an.V_shell))
+
+        """Change in electrolyte_composition"""
+        res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
+        - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf)
+        /s1['rho_el']/an.eps_elyte))
+
+        """Double-layer voltage"""
+        res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
+        - (-i_Far_1 + i_io_m - i_io_p)*an.dyInv/an.C_dl/an.A_surf)
+
+        """Algebraic equation for ANODE electric potential boundary condition"""
+        res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
+        
+# %%
+        """================================================================="""
+        """==========================SEPARATOR=============================="""
+        offsets = sep.offsets; ptr = sep.ptr
+        
+        for j in np.arange(1, sep.npoints):
+            # Save previous node outlet conditions as new inlet conditions
+            i_io_m = i_io_p
+            N_io_m = N_io_p
+            s1 = s2
+            
+            # Set NEXT separator node conditions
+            offset = int(offsets[j])
+            
+            s2 = set_state_sep(offset, SV, elyte, ptr)
+            
+            # Shift back to THIS node
+            offset = int(sep.offsets[j-1])
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, sep.dyInv, sep)
+        
+            """Change in electrolyte composition"""
+            res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
+            - (((N_io_m - N_io_p)*sep.dyInv)/s1['rho_el']/sep.eps_elyte))
+            
+            """Algebraic equation for electrolyte potential"""
+            res[offset + ptr['Phi']] = i_io_m - i_io_p
+            
+        """==========================SEPARATOR=============================="""
+        """Cathode boundary"""
+        
+        i_io_m = i_io_p
+        N_io_m = N_io_p
+        s1 = s2
+        
+        # Shift forward to NEXT node, first cathode node (j=0)
+        j = 0; offset = int(cat.offsets[j])
+
+        s2 = set_state(offset, SV, cathode, cathode_s, elyte, conductor, cat.ptr)
+        
+        # Shift to final separator node
+        j = sep.npoints-1; offset = int(offsets[j])
+        
+        i_el_p = 0
+        
+        dyInv_boundary = 1/(0.5*(1/cat.dyInv + 1/sep.dyInv))
+
+        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, sep)
+                
+        """Change in electrolyte composition"""
+        res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
+        - (((N_io_m - N_io_p)*sep.dyInv)/s1['rho_el']/sep.eps_elyte))
+      
+        """Algebraic equation for electrolyte potential"""
+        res[offset + ptr['Phi']] = i_io_m - i_io_p
+
+# %%
+        """================================================================="""
+        """===========================CATHODE==============================="""
+        offsets = cat.offsets; ptr = cat.ptr
+        
+        k = np.arange(0, cat.nshells+1)/cat.nshells
+                
+        """=========================CATHODE============================="""
+        """INTERIOR NODES"""
+        
+        for j in np.arange(1, cat.npoints):
+            # Save previous node outlet conditions as new inlet conditions
+            N_io_m = N_io_p
+            i_io_m = i_io_p
+            i_el_m = i_el_p
+            s1 = s2
+            
+            # Shift forward to NEXT node
+            offset = int(offsets[j])
+            
+            s2 = set_state(offset, SV, cathode, cathode_s, elyte, conductor, ptr)
+            
+            # Shift back to THIS node, set THIS node outlet conditions
+            offset = int(offsets[j-1])
+            
+            i_el_p = cat.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*cat.dyInv
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, cat.dyInv, cat)
+            
+            i_Far_1 = -s1['sdot'][ptr['iFar']]*F*cat.A_surf/cat.dyInv
+            
+            DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+
+            """Calculate the change in X_LiCoO2 in the particle interior"""
+            res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
+            - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
+            *cat.A_surf/cat.eps_ed/cat.V_shell))
+            
+            """Change in electrolyte composition"""
+            res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
+            - (((N_io_m - N_io_p)*cat.dyInv + s1['sdot']*cat.A_surf)
+            /s1['rho_el']/cat.eps_elyte))
+            
+            """Double-layer voltage"""
+            res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
+            - (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)
+            
+            """Algebraic equation for CATHODE electric potential"""
+            res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
+        
+# %%
+        """=========================CATHODE============================="""
+        """current collector boundary"""
+        N_io_m = N_io_p
+        i_io_m = i_io_p
+        i_el_m = i_el_p
+        s1 = s2
+        
+        # FINAL node
+        j = cat.npoints-1; offset = int(offsets[j])
+        
+        i_io_p = 0
+        N_io_p = 0
+        i_el_p = i_ext
+        
+        i_Far_1 = -s1['sdot'][ptr['iFar']]*F*cat.A_surf/cat.dyInv
+        
+        DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+                        
+        """Calculate the change in X_LiCoO2 in the particle interior"""
+        res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
+        - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
+        *cat.A_surf/cat.eps_ed/cat.V_shell))
+        
+        """Change in electrolyte composition"""
+        res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
+        - (((N_io_m - N_io_p)*cat.dyInv + s1['sdot']*cat.A_surf)
+        /s1['rho_el']/cat.eps_elyte))
+        
+        """Double-layer voltage"""
+        res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
+        - (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)
+        
+        """Algebraic equation for CATHODE electric potential"""
+        res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
+                        
+        return res
+
+# %%
+    """====================================================================="""
+    """==========================Solver Functions==========================="""
+    """====================================================================="""
+
+    def state_events(self, t, y, yd, sw):
+        
+        # Anode events
+        event1 = np.zeros([an.npoints])
+        event2 = np.zeros([an.npoints])
+        event3 = np.zeros([an.npoints*an.nshells])
+        event4 = np.zeros([an.npoints*an.nshells])
+        
+        event1 = y[an.ptr_vec['Phi_dl']]
+        event2 = 5 - y[an.ptr_vec['Phi_dl']]
+        event3 = an.X_Li_max - y[an.ptr_vec['X_ed']]
+        event4 = y[an.ptr_vec['X_ed']] - an.X_Li_min
+            
+        # Cathode events
+        event5 = np.zeros([cat.npoints])
+        event6 = np.zeros([cat.npoints])
+        event7 = np.zeros([cat.npoints*cat.nshells])
+        event8 = np.zeros([cat.npoints*cat.nshells])
+        
+        event5 = y[cat.ptr_vec['Phi_dl']]
+        event6 = 5 - y[cat.ptr_vec['Phi_ed']]
+        event7 = cat.X_Li_max - y[cat.ptr_vec['X_ed']]
+        event8 = y[cat.ptr_vec['X_ed']] - cat.X_Li_min
+               
+        # Electrolyte events
+        event9  = np.zeros([an.npoints*elyte.n_species])
+        event10 = np.zeros([an.npoints*elyte.n_species])
+        event11 = np.zeros([cat.npoints*elyte.n_species])
+        event12 = np.zeros([cat.npoints*elyte.n_species])
+        
+        event9  = 1 - y[an.ptr_vec['X_k_elyte']]
+        event10 = y[an.ptr_vec['X_k_elyte']]
+        event11 = 1 - y[cat.ptr_vec['X_k_elyte']]
+        event12 = y[cat.ptr_vec['X_k_elyte']]
+
+        # Concatenate events into one array
+        events = np.concatenate((event1, event2, event3, event4, 
+                                 event5, event6, event7, event8, 
+                                 event9, event10, event11, event12))
+
+        return events
+
+    """====================================================================="""
+
+    def handle_event(self, solver, event_info):
+        
+        state_info = event_info[0] #We are only interested in state events info
+        event_ptr = {}
+        event_ptr['An_phi1'] = an.npoints
+        event_ptr['An_phi2'] = event_ptr['An_phi1'] + an.npoints
+        event_ptr['An_Xed1'] = event_ptr['An_phi2'] + an.npoints*an.nshells
+        event_ptr['An_Xed2'] = event_ptr['An_Xed1'] + an.npoints*an.nshells
+        
+        event_ptr['Cat_phi1'] = event_ptr['An_Xed2'] + cat.npoints
+        event_ptr['Cat_phi2'] = event_ptr['Cat_phi1'] + cat.npoints
+        event_ptr['Cat_Xed1'] = event_ptr['Cat_phi2'] + cat.npoints*cat.nshells
+        event_ptr['Cat_Xed2'] = event_ptr['Cat_Xed1'] + cat.npoints*cat.nshells
+        
+        event_ptr['An_el1'] = event_ptr['Cat_Xed2'] + an.npoints*elyte.n_species
+        event_ptr['An_el2'] = event_ptr['An_el1'] + an.npoints*elyte.n_species
+        event_ptr['Cat_el1'] = event_ptr['An_el2'] + cat.npoints*elyte.n_species
+        event_ptr['Cat_el2'] = event_ptr['Cat_el1'] + cat.npoints*elyte.n_species
+        
+        if any(state_info[0:event_ptr['An_phi1']]):
+            print('Cutoff: anode double-layer flipped sign')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_phi1']:event_ptr['An_phi2']]):
+            print('Cutoff: anode double-layer blew up')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_phi2']:event_ptr['An_Xed1']]):
+            print('Cutoff: Anode shell fully lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_Xed1']:event_ptr['An_Xed2']]):
+            print('Cutoff: Anode shell fully de-lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_Xed2']:event_ptr['Cat_phi1']]):
+            print('Cutoff: Cathode double layer flipped sign')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_phi1']:event_ptr['Cat_phi2']]):
+            print('Cutoff: Cell potential went over 5 V')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_phi2']:event_ptr['Cat_Xed1']]):
+            print('Cutoff: Cathode shell fully lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_Xed1']:event_ptr['Cat_Xed2']]):
+            print('Cutoff: Cathode shell fully de-lithiated')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['An_el1']:event_ptr['An_el2']]):
+            print('Cutoff: Li+ in electrolyte for anode depleted')
+            raise TerminateSimulation
+        elif any(state_info[event_ptr['Cat_el1']:event_ptr['Cat_el2']]):
+            print('Cutoff: Li+ in electrolyte for cathode depleted')
+            raise TerminateSimulation
+
+    """====================================================================="""
 
 if __name__ == "__main__":
     SV_eq_df, SV_charge_df, SV_req_df, SV_discharge_df = main()

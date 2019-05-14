@@ -91,7 +91,7 @@ class Inputs():
 
     "Anode geometry and transport"
     # Microstructure
-    eps_solid_an = 0.6        # Graphite volume fraction [-]
+    eps_solid_an = 0.6  # Graphite volume fraction [-]
     tau_an = 1.6        # Tortuosity - assume equal values for carbon and elyte [-]
     r_p_an = 5e-6       # Average pore radius [m]
     d_part_an = 5e-6    # Average particle diameter for graphite [m]
@@ -114,25 +114,25 @@ class Inputs():
     D_Li_elyte = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     z_k_elyte = np.array([0., 0., 1., -1.])
 
-    eps_elyte_sep = 0.5      # Separator electrolyte volume fraction
-    tau_sep = 1.6  # Tortuosity of separator
-    sigma_sep = 50.0  # Bulk ionic conductivity of separator [S/m]
+    eps_elyte_sep = 0.5 # Separator electrolyte volume fraction
+    tau_sep = 1.6       # Tortuosity of separator
+    sigma_sep = 50.0    # Bulk ionic conductivity of separator [S/m]
 
     "Cathode geometry and transport"
     # Microstructure:
     eps_solid_ca = 0.5  # LiCoO2 volume fraction [-]
-    tau_ca = 1.6  # Tortuosity - assume equal values for LiCoO2 and elyte [-]
-    r_p_ca = 5e-6     # Average pore radius [m]
-    d_part_ca = 5e-6  # Average particle diameter for LiCoO2 [m]
+    tau_ca = 1.6        # Tortuosity - assume equal values for LiCoO2 and elyte [-]
+    r_p_ca = 5e-6       # Average pore radius [m]
+    d_part_ca = 5e-6    # Average particle diameter for LiCoO2 [m]
     overlap_ca = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
-    H_ca = 25e-6      # Cathode thickness [m]
+    H_ca = 25e-6        # Cathode thickness [m]
 
     # Other parameters:
-    C_dl_ca = 1.5e-2       # Double-layer capacitance [F/m^2]
-    sigma_ca = 7.50    # Bulk cathode electrical conductivity [S/m]
-    D_Li_ca = 7.5e-16  # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
+    C_dl_ca = 1.5e-2    # Double-layer capacitance [F/m^2]
+    sigma_ca = 7.50     # Bulk cathode electrical conductivity [S/m]
+    D_Li_ca = 7.5e-16   # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
     D_Li_cat_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     
 print("Runner check")
