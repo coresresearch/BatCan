@@ -36,8 +36,7 @@ incompressible_solid(name = "electrolyte",
     elements = " C H O Li E F P ",
     species = " O2(e) Li+(e) PF6-(e) EC(e) EMC(e) ",
     density = (1208.2, 'kg/m3'),
-    initial_state 	= state(mole_fractions = 'Li+(e):7.8730103237e-2, PF6-(e):7.8730103237e-2, O2(e):1.2768889032e-4, EC(e):2.8328131770e-1, EMC(e):5.5913078694e-1'))
-
+    initial_state 	= state(mole_fractions = 'O2(e):0.00067635,  Li+(e):0.07868679,  PF6-(e):0.07868679,  EC(e):0.28312595,  EMC(e):0.55882413'))
 
 incompressible_solid(name = "Li2O2",
     elements = " Li O ",
@@ -313,7 +312,7 @@ species(
 #surface_reaction("LiC6 <=> Li(e) + C6", [1.74e-5, 0.0, 0.0], id="int-1")
 edge_reaction("2 Li+(e) + O2(e) + 2 electron <=> Li2O2(b)",   [9.229881810E+67, 0.0, (1e-6, 'kJ/mol')], beta = 0.5, id="cathode-1")
 
-surface_reaction(" O2 <=> O2(e) ", [2.95e-2, 0.0, (0, 'kJ/mol')], id="air_int-1")#[1e21, 0.0, 0.0], id="air_int-1")  #
+surface_reaction(" O2 <=> O2(e) ", [2.95e-2, 0.0, (0, 'kJ/mol')], id="air_int-1")#[1e21, 0.0, 0.0], id="air_int-1")  #2.95e-2
 
 edge_reaction("Li <=> Li+(e) + electron",   [1.3059e-7, 0.0, (1e-6, 'kJ/mol')], beta = 0.5, id="lithium-1")
 
