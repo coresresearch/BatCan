@@ -1,2 +1,2 @@
-# p2d_li_ion_battery
-Pseudo-2D Newman-type model of a Li ion battery
+# BatCan
+Battery--Cantera: Modeling fundamental physical chemistry in batteries using Cantera. 
