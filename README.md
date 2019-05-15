@@ -1,2 +1,2 @@
-# LiO2-Battery
-1 Dimensional Li-O2 Battery model
+# BatCan
+Battery--Cantera: Modeling fundamental physical chemistry in batteries using Cantera. 
