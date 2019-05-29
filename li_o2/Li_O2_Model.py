@@ -11,8 +11,12 @@ cathode of a Li-O2 battery. Electrolyte = 1 M LiTFSI in TEGDME
 # Load any needed modules
 import numpy as np
 import cantera as ct
-from diffusion_coeffs import dst as dst
-from diffusion_coeffs import cst as cst
+
+import sys
+sys.path.append('C:\\Users\\Amy LeBar\\Colorado School of Mines\\Steven DeCaluwe - CORES Research Group\Models\\li_o2_battery\\LeBar\\LiO2-Battery\\BatCan')
+
+from functions.diffusion_coeffs import dst as dst
+from functions.diffusion_coeffs import cst as cst
 
 def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     # Pull phases out of 'objs' inside function
@@ -30,22 +34,30 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     dThetadt = np.zeros_like(SVptr['theta'])
 
     # Pull parameters out of 'params' inside function
-    dyInv = params['dyInv']
-    Ny = params['Ny']
+    i_ext = params['i_ext']
+    T = params['T']
+    Ny_cath = params['Ny_cath']
+    dyInv_cath = params['dyInv_cath']
+    Ny_sep = params['Ny_sep']
+    dyInv_sep = params['dyInv_sep']
     A_int = params['A_int']
     C_dl = params['C_dl']
-    SV_single = params['SV_single']
     E_carb_inv = params['E_carb_inv']
-    T = params['T']
+    E_sep_inv = params['E_sep_inv']
     Zk_elyte = params['Zk_elyte']
+    R_sep = params['R_sep']
+    SV_single_cath = params['SV_single_cath']
+    SV_single_sep = params['SV_single_sep']
 
     W_elyte = elyte.molecular_weights
 
+    " ============================== CATHODE ============================== "
     " --- Pre-loop --- "
     # Set potentials and concentrations for 'next'
     cath_b.electric_potential = 0
     elyte.electric_potential = SV[SVptr['phi']]
     Yk_next = SV[SVptr['elyte']]
+    Xk_next = Yk_next * sum(W_elyte) / W_elyte
     elyte.TDY = T, sum(SV[SVptr['elyte']]), Yk_next
     inter.coverages = SV[SVptr['theta']]
     phi_elyte_next = elyte.electric_potential
@@ -59,11 +71,12 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     # Initialize SV pointer offset
     SV_move = 0
 
-    for j in np.arange(Ny - 1):
+    for j in np.arange(Ny_cath - 1):
         phi_elyte_this = phi_elyte_next
-        phi_elyte_next = SV[SVptr['phi']+SV_move+SV_single]
-        Yk_this = Yk_next
-        Yk_next = SV[SVptr['elyte']+SV_move+SV_single]
+        phi_elyte_next = SV[SVptr['phi']+SV_move+SV_single_cath]
+        Xk_this = Xk_next
+        Yk_next = SV[SVptr['elyte']+SV_move+SV_single_cath]
+        Xk_next = Yk_next * sum(W_elyte) / W_elyte
 
         # Mass transport and ionic current
         u_k = np.zeros_like(Yk_next)
@@ -76,12 +89,13 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
             Dk_elyte = dst(Ck_elyte,params)[0]
             Dk_elyte_mig = dst(Ck_elyte,params)[1]
 
-        u_k = Dk_elyte #/ (ct.gas_constant * T)
-        grad_mu_k = 
-        grad_mu_k = (Yk_next - Yk_this) * dyInv + (Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv)
-#        Nk_bot = -u_k * Ck_elyte * grad_mu_k
+        u_k = Dk_elyte / (ct.gas_constant * T)
+    #    grad_mu_k = (Xk_next - Xk_this) * dyInv_cath + (Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
+    #    Nk_bot = -u_k * Ck_elyte * grad_mu_k
+        Xk_int = 0.5 * (Xk_this + Xk_next)
+    #    Nk_bot = - (Dk_elyte * (Xk_next - Xk_this) / Xk_int + Dk_elyte_mig * (phi_elyte_next - phi_elyte_this)) * dyInv_cath # * params['E_elyte_0']**geom['bruggman']
 
-        Nk_bot = - (Dk_elyte * (Yk_next - Yk_this) / Xk_int + Dk_elyte_mig * (phi_elyte_next - phi_elyte_this)) * dyInv # * params['E_elyte_0']**geom['bruggman']
+        Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk_this) * dyInv_cath + Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
 
         i_io_bot = ct.faraday * sum(Zk_elyte * Nk_bot)
 
@@ -89,28 +103,23 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         i_far = inter.get_net_production_rates(cath_b) * ct.faraday
 
         # Calculate change in double layer potential
-        i_dl = (i_io_top - i_io_bot) * dyInv + i_far*A_int          # double layer current
-        dPhidt = i_dl / (C_dl*A_int)                                # double layer potential
+        i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far*A_int          # double layer current
+        dSVdt[SVptr['phi']+SV_move] = i_dl / (C_dl*A_int)
 
         # Calculate change in electrolyte concentrations
         sdot_int = inter.get_net_production_rates(elyte) * A_int
         sdot_dl = np.zeros_like(sdot_int)
         sdot_dl[ptr['Li+']] = i_dl / (ct.faraday * Zk_elyte[ptr['Li+']])
-        dRhoElytedt = ((Nk_top - Nk_bot) * dyInv + (sdot_int + sdot_dl)) * W_elyte * E_carb_inv
+        dSVdt[SVptr['elyte']+SV_move] = ((Nk_top - Nk_bot) * dyInv_cath + (sdot_int + sdot_dl)) * W_elyte * E_carb_inv
 
         # Calculate change in surface coverages
-        dThetadt = inter.get_net_production_rates(inter) / inter.site_density
+        dSVdt[SVptr['theta']+SV_move] = inter.get_net_production_rates(inter) / inter.site_density
 
-        # Load differential eqns into dSVdt
-        dSVdt[SVptr['phi']+SV_move] = dPhidt                        # double layer potential
-        dSVdt[SVptr['elyte']+SV_move] = dRhoElytedt                 # electrolyte concentration
-        dSVdt[SVptr['theta']+SV_move] = dThetadt                    # particle surface coverages
-
-        # Set next 'top' flux and ionic current as this 'bottom'
+        # Set next 'top' flux and ionic current as current 'bottom'
         Nk_top = Nk_bot
         i_io_top = i_io_bot
 
-        SV_move = SV_move + SV_single                               # new SV offset value
+        SV_move = SV_move + SV_single_cath                               # new SV offset value
 
         # Set potentials and concentrations
         cath_b.electric_potential = 0
@@ -120,7 +129,7 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
 
     " --- Post-loop --- "
     # Mass transport and ionic current at separator BC
-    i_io_bot = params['i_ext']
+    i_io_bot = i_ext
     Nk_bot = np.zeros(elyte.n_species)
     Nk_bot[ptr['Li+']] = i_io_bot / (ct.faraday * Zk_elyte[ptr['Li+']])
 
@@ -128,21 +137,49 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     i_far = inter.get_net_production_rates(cath_b) * ct.faraday
 
     # Calculate change in double layer potential
-    i_dl = (i_io_top - i_io_bot) * dyInv + i_far*A_int              # double layer current
-    dPhidt = i_dl / (C_dl*A_int)                                    # double layer potential
+    i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far*A_int              # double layer current
+    dSVdt[SVptr['phi']+SV_move] = i_dl / (C_dl*A_int)
 
     # Calculate change in electrolyte concentrations
     sdot_int = inter.get_net_production_rates(elyte) * A_int
     sdot_dl = np.zeros_like(sdot_int)
     sdot_dl[ptr['Li+']] = i_dl / (ct.faraday * Zk_elyte[ptr['Li+']])
-    dRhoElytedt = ((Nk_top - Nk_bot) * dyInv + (sdot_int + sdot_dl)) * W_elyte * E_carb_inv
+    dSVdt[SVptr['elyte']+SV_move] = ((Nk_top - Nk_bot) * dyInv_cath + (sdot_int + sdot_dl)) * W_elyte * E_carb_inv
 
     # Calculate change in surface coverages
-    dThetadt = inter.get_net_production_rates(inter) / inter.site_density
+    dSVdt[SVptr['theta']+SV_move] = inter.get_net_production_rates(inter) / inter.site_density
 
-    # Load differentials into dSVdt
-    dSVdt[SVptr['phi']+SV_move] = dPhidt                        # double layer potential
-    dSVdt[SVptr['elyte']+SV_move] = dRhoElytedt                 # electrolyte concentration
-    dSVdt[SVptr['theta']+SV_move] = dThetadt                    # particle surface coverages
+    " ============================== SEPARATOR ============================== "
+    # Initialize SV pointer offset
+    SV_move = SV_move + SV_single_cath
+
+    for j in np.arange(Ny_sep - 1):
+        Nk_top = Nk_bot
+        phi_elyte_this = phi_elyte_next
+        Xk_this = Xk_next
+        Yk_next = SV[SVptr['sep']+SV_move+SV_single_sep]
+        Xk_next = Yk_next * sum(W_elyte) / W_elyte
+
+        phi_elyte_next = phi_elyte_this + R_sep * params['i_ext'] / Ny_sep
+
+        Ck_elyte = elyte.concentrations
+        
+        if params['transport'] == 'cst':
+            Dk_elyte = cst(Ck_elyte,objs,params)[0]
+            Dk_elyte_mig = cst(Ck_elyte,objs,params)[1]
+        if params['transport'] == 'dst':
+            Dk_elyte = dst(Ck_elyte,params)[0]
+            Dk_elyte_mig = dst(Ck_elyte,params)[1]
+        
+        u_k = np.zeros_like(Yk_next)
+        Ck_elyte = elyte.concentrations
+        u_k = Dk_elyte / (ct.gas_constant * T)
+        Xk_int = 0.5 * (Xk_this + Xk_next)
+        Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk_this) * dyInv_cath + Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
+
+        # Calculate change in electrolyte concentrations
+        dSVdt[SVptr['sep']+SV_move] = (Nk_top - Nk_bot) * dyInv_sep * E_sep_inv
+
+        SV_move = SV_move + SV_single_sep
 
     return dSVdt
