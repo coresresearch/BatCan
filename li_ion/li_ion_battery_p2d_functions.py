@@ -48,9 +48,9 @@ def set_state_sep(offset, SV, el, ptr):
 
 """====================================================================="""
 
-def dilute_flux(s1, s2, dyInv, ed):
+def dilute_flux(s1, s2, dyInv, ed, D_k, D_migr_k):
     F = ct.faraday; R = ct.gas_constant; T = Inputs.T
-    
+    z_k = Inputs.z_k_elyte
     # Calculate ionic flux in electrolyte
     # Molar concentration of species k
     C_k = (s2['X_k_el']*s2['rho_el'] + s1['X_k_el']*s1['rho_el'])/2.
@@ -58,8 +58,11 @@ def dilute_flux(s1, s2, dyInv, ed):
     # Total molar concentration in electrolyte
     C_0 = (s2['rho_el'] + s1['rho_el'])/2.
     
-    N_io_p = (-ed.u_Li_elyte*(R*T*C_0*(s2['X_k_el'] - s1['X_k_el'])
-    + Inputs.z_k_elyte*F*C_k*(s2['phi_el'] - s1['phi_el']))*dyInv)
+    N_io_p = (- D_k*C_0*(s2['X_k_el'] - s1['X_k_el'])*dyInv 
+              - D_migr_k*(z_k*F/R/T)*(s2['phi_el'] - s1['phi_el'])*dyInv)
+    
+#    N_io_p = (-ed.u_Li_elyte*(R*T*C_0*(s2['X_k_el'] - s1['X_k_el'])
+#    + Inputs.z_k_elyte*F*C_k*(s2['phi_el'] - s1['phi_el']))*dyInv)
     
     i_io_p = np.dot(N_io_p, Inputs.z_k_elyte)*F
     

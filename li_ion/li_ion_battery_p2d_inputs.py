@@ -30,7 +30,7 @@ class Inputs():
     plot_potential_profiles = 1*plot_profiles_flag  # Plots potential profiles
     plot_electrode_profiles = 1*plot_profiles_flag  # Plots solid phase mole fraction profiles
     plot_elyte_profiles = 1*plot_profiles_flag      # Plots concentration of Li+ in elyte phase
-    plot_cap_flag = 0       # Plots dis/charge capacity curves
+    plot_cap_flag = 1       # Plots dis/charge capacity curves
     
     # Options for plots
     
@@ -51,6 +51,10 @@ class Inputs():
     #   discretization of the electrode particles
     particle_method = 'dr'
     
+    # Set electrolyte transport model to eithe dilute solution ('dst') or
+    #   concentrated solution theory ('cst').
+    elyte_flux_model = 'cst'
+    
     # Simulation temperature (or initial temperature)
     T = 300  # [K]
 
@@ -65,8 +69,8 @@ class Inputs():
 
     "Cantera and CTI file info:"
 #    ctifile = 'lithium_ion_battery_ideal_LCO.cti'
-#    ctifile = 'lithium_ion_battery_updated.cti'
-    ctifile = 'lithium_ion_battery_mod.cti'
+    ctifile = 'lithium_ion_battery_updated.cti'
+#    ctifile = 'lithium_ion_battery_mod.cti'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'
@@ -134,6 +138,46 @@ class Inputs():
     sigma_ca = 7.50     # Bulk cathode electrical conductivity [S/m]
     D_Li_ca = 7.5e-16   # Bulk diffusion coefficient for Li in LiCoO2 [m^2/s]
     D_Li_cat_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
+    
+    "Transport inputs, polynomial fit coefficients, etc."
+    params = {}
+    params['Dk_elyte_o'] = D_Li_elyte
+    params['D_Li_a'] = 8.794e-17  # 8.794e-11
+    params['D_Li_b'] = -3.972e-13 # -3.972e-10
+    params['D_Li_c'] = 4.862e-10
+    params['D_Li_d'] = 0.28687e-6
+    params['D_Li_e'] = 0.74678e-3
+    params['D_Li_f'] = 0.44130
+    params['D_Li_g'] = 0.5508
+    params['D_Li_h'] = 0.4717e-3
+    params['D_Li_i'] = -0.4106e-6
+    params['D_Li_j'] = 0.1287e-9
+    params['D_Li_k'] = 2.0
+    
+    # Electrolyte conductivity (S/dm) taken from:
+    #   A. Nyman, M. Behm, and G. Lindbergh, Electrochim. Acta, 53, 6356 (2008)
+    params['sigma_elyte_a'] = 33.29e-1  # 3.329e-3
+    params['sigma_elyte_b'] = -25.1e-1  # -7.9373e-5
+    params['sigma_elyte_c'] = 1.297e-1  # 0.1297e-9
+    
+    # Liquid activity coefficient taken from:
+    #   A. Nyman, M. Behm, and G. Lindbergh, Electrochim. Acta, 53, 6356 (2008)
+    params['gamma_elyte_a'] = 0.28687  # 2.8687e-7
+    params['gamma_elyte_b'] = -0.74678 # 7.4678e-4
+    params['gamma_elyte_c'] = 0.44103  # 0.44130
+    params['gamma_elyte_d'] = 0.5508
+    params['gamma_elyte_e'] = 0.4717   # 4.717e-4
+    params['gamma_elyte_f'] = -0.4106  # -4.106e-7
+    params['gamma_elyte_g'] = 0.1287   # 1.287e-10
+    
+    params['divCharge'] = 1
+    
+    # t_Li+ (-) taken from:
+    #   A. Nyman, M. Behm, and G. Lindbergh, Electrochim. Acta, 53, 6356 (2008)
+    params['t_elyte_a'] = 0.4492
+    params['t_elyte_b'] = -4.717  # e-4
+    params['t_elyte_c'] = 0.4106  # 4.106e-7
+    params['t_elyte_d'] = -0.1287 # -1.287e-10
     
 print("Runner check")
 

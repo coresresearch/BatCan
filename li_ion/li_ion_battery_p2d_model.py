@@ -47,6 +47,12 @@ from li_ion_battery_p2d_post_process import Label_Columns, tag_strings
 from li_ion_battery_p2d_post_process import plot_potential, plot_electrode, plot_elyte
 from li_ion_battery_p2d_post_process import plot_cap
 
+import sys
+sys.path.append('C:\\Users\\dkorff\\Research\\BatCan-repo\\functions')
+
+import diffusion_coeffs
+transport = getattr(diffusion_coeffs, Inputs.elyte_flux_model)
+
 def main():
     
     SV_0 = solver_inputs.SV_0
@@ -70,8 +76,9 @@ def main():
     rate_tag = str(Inputs.C_rate)+"C"
     
     """----------Figures----------"""
-
-    fig1, axes1, fig2, axes2, fig3, axes3 = setup_plots(plt, rate_tag)
+    
+    if Inputs.plot_profiles_flag:
+        fig1, axes1, fig2, axes2, fig3, axes3 = setup_plots(plt, rate_tag)
         
     for cycle in np.arange(0, Inputs.n_cycles):
         """----------Equilibration----------"""
@@ -260,6 +267,7 @@ def main():
 
 import li_ion_battery_p2d_init
 importlib.reload(li_ion_battery_p2d_init)
+from li_ion_battery_p2d_init import battery as bat
 from li_ion_battery_p2d_init import anode_obj as anode
 from li_ion_battery_p2d_init import anode_surf_obj as anode_s
 from li_ion_battery_p2d_init import elyte_obj as elyte
@@ -278,11 +286,13 @@ class li_ion(Implicit_Problem):
     def res_fun(t, SV, SV_dot):
         """================================================================="""
         """==========================INITIALIZE============================="""
-        offsets = an.offsets; F = ct.faraday
+        offsets = an.offsets; F = ct.faraday; params = bat.cst_params
         
         nSV = len(SV)
         res = np.zeros([nSV])
         i_ext = current.get_i_ext()
+        
+#        elyte_model = solver_inputs.elyte_model
 
 # %%
         """================================================================="""
@@ -320,7 +330,14 @@ class li_ion(Implicit_Problem):
 
             i_el_p = an.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*an.dyInv
             
-            N_io_p, i_io_p = elyte_flux(s1, s2, an.dyInv, an)
+            transport.Dk_el_0 = an.D_el_eff
+            transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+            transport.ptr_el = bat.ptr_el
+            transport.z_k = Inputs.z_k_elyte
+            D_k, D_k_migr = transport.coeffs(elyte, params)
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, an.dyInv, an, D_k, D_k_migr)
 
             i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
 
@@ -366,8 +383,12 @@ class li_ion(Implicit_Problem):
         i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
         
         dyInv_boundary = 1/(0.5*(1/an.dyInv + 1/sep.dyInv))
+        
+        transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+        D_k, D_k_migr = transport.coeffs(elyte, params)
             
-        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an)
+        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
         
         DiffFlux = solid_flux(SV, offset, ptr, s1, an)
     
@@ -407,7 +428,11 @@ class li_ion(Implicit_Problem):
             # Shift back to THIS node
             offset = int(sep.offsets[j-1])
             
-            N_io_p, i_io_p = elyte_flux(s1, s2, sep.dyInv, sep)
+            transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+            D_k, D_k_migr = transport.coeffs(elyte, params)
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, sep.dyInv, sep, D_k, D_k_migr)
         
             """Change in electrolyte composition"""
             res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -434,8 +459,12 @@ class li_ion(Implicit_Problem):
         i_el_p = 0
         
         dyInv_boundary = 1/(0.5*(1/cat.dyInv + 1/sep.dyInv))
+        
+        transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+        D_k, D_k_migr = transport.coeffs(elyte, params)
 
-        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, sep)
+        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, sep, D_k, D_k_migr)
                 
         """Change in electrolyte composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -471,7 +500,11 @@ class li_ion(Implicit_Problem):
             
             i_el_p = cat.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*cat.dyInv
             
-            N_io_p, i_io_p = elyte_flux(s1, s2, cat.dyInv, cat)
+            transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+            D_k, D_k_migr = transport.coeffs(elyte, params)
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, cat.dyInv, cat, D_k, D_k_migr)
             
             i_Far_1 = -s1['sdot'][ptr['iFar']]*F*cat.A_surf/cat.dyInv
             

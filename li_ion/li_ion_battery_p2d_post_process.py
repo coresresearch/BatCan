@@ -233,7 +233,7 @@ def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
     Capacity_discharge = -dt_dch*i_ext/3600   # A-h/m^2
     
     if flag_plot:
-        plt.figure(2, figsize = (8, 6))
+        plt.figure(4, figsize = (8, 6))
         plt.plot(Capacity_charge, V_ch, 'g-')
         plt.plot(Capacity_discharge, V_dch, 'g--')
         plt.title('Potential vs. Capacity', fontsize = fontsize)

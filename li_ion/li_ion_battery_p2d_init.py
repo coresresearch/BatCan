@@ -13,6 +13,11 @@ import li_ion_battery_p2d_inputs
 importlib.reload(li_ion_battery_p2d_inputs)
 from li_ion_battery_p2d_inputs import Inputs
 
+#import sys
+#sys.path.append('C:\\Users\\dkorff\\Research\\BatCan-repo')
+
+#from functions.diffusion_coeffs import elyte_diffusion
+
 # Import Cantera objects:
 anode_obj = ct.Solution(Inputs.ctifile,Inputs.anode_phase)
 elyte_obj = ct.Solution(Inputs.ctifile,Inputs.elyte_phase)
@@ -59,6 +64,24 @@ X_elyte_0 = elyte_obj.X
 """========================================================================="""
 """========================================================================="""
 """========================================================================="""
+
+class battery:
+    
+    # The pointer dictionary created here depends on the structure of the 
+    #   electrolyte object in the CTI file. The default assumption is that
+    #   the organic solvents are the first x number of entries, the lithium
+    #   species is second to last, and the anion species is last
+    ptr_el = {}
+    ptr_el['solvents'] = np.arange(0, elyte_obj.n_species-2)
+    ptr_el['Li'] = elyte_obj.n_species - 2
+    ptr_el['PF6'] = elyte_obj.n_species - 1
+    
+    cst_params = Inputs.params.copy()
+#    for i, name in enumerate(elyte_obj.species_names):
+#        ptr_el[str(name)] = i
+        
+    
+    
 
 class anode():
 
@@ -155,6 +178,8 @@ class anode():
     #   diffusion coefficients:
     u_Li_elyte = (Inputs.D_Li_an_el*eps_elyte/ct.gas_constant
           /Inputs.T/tau_ed**3)
+    
+    D_el_eff = Inputs.D_Li_an_el*eps_elyte/tau_ed**3
 
     def get_tflag():
         return anode.t_flag
@@ -188,6 +213,8 @@ class separator():
     
     u_Li_elyte = (Inputs.D_Li_elyte*eps_elyte/ct.gas_constant
                   /Inputs.T/tau_sep**3)
+    
+    D_el_eff = Inputs.D_Li_elyte*eps_elyte/tau_sep**3
 
     ptr = {}
     ptr['X_k_elyte'] = np.arange(0,elyte_obj.n_species)
@@ -302,6 +329,8 @@ class cathode():
     sigma_eff_ed = Inputs.sigma_ca*eps_ed/tau_ed**3
     u_Li_elyte = (Inputs.D_Li_cat_el*eps_elyte/ct.gas_constant
           /Inputs.T/tau_ed**3)
+    
+    D_el_eff = Inputs.D_Li_cat_el*eps_elyte/tau_ed**3
 
     def get_tflag():
         return cathode.t_flag
@@ -329,7 +358,12 @@ class current():
     elif Inputs.flag_cathode == 0:
         i_ext_set = -Inputs.C_rate*anode.oneC  
 
-class solver_inputs():       
+class solver_inputs():     
+    
+#    if Inputs.elyte_flux_model == 'dst':
+#        elyte_model = elyte_diffusion.dst
+#    elif Inputs.elyte_flux_model == 'cst':
+#        elyte_model = elyte_diffusion.cst
     
     SV_0 = np.zeros([anode.nSV+separator.nSV+cathode.nSV])
     
