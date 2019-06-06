@@ -18,7 +18,7 @@ class dst:
     T_elyte = []
     ptr_el = []
     
-    def coeffs(elyte, params):
+    def coeffs(params):
         Dk_el = dst.Dk_el_0
         Dk_migr_el = dst.Dk_el_0*dst.C_k
         
@@ -32,8 +32,9 @@ class cst:
     C_k = []
     ptr_el = []
     z_k = []
+    rho_bar = []
 
-    def coeffs(elyte, params):
+    def coeffs(params):
         z_k = cst.z_k; C_k = cst.C_k; ptr_el = cst.ptr_el
         C_Li = C_k[cst.ptr_el['Li']]            # Concentration of lithium
         C_sol = C_k[cst.ptr_el['solvents']]     # Concentration of the solvent
@@ -78,7 +79,7 @@ class cst:
                        + params['gamma_elyte_g']*C_Li**3))
                        
         # Diffusional conductivity
-        C = elyte.density_mole
+        C = cst.rho_bar  #.density_mole
         sigma_D = 2*(tk_el[ptr_el['Li']] - 1)*C*thermo_factor/z_k[ptr_el['Li']] \
                 / ct.faraday
 #        sigma_D = (2*ct.gas_constant*elyte.TP[0]*sigma*(tk_el_0 - 1)
