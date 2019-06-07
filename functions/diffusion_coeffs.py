@@ -17,8 +17,9 @@ class dst:
     C_k = []
     T_elyte = []
     ptr_el = []
+    params = []
     
-    def coeffs(params):
+    def coeffs():
         Dk_el = dst.Dk_el_0
         Dk_migr_el = dst.Dk_el_0*dst.C_k
         
@@ -33,9 +34,10 @@ class cst:
     ptr_el = []
     z_k = []
     rho_bar = []
+    params = []
 
-    def coeffs(params):
-        z_k = cst.z_k; C_k = cst.C_k; ptr_el = cst.ptr_el
+    def coeffs():
+        z_k = cst.z_k; C_k = cst.C_k; ptr_el = cst.ptr_el; params = cst.params
         C_Li = C_k[cst.ptr_el['Li']]            # Concentration of lithium
         C_sol = C_k[cst.ptr_el['solvents']]     # Concentration of the solvent
         
@@ -61,8 +63,8 @@ class cst:
         tk_el_0 = (params['t_elyte_a'] + params['t_elyte_b']*C_Li
                  + params['t_elyte_c']*C_Li**2 + params['t_elyte_d']*C_Li**3)
         
+        # Set tk for non-charged species to zero and set t_PF6 to 1 - t_Li
         tk_el = abs(z_k)*((z_k + 1)*tk_el_0/2. - (z_k - 1)*(1 - tk_el_0)/2.)
-#        tk_el = tk_el_0
         
         # Effective conductivity comes out as S/dm, need to multiply by 10 
         sigma = (params['sigma_elyte_a']*C_Li 
@@ -79,12 +81,12 @@ class cst:
                        + params['gamma_elyte_g']*C_Li**3))
                        
         # Diffusional conductivity
-        C = cst.rho_bar  #.density_mole
+        C = cst.rho_bar
         sigma_D = 2*(tk_el[ptr_el['Li']] - 1)*C*thermo_factor/z_k[ptr_el['Li']] \
                 / ct.faraday
 #        sigma_D = (2*ct.gas_constant*elyte.TP[0]*sigma*(tk_el_0 - 1)
 #                * thermo_factor/ct.faraday)
-        
+        # ADD -1 FOR PF6 IN divCharge
         Dk_el = Dk_el + sigma_D*tk_el/C_k/params['divCharge']/ct.faraday
         
         Dk_migr_el = tk_el*sigma/params['divCharge']/ct.faraday

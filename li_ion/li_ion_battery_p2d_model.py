@@ -62,7 +62,7 @@ def main():
     # Close any open pyplot objects:
     plt.close('all')
     
-    atol = np.ones_like(SV_0)*1e-6
+    atol = np.ones_like(SV_0)*1e-8
     rtol = 1e-4   
 
     # Start a timer:
@@ -286,7 +286,7 @@ class li_ion(Implicit_Problem):
     def res_fun(t, SV, SV_dot):
         """================================================================="""
         """==========================INITIALIZE============================="""
-        offsets = an.offsets; F = ct.faraday; params = bat.cst_params
+        offsets = an.offsets; F = ct.faraday; #params = bat.cst_params
         
         nSV = len(SV)
         res = np.zeros([nSV])
@@ -309,6 +309,10 @@ class li_ion(Implicit_Problem):
         
         # Diffusive flux scaling factors
         k = np.arange(0, an.nshells+1)/an.nshells
+        transport.ptr_el = bat.ptr_el
+        transport.z_k = Inputs.z_k_elyte
+        transport.Dk_el_0 = an.D_el_eff
+        transport.params = bat.cst_params
                         
 # %%
         """============================ANODE================================"""
@@ -330,13 +334,10 @@ class li_ion(Implicit_Problem):
 
             i_el_p = an.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*an.dyInv
             
-            transport.Dk_el_0 = an.D_el_eff
             transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
-            transport.ptr_el = bat.ptr_el
-            transport.z_k = Inputs.z_k_elyte
-            transport.rho_bar = elyte.density_mole
-            D_k, D_k_migr = transport.coeffs(params)
+            transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+            D_k, D_k_migr = transport.coeffs()
             
             N_io_p, i_io_p = elyte_flux(s1, s2, an.dyInv, an, D_k, D_k_migr)
 
@@ -391,8 +392,8 @@ class li_ion(Implicit_Problem):
         
         transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
-        transport.rho_bar = elyte.density_mole
-        D_k, D_k_migr = transport.coeffs(params)
+        transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+        D_k, D_k_migr = transport.coeffs()
             
         N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
         
@@ -440,8 +441,8 @@ class li_ion(Implicit_Problem):
             
             transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
-            transport.rho_bar = elyte.density_mole
-            D_k, D_k_migr = transport.coeffs(params)
+            transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+            D_k, D_k_migr = transport.coeffs()
             
             N_io_p, i_io_p = elyte_flux(s1, s2, sep.dyInv, sep, D_k, D_k_migr)
         
@@ -473,8 +474,8 @@ class li_ion(Implicit_Problem):
         
         transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
-        transport.rho_bar = elyte.density_mole
-        D_k, D_k_migr = transport.coeffs(params)
+        transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+        D_k, D_k_migr = transport.coeffs()
 
         N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, sep, D_k, D_k_migr)
                 
@@ -514,8 +515,8 @@ class li_ion(Implicit_Problem):
             
             transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
-            transport.rho_bar = elyte.density_mole
-            D_k, D_k_migr = transport.coeffs(params)
+            transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+            D_k, D_k_migr = transport.coeffs()
             
             N_io_p, i_io_p = elyte_flux(s1, s2, cat.dyInv, cat, D_k, D_k_migr)
             

@@ -42,7 +42,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 1
+    C_rate = 20
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -170,7 +170,7 @@ class Inputs():
     params['gamma_elyte_f'] = -0.4106  # -4.106e-7
     params['gamma_elyte_g'] = 0.1287   # 1.287e-10
     
-    params['divCharge'] = 1
+    params['divCharge'] = np.array([1., 1., 1., -1.])
     
     # t_Li+ (-) taken from:
     #   A. Nyman, M. Behm, and G. Lindbergh, Electrochim. Acta, 53, 6356 (2008)
