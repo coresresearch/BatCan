@@ -62,8 +62,8 @@ def main():
     # Close any open pyplot objects:
     plt.close('all')
     
-    atol = np.ones_like(SV_0)*1e-9
-    rtol = 1e-4    
+    atol = np.ones_like(SV_0)*1e-6
+    rtol = 1e-4   
 
     # Start a timer:
     t_count = time.time()
@@ -342,7 +342,11 @@ class li_ion(Implicit_Problem):
 
             i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
 
-            DiffFlux = solid_flux(SV, offset, ptr, s1, an)
+#            DiffFlux = solid_flux(SV, offset, ptr, s1, an)
+            X_Li = SV[offset + ptr['X_ed']]
+            DiffFlux = np.zeros([an.nshells+1])
+            DiffFlux[1:-1] = an.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/an.dr
+            DiffFlux[-1] = -s1['sdot'][an.ptr['iFar']]/s1['rho_ed']
 
             """Calculate the change in X_LiC6 in the particle interior."""
             res[offset + an.ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
@@ -392,7 +396,11 @@ class li_ion(Implicit_Problem):
             
         N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
         
-        DiffFlux = solid_flux(SV, offset, ptr, s1, an)
+#        DiffFlux = solid_flux(SV, offset, ptr, s1, an)
+        X_Li = SV[offset + ptr['X_ed']]
+        DiffFlux = np.zeros([an.nshells+1])
+        DiffFlux[1:-1] = an.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/an.dr
+        DiffFlux[-1] = -s1['sdot'][an.ptr['iFar']]/s1['rho_ed']
     
         """Calculate the change in X_LiC6 in the particle interior."""
         res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
@@ -513,7 +521,11 @@ class li_ion(Implicit_Problem):
             
             i_Far_1 = -s1['sdot'][ptr['iFar']]*F*cat.A_surf/cat.dyInv
             
-            DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+#            DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+            X_Li = SV[offset + ptr['X_ed']]
+            DiffFlux = np.zeros([cat.nshells+1])
+            DiffFlux[1:-1] = cat.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/cat.dr
+            DiffFlux[-1] = -s1['sdot'][cat.ptr['iFar']]/s1['rho_ed']
 
             """Calculate the change in X_LiCoO2 in the particle interior"""
             res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
@@ -549,7 +561,11 @@ class li_ion(Implicit_Problem):
         
         i_Far_1 = -s1['sdot'][ptr['iFar']]*F*cat.A_surf/cat.dyInv
         
-        DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+#        DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+        X_Li = SV[offset + ptr['X_ed']]
+        DiffFlux = np.zeros([cat.nshells+1])
+        DiffFlux[1:-1] = cat.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/cat.dr
+        DiffFlux[-1] = -s1['sdot'][cat.ptr['iFar']]/s1['rho_ed']
                         
         """Calculate the change in X_LiCoO2 in the particle interior"""
         res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
