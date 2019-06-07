@@ -1,4 +1,3 @@
-
 """
 Author:
 Amy LeBar (20 August 2018)
@@ -6,8 +5,8 @@ Amy LeBar (20 August 2018)
 Li-O2 Battery Model:
 This model examines the reactions taking place within the carbon-based
 cathode of a Li-O2 battery. Electrolyte = 1 M LiTFSI in TEGDME
-
 """
+
 # Load any needed modules
 import numpy as np
 import cantera as ct
@@ -61,6 +60,8 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     elyte.TDY = T, sum(SV[SVptr['elyte']]), Yk_next
     inter.coverages = SV[SVptr['theta']]
     phi_elyte_next = elyte.electric_potential
+
+    print(Li_s.get_net_production_rates(Li_b))
 
     # Mass transport and ionic current at air/elyte BC
     Nk_top = air_elyte.get_net_production_rates(elyte)
@@ -128,7 +129,7 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         elyte.electric_potential = phi_elyte_next
 
     " --- Post-loop --- "
-    # Mass transport and ionic current at separator BC
+    # Molar transport and ionic current at separator BC
     i_io_bot = i_ext
     Nk_bot = np.zeros(elyte.n_species)
     Nk_bot[ptr['Li+']] = i_io_bot / (ct.faraday * Zk_elyte[ptr['Li+']])
@@ -160,7 +161,12 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         Yk_next = SV[SVptr['sep']+SV_move+SV_single_sep]
         Xk_next = Yk_next * sum(W_elyte) / W_elyte
 
+        #i_io_top = ct.faraday * sum(Zk_elyte * Nk_top)
+
         phi_elyte_next = phi_elyte_this + R_sep * params['i_ext'] / Ny_sep
+
+        #phi_elyte_next = phi_elyte_this - (i_io_top + ct.faraday*ct.gas_constant*T*C_elyte * sum(Zk_elyte*u_k*(Xk_next - Xk_this)*dyInv_sep)) \
+        #                 / (ct.faraday**2*dyInv_sep * sum(Zk_elyte**2 * u_k * Ck_elyte))
 
         Ck_elyte = elyte.concentrations
         
@@ -175,11 +181,37 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         Ck_elyte = elyte.concentrations
         u_k = Dk_elyte / (ct.gas_constant * T)
         Xk_int = 0.5 * (Xk_this + Xk_next)
-        Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk_this) * dyInv_cath + Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
+        Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk_this) * dyInv_sep \
+                 + Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv_sep)
 
         # Calculate change in electrolyte concentrations
         dSVdt[SVptr['sep']+SV_move] = (Nk_top - Nk_bot) * dyInv_sep * E_sep_inv
 
+        elyte.TDY = T, sum(SV[SVptr['sep']+SV_move]), SV[SVptr['sep']+SV_move]
+        elyte.electric_potential = phi_elyte_next
+
         SV_move = SV_move + SV_single_sep
+
+    " --- Post-loop --- "
+    # Set next 'top' flux as current 'bottom'
+    Nk_top = Nk_bot
+    
+    # Transport and potential at anode BC (***method that does not work***)
+#    Nk_bot = np.zeros(elyte.n_species)
+#    Nk_bot = Li_s.get_net_production_rates(elyte)
+
+#    i_far = Li_s.get_net_production_rates(elyte)[ptr['Li+']] / ct.faraday
+#    print(i_far)
+#    i_dl = i_ext - i_far
+
+#    dSVdt[SV_move] = i_dl / (C_dl * A_int)
+
+    # Molar transport and ionic current at anode BC (***method that currently works***)
+    i_io_bot = i_ext
+    Nk_bot = np.zeros(elyte.n_species)
+    Nk_bot[ptr['Li+']] = i_io_bot / (ct.faraday * Zk_elyte[ptr['Li+']])
+
+    # Calculate change in electrolyte concentrations
+    dSVdt[SVptr['sep']+SV_move] = (Nk_top - Nk_bot) * dyInv_sep * E_sep_inv
 
     return dSVdt
