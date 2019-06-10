@@ -205,29 +205,35 @@ params['Dk_mig_elyte_o'] = params['Dk_elyte_o'] * Zk_elyte * ct.faraday / ct.gas
 
 # Store solution vector pointers in a common 'SVptr' dict
 SVptr = {}
-SVptr['phi'] = 0                                        # double layer potential in SV
-SVptr['elyte'] = np.arange(1, elyte.n_species + 1)      # cathode electrolyte concentrations in SV
-SVptr['theta'] = np.arange(6, len(inter.X) + 6)         # surface coverage in SV
-SVptr['sep'] = np.arange(0, elyte.n_species)             # separator electrolyte concentrations in SV
+SVptr['phi'] = 0                                                                        # double layer potential in SV
+SVptr['elyte'] = np.arange(1, elyte.n_species + 1)                                      # cathode electrolyte concentrations in SV
+SVptr['theta'] = np.arange(SVptr['elyte'][-1]+1,SVptr['elyte'][-1]+1 + len(inter.X))    # surface coverage in SV
+SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
+SVptr['sep_elyte'] = np.arange(SVptr['sep_phi']+1, SVptr['sep_phi']+1+elyte.n_species)  # separator electrolyte concentrations in SV
 
 # Store plot pointers in a common 'pltptr' dict
 pltptr = {}
-pltptr['O2'] = 1
-pltptr['Li+'] = 2
-pltptr['PF6-'] = 3
-pltptr['EC'] = 4
-pltptr['EMC'] = 5
+pltptr['O2'] = elyte.species_index('O2(e)')
+pltptr['Li+'] = elyte.species_index('Li+(e)')
+pltptr['PF6-'] = elyte.species_index('Pf6-(e)')
+pltptr['EC'] = elyte.species_index('EC(e)')
+pltptr['EMC'] = elyte.species_index('EMC(e)')
 
 # Set inital values
 rho_elyte_init = elyte.Y*elyte.density                              # electrolyte concentrations
 theta_init = [0, 1]                                                 # surface coverages
 SV_single_cath = np.r_[phi_elyte_init,rho_elyte_init,theta_init]    # store in an array
-SV_single_sep = rho_elyte_init                                      # electrolyte concentrations in separator
 SV0_cath = np.tile(SV_single_cath,Ny_cath)                          # tile for discritization
-SV0_sep = np.tile(SV_single_sep,Ny_sep)                             # tile for discritization
-SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
 params['SV_single_cath'] = len(SV_single_cath)                      # put length of single cathode SV into 'params' for indexing
+
+#SV_single_sep = rho_elyte_init
+#SV_elyte = np.tile(SV_single_sep,Ny_sep)
+#SV0_sep = np.r_[SV_elyte,phi_elyte_init]
+SV_single_sep = np.r_[phi_elyte_init,rho_elyte_init]                # electrolyte concentrations and double layer in separator
+SV0_sep = np.tile(SV_single_sep,Ny_sep)                             # tile for discritization
 params['SV_single_sep'] = len(SV_single_sep)                        # put length of single separator SV into 'params' for indexing
+
+SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
 
 # Solve function using IVP solver
 SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])
@@ -254,34 +260,34 @@ for i in range(len(Nplot)):
     plt.legend()
 
     plt.figure(3)
-    plt.plot(SV.t,SV.y[pltptr['Li+']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Li+ Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(4)
-    plt.plot(SV.t,SV.y[pltptr['O2']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['O2']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('O2 Concentration (kg/m3)')
     plt.legend()
 
     plt.figure(5)
-    plt.plot(SV.t,SV.y[pltptr['PF6-']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['PF6-']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('PF6- Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(6)
-    plt.plot(SV.t,SV.y[pltptr['EC']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['EC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EC Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(7)
-    plt.plot(SV.t,SV.y[pltptr['EMC']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['EMC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EMC Concentration (kg/m3)')
     plt.tight_layout()
@@ -293,34 +299,41 @@ for i in range(len(Nplot)):
     SV_move = i * len(SV_single_sep)
     
     plt.figure(8)
-    plt.plot(SV.t,SV.y[pltptr['Li+']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['sep_phi']+SV_move,:],label=i+1)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Double Layer Potential - separator/anode (V)')
+    plt.tight_layout()
+    plt.legend()
+    
+    plt.figure(9)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Li+ Concentration - separator (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
-    plt.figure(9)
-    plt.plot(SV.t,SV.y[pltptr['O2']+SV_move,:],label=i+1)
+    plt.figure(10)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['O2']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('O2 Concentration - separator (kg/m3)')
     plt.legend()
 
-    plt.figure(10)
-    plt.plot(SV.t,SV.y[pltptr['PF6-']+SV_move,:],label=i+1)
+    plt.figure(11)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['PF6-']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('PF6- Concentration - separator (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
-    plt.figure(11)
-    plt.plot(SV.t,SV.y[pltptr['EC']+SV_move,:],label=i+1)
+    plt.figure(12)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['EC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EC Concentration - separator (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
-    plt.figure(12)
-    plt.plot(SV.t,SV.y[pltptr['EMC']+SV_move,:],label=i+1)
+    plt.figure(13)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['EMC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EMC Concentration - separator (kg/m3)')
     plt.tight_layout()
