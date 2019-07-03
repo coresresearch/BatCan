@@ -14,8 +14,9 @@ import cantera as ct
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
-from Li_O2_Model import LiO2_func as func
+from test_model import LiO2_func as func
 
+plt.close('all')
 
 """ BEGIN USER INPUTS """
 "============================================================================"
@@ -32,8 +33,8 @@ atol = 1e-8
 rtol = 1e-6
 
 # Simulation time and external current
-tspan = 3.15e3                                      # [s]
-i_ext = -1e-2                                       # [A/m2]
+tspan = 3.15e5                                      # [s]
+i_ext = -1e-4                                       # [A/m2]
 
 # Model parameters
 Ny_cath = 4                                         # no. cells in cathode
@@ -101,8 +102,11 @@ Li_s = ct.Interface(ctifile,'Li_surface',[Li_b,elyte])
 gas.TP = TP
 air_elyte.TP = TP
 elyte.TP = TP
+oxide.TP = TP
 inter.TP = TP
 cath_b.TP = TP
+Li_b.TP = TP
+Li_s.TP = TP
 
 # Define electrolyte ionic conductivities
 sigma_io = np.zeros_like(elyte.X)
@@ -236,7 +240,7 @@ params['SV_single_sep'] = len(SV_single_sep)                        # put length
 SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
 
 # Solve function using IVP solver
-SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])
+SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])#,max_step=1e-6)
 
 """ Plot solutions to concentrations and potentials """
 "============================================================================"
