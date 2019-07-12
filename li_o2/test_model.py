@@ -55,10 +55,7 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     cath_b.electric_potential = 0
     elyte.electric_potential = SV[SVptr['phi']]
     elyte.TDY = T, sum(SV[SVptr['elyte']]), SV[SVptr['elyte']]
-    Yk_next = elyte.Y
     Xk_next = elyte.X
-#    Yk_next = SV[SVptr['elyte']]
-#    Xk_next = Yk_next * sum(W_elyte) / W_elyte
     inter.coverages = SV[SVptr['theta']]
     phi_elyte_next = elyte.electric_potential
 
@@ -76,13 +73,10 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         phi_elyte_next = SV[SVptr['phi']+SV_move+SV_single_cath]
         Xk_this = Xk_next
         elyte.TDY = T, sum(SV[SVptr['elyte']+SV_move+SV_single_cath]), SV[SVptr['elyte']+SV_move+SV_single_cath]
-        Yk_next = elyte.Y
         Xk_next = elyte.X
-#        Yk_next = SV[SVptr['elyte']+SV_move+SV_single_cath]
-#        Xk_next = Yk_next * sum(W_elyte) / W_elyte
-#
+
         # Mass transport and ionic current
-        u_k = np.zeros_like(Yk_next)
+        u_k = np.zeros_like(Xk_next)
         elyte.TDY = T, sum(SV[SVptr['elyte']+SV_move]), SV[SVptr['elyte']+SV_move]
         Ck_elyte = elyte.concentrations
         
@@ -96,9 +90,14 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         u_k = Dk_elyte / (ct.gas_constant * T)
         Xk_int = 0.5 * (Xk_this + Xk_next)
         
+        # Molar flux out of node
         Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk_this) * dyInv_cath \
                  + Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
 
+#        Nk_bot = -Dk_elyte * ((Xk_next - Xk_this) * dyInv_cath + Ck_elyte * Zk_elyte * ct.faraday \
+#                          / (ct.gas_constant * T) * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
+        
+        # Ionic current out of node
         i_io_bot = ct.faraday * sum(Zk_elyte * Nk_bot)
 
         # Calculate Faradaic current
@@ -156,12 +155,12 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     phi_elyte_next = phi_elyte_this - (i_io_top + ct.faraday*ct.gas_constant*T*C_elyte \
                     * sum(Zk_elyte*u_k*(Xk_next - Xk_this) * dyInv_cath)) \
                     / (ct.faraday**2 *dyInv_cath * sum(Zk_elyte**2 * u_k * Ck_elyte))
-                    
-    print('phi =',phi_elyte_next)
-        
-    Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (-Xk_next + Xk_this) * dyInv_cath \
+                            
+    Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk_this) * dyInv_cath \
             + Zk_elyte * ct.faraday * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
     
+#    Nk_bot = -Dk_elyte * ((Xk_next - Xk_this) * dyInv_cath + Ck_elyte * Zk_elyte * ct.faraday \
+#                          / (ct.gas_constant * T) * (phi_elyte_next - phi_elyte_this) * dyInv_cath)
 #    Nk_bot = np.zeros(elyte.n_species)
 #    Nk_bot[ptr['Li+']] = i_io_bot / (ct.faraday * Zk_elyte[ptr['Li+']])
 

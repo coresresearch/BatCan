@@ -33,7 +33,7 @@ atol = 1e-8
 rtol = 1e-6
 
 # Simulation time and external current
-tspan = 3.15e5                                      # [s]
+tspan = 3e5#3.15e5                                      # [s]
 i_ext = -1e-4                                       # [A/m2]
 
 # Model parameters
