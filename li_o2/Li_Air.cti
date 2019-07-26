@@ -319,4 +319,3 @@ edge_reaction("Li <=> Li+(e) + electron",   [1.3059e-7, 0.0, (1e-6, 'kJ/mol')], 
 surface_reaction("2 electron + O2(e) + 2 Li+(e) + vacancy(s) <=> Li2O2(s)",[5.0e8, 0.0, 0.0], id = "ca_surf-1")
 
 #9.229881810E+37
-

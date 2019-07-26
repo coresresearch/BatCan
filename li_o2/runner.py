@@ -14,7 +14,7 @@ import cantera as ct
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
-from test_model import LiO2_func as func
+from Li_O2_Model import LiO2_func as func
 
 plt.close('all')
 
@@ -33,12 +33,12 @@ atol = 1e-8
 rtol = 1e-6
 
 # Simulation time and external current
-tspan = 3e5#3.15e5                                      # [s]
-i_ext = -1e-4                                       # [A/m2]
+tspan = 183#3.15e5                                        # [s]
+i_ext = 0#-1e-4                                       # [A/m2]
 
 # Model parameters
 Ny_cath = 4                                         # no. cells in cathode
-Ny_sep = 3                                          # no. cells in separator
+Ny_sep = 1                                          # no. cells in separator
 transport = 'dst'                                   # set transport: cst or dst
 
 # Geometric parameters
@@ -233,7 +233,8 @@ params['SV_single_cath'] = len(SV_single_cath)                      # put length
 #SV_single_sep = rho_elyte_init
 #SV_elyte = np.tile(SV_single_sep,Ny_sep)
 #SV0_sep = np.r_[SV_elyte,phi_elyte_init]
-SV_single_sep = np.r_[phi_elyte_init,rho_elyte_init]                # electrolyte concentrations and double layer in separator
+rho_elyte_sep_init = (2.27612708e-04, 5.74355905e-03, 1.19965255e-01, 2.62219071e-01, 6.11844502e-01)
+SV_single_sep = np.r_[0,rho_elyte_sep_init]                # electrolyte concentrations and double layer in separator
 SV0_sep = np.tile(SV_single_sep,Ny_sep)                             # tile for discritization
 params['SV_single_sep'] = len(SV_single_sep)                        # put length of single separator SV into 'params' for indexing
 
