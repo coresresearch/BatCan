@@ -3,7 +3,7 @@ Author:
 Amy LeBar 24 April 2019
 
 Diffusion coefficient function
-Inputs: bulk diffusion coefficents, 
+Inputs: bulk diffusion coefficents,
 
 Outputs: chemical diffusion coefficient (Dk_elyte), and migration term (Dk_mig_elyte)
 """
@@ -12,7 +12,7 @@ import cantera as ct
 import numpy as np
 
 # Dilute Solution Theory (dst)
-def dst(Ck_elyte,params):
+def dst(Ck_elyte,objs,params):
     Dk_elyte = params['Dk_elyte_o']
     Dk_mig_elyte = params['Dk_mig_elyte_o'] * Ck_elyte
 
@@ -45,7 +45,7 @@ def cst(Ck_elyte,objs,params):
     tk_elyte = abs(params['polarity_k']) * \
             ((params['polarity_k'] + 1) * tk_elyte_o/2 - \
             (params['polarity_k'] - 1) * (1 - tk_elyte_o)/2)
-    
+
     # Effective conductivity
     sigma = params['sigma_elyte_a']*C_Li + \
             params['sigma_elyte_b']*C_Li**1.5 + \

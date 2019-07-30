@@ -22,7 +22,7 @@ plt.close('all')
 "============================================================================"
 # Initial values
 phi_elyte_init = -3.19                  # double layer voltage [V]
-theta_init = 0.                         # initial surface coverage [-]
+theta_init = 0.2                         # initial surface coverage [-]
 E_elyte_init = 0.5                      # initial electrolyte volume fraction [-]
 E_oxide_init = 1e-12                    # initial oxide volume fraction [-]
 E_binder_init = 0.                      # initial binder volume fraction [-]
@@ -33,13 +33,14 @@ atol = 1e-8
 rtol = 1e-6
 
 # Simulation time and external current
-tspan = 183#3.15e5                                        # [s]
-i_ext = 0#-1e-4                                       # [A/m2]
+t_ocv = 1e8                                       # [s]
+i_ext = -1e-3                                       # [A/m2]
+tspan = 25e6*1e-6/abs(i_ext)
 
 # Model parameters
-Ny_cath = 4                                         # no. cells in cathode
-Ny_sep = 1                                          # no. cells in separator
-transport = 'dst'                                   # set transport: cst or dst
+Ny_cath = 3                                         # no. cells in cathode
+Ny_sep = 3                                          # no. cells in separator
+transport = 'cst'                                   # set transport: cst or dst
 
 # Geometric parameters
 th_cath = 110e-6                                    # cathode thickness [m]
@@ -212,8 +213,8 @@ SVptr = {}
 SVptr['phi'] = 0                                                                        # double layer potential in SV
 SVptr['elyte'] = np.arange(1, elyte.n_species + 1)                                      # cathode electrolyte concentrations in SV
 SVptr['theta'] = np.arange(SVptr['elyte'][-1]+1,SVptr['elyte'][-1]+1 + len(inter.X))    # surface coverage in SV
-SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
-SVptr['sep_elyte'] = np.arange(SVptr['sep_phi']+1, SVptr['sep_phi']+1+elyte.n_species)  # separator electrolyte concentrations in SV
+#SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
+SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*Ny_cath , (SVptr['theta'][-1]+1)*Ny_cath +elyte.n_species)  # separator electrolyte concentrations in SV
 
 # Store plot pointers in a common 'pltptr' dict
 pltptr = {}
@@ -225,7 +226,7 @@ pltptr['EMC'] = elyte.species_index('EMC(e)')
 
 # Set inital values
 rho_elyte_init = elyte.Y*elyte.density                              # electrolyte concentrations
-theta_init = [0, 1]                                                 # surface coverages
+theta_init = [theta_init, 1-theta_init]                                                 # surface coverages
 SV_single_cath = np.r_[phi_elyte_init,rho_elyte_init,theta_init]    # store in an array
 SV0_cath = np.tile(SV_single_cath,Ny_cath)                          # tile for discritization
 params['SV_single_cath'] = len(SV_single_cath)                      # put length of single cathode SV into 'params' for indexing
@@ -233,14 +234,22 @@ params['SV_single_cath'] = len(SV_single_cath)                      # put length
 #SV_single_sep = rho_elyte_init
 #SV_elyte = np.tile(SV_single_sep,Ny_sep)
 #SV0_sep = np.r_[SV_elyte,phi_elyte_init]
-rho_elyte_sep_init = (2.27612708e-04, 5.74355905e-03, 1.19965255e-01, 2.62219071e-01, 6.11844502e-01)
-SV_single_sep = np.r_[0,rho_elyte_sep_init]                # electrolyte concentrations and double layer in separator
+rho_elyte_sep_init = rho_elyte_init
+SV_single_sep = np.r_[rho_elyte_sep_init]                         # electric potential and species mass densities in separator
 SV0_sep = np.tile(SV_single_sep,Ny_sep)                             # tile for discritization
 params['SV_single_sep'] = len(SV_single_sep)                        # put length of single separator SV into 'params' for indexing
 
 SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
 
-# Solve function using IVP solver
+
+params['i_ext'] = 0.0
+
+SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, t_ocv], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])#,max_step=1e-6)
+
+SV0 = SV.y[:,-1]
+
+#tspan *= 0.00000004
+params['i_ext'] = i_ext
 SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])#,max_step=1e-6)
 
 """ Plot solutions to concentrations and potentials """
@@ -297,19 +306,19 @@ for i in range(len(Nplot)):
     plt.ylabel('EMC Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
-    
+
 Nplot = np.linspace(1,Ny_sep,Ny_sep)
 
 for i in range(len(Nplot)):
     SV_move = i * len(SV_single_sep)
-    
-    plt.figure(8)
+
+    """plt.figure(8)
     plt.plot(SV.t,SV.y[SVptr['sep_phi']+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Double Layer Potential - separator/anode (V)')
     plt.tight_layout()
-    plt.legend()
-    
+    plt.legend()"""
+
     plt.figure(9)
     plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
@@ -330,7 +339,7 @@ for i in range(len(Nplot)):
     plt.tight_layout()
     plt.legend()
 
-    plt.figure(12)
+    """plt.figure(12)
     plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['EC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EC Concentration - separator (kg/m3)')
@@ -342,6 +351,6 @@ for i in range(len(Nplot)):
     plt.xlabel('Time (s)')
     plt.ylabel('EMC Concentration - separator (kg/m3)')
     plt.tight_layout()
-    plt.legend()
+    plt.legend()"""
 
 plt.show()

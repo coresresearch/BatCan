@@ -50,7 +50,8 @@ ideal_interface(
 	species	= " Li2O2(s) vacancy(s) ",
 	reactions	= "ca_surf-*",
 	site_density = (3.01e+14,'molec/cm2'),
-	phases	= "electrolyte graphite"
+	phases	= "electrolyte graphite",
+	initial_state 	= state( mole_fractions = 'Li2O2(s):0.2, vacancy(s):0.8' )
 	)
 
 ideal_interface(
@@ -310,12 +311,12 @@ species(
 #  Reaction data 
 #-------------------------------------------------------------------------------
 #surface_reaction("LiC6 <=> Li(e) + C6", [1.74e-5, 0.0, 0.0], id="int-1")
-edge_reaction("2 Li+(e) + O2(e) + 2 electron <=> Li2O2(b)",   [9.229881810E+67, 0.0, (1e-6, 'kJ/mol')], beta = 0.5, id="cathode-1")
+edge_reaction("2 Li+(e) + O2(e) + 2 electron <=> Li2O2(b)",   [9.229881810E+17, 0.0, (1e-6, 'kJ/mol')], beta = 0.5, id="cathode-1")
 
-surface_reaction(" O2 <=> O2(e) ", [2.95e-2, 0.0, (0, 'kJ/mol')], id="air_int-1")#[1e21, 0.0, 0.0], id="air_int-1")  #2.95e-2
+surface_reaction(" O2 <=> O2(e) ", [2.95e12, 0.0, (0, 'kJ/mol')], id="air_int-1")#[1e21, 0.0, 0.0], id="air_int-1")  #2.95e-2
 
 edge_reaction("Li <=> Li+(e) + electron",   [1.3059e-7, 0.0, (1e-6, 'kJ/mol')], beta = 0.5, id="lithium-1")
 
-surface_reaction("2 electron + O2(e) + 2 Li+(e) + vacancy(s) <=> Li2O2(s)",[5.0e8, 0.0, 0.0], id = "ca_surf-1")
+surface_reaction("2 electron + O2(e) + 2 Li+(e) + vacancy(s) <=> Li2O2(s)",[5.0e28, 0.0, 0.0], id = "ca_surf-1")
 
 #9.229881810E+37
