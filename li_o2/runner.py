@@ -34,8 +34,8 @@ rtol = 1e-6
 
 # Simulation time and external current
 t_ocv = 1e8                                       # [s]
-i_ext = -1e-3                                       # [A/m2]
-tspan = 25e6*1e-6/abs(i_ext)
+i_ext = -1e-5                                       # [A/m2]
+tspan = 25e6*9e-3/abs(i_ext)
 
 # Model parameters
 Ny_cath = 3                                         # no. cells in cathode
@@ -58,7 +58,7 @@ A_oxide = np.pi * d_oxide**2 / 4                    # oxide area contacting carb
 V_oxide = 2/3 * np.pi * (d_oxide/2)**2 * th_oxide   # oxide volume [m3]
 A_grid = 6.65e-18                                   # area per grid [m2]
 A_int_grid = E_carbon * A_grid /V_part              # grid area per volume [m2/m3]
-E_carb = 0.8                                        # carbon paper porosity
+E_carb = 0.2                                        # carbon paper porosity
 E_carb_inv = 1 / E_carb                             # inverse of carbon porosity
 E_sep = 0.9                                         # separator porosity
 E_sep_inv = 1 / E_sep                               # inverse of separator porosity
@@ -94,6 +94,7 @@ gas = ct.Solution(ctifile,'air')
 cath_b = ct.Solution(ctifile,'graphite')
 elyte = ct.Solution(ctifile,'electrolyte')
 oxide = ct.Solution(ctifile,'Li2O2')
+tpb = ct.Interface(ctifile,'cathode_tpb',[elyte, oxide, cath_b])
 inter = ct.Interface(ctifile,'cathode_surf',[elyte,cath_b])
 air_elyte = ct.Interface(ctifile,'air_elyte',[gas,elyte])
 Li_b = ct.Solution(ctifile,'Lithium')
@@ -105,6 +106,7 @@ air_elyte.TP = TP
 elyte.TP = TP
 oxide.TP = TP
 inter.TP = TP
+tpb.TP = TP
 cath_b.TP = TP
 Li_b.TP = TP
 Li_s.TP = TP
@@ -121,6 +123,7 @@ objs['cath_b'] = cath_b
 objs['elyte'] = elyte
 objs['oxide'] = oxide
 objs['inter'] = inter
+objs['tpb'] = tpb
 objs['air_elyte'] = air_elyte
 objs['Li_b'] = Li_b
 objs['Li_s'] = Li_s
@@ -149,11 +152,14 @@ params['Ny_sep'] = Ny_sep
 params['dyInv_sep'] = dyInv_sep
 params['A_int'] = A_int
 params['C_dl'] = C_dl
+params['E_carb'] = E_carb
 params['E_carb_inv'] = E_carb_inv
 params['E_sep_inv'] = E_sep_inv
 params['Zk_elyte'] = Zk_elyte
 params['R_sep'] = R_sep
 params['transport'] = transport
+params['r_oxide'] = 0.5*d_oxide
+params['molar_vol oxide'] = 45.881*.001 / 2.31 # Molar volume of Li2O2 [m3/kmol]
 
 # CST Parameters:
 params['D_Li_a'] = 8.794e-17
@@ -211,10 +217,11 @@ params['Dk_mig_elyte_o'] = params['Dk_elyte_o'] * Zk_elyte * ct.faraday / ct.gas
 # Store solution vector pointers in a common 'SVptr' dict
 SVptr = {}
 SVptr['phi'] = 0                                                                        # double layer potential in SV
-SVptr['elyte'] = np.arange(1, elyte.n_species + 1)                                      # cathode electrolyte concentrations in SV
-SVptr['theta'] = np.arange(SVptr['elyte'][-1]+1,SVptr['elyte'][-1]+1 + len(inter.X))    # surface coverage in SV
+SVptr['elyte'] = np.arange(1, elyte.n_species + 1)
+SVptr['E_oxide'] = SVptr['elyte'][-1]+1                                    # cathode electrolyte concentrations in SV
+#SVptr['theta'] = np.arange(SVptr['elyte'][-1]+1,SVptr['elyte'][-1]+1 + len(inter.X))    # surface coverage in SV
 #SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
-SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*Ny_cath , (SVptr['theta'][-1]+1)*Ny_cath +elyte.n_species)  # separator electrolyte concentrations in SV
+#SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*Ny_cath , (SVptr['theta'][-1]+1)*Ny_cath +elyte.n_species)  # separator electrolyte concentrations in SV
 
 # Store plot pointers in a common 'pltptr' dict
 pltptr = {}
@@ -226,8 +233,9 @@ pltptr['EMC'] = elyte.species_index('EMC(e)')
 
 # Set inital values
 rho_elyte_init = elyte.Y*elyte.density                              # electrolyte concentrations
-theta_init = [theta_init, 1-theta_init]                                                 # surface coverages
-SV_single_cath = np.r_[phi_elyte_init,rho_elyte_init,theta_init]    # store in an array
+#theta_init = [theta_init, 1-theta_init]                                                 # surface coverages
+
+SV_single_cath = np.r_[phi_elyte_init,rho_elyte_init,E_oxide_init]    # store in an array
 SV0_cath = np.tile(SV_single_cath,Ny_cath)                          # tile for discritization
 params['SV_single_cath'] = len(SV_single_cath)                      # put length of single cathode SV into 'params' for indexing
 
@@ -239,8 +247,8 @@ SV_single_sep = np.r_[rho_elyte_sep_init]                         # electric pot
 SV0_sep = np.tile(SV_single_sep,Ny_sep)                             # tile for discritization
 params['SV_single_sep'] = len(SV_single_sep)                        # put length of single separator SV into 'params' for indexing
 
-SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
-
+#SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
+SV0 = SV0_cath
 
 params['i_ext'] = 0.0
 
@@ -248,7 +256,6 @@ SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, t_ocv], SV
 
 SV0 = SV.y[:,-1]
 
-#tspan *= 0.00000004
 params['i_ext'] = i_ext
 SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])#,max_step=1e-6)
 
@@ -267,9 +274,9 @@ for i in range(len(Nplot)):
     plt.legend()
 
     plt.figure(2)
-    plt.plot(SV.t,SV.y[SVptr['theta'][0]+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['E_oxide']+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
-    plt.ylabel('Li2O2 Surface Coverage')
+    plt.ylabel('Li2O2 Volume Fraction')
     plt.tight_layout()
     plt.legend()
 
@@ -293,7 +300,7 @@ for i in range(len(Nplot)):
     plt.tight_layout()
     plt.legend()
 
-    plt.figure(6)
+    """plt.figure(6)
     plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['EC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EC Concentration (kg/m3)')
@@ -305,19 +312,19 @@ for i in range(len(Nplot)):
     plt.xlabel('Time (s)')
     plt.ylabel('EMC Concentration (kg/m3)')
     plt.tight_layout()
-    plt.legend()
+    plt.legend()"""
 
 Nplot = np.linspace(1,Ny_sep,Ny_sep)
 
-for i in range(len(Nplot)):
+"""for i in range(len(Nplot)):
     SV_move = i * len(SV_single_sep)
 
-    """plt.figure(8)
+    plt.figure(8)
     plt.plot(SV.t,SV.y[SVptr['sep_phi']+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Double Layer Potential - separator/anode (V)')
     plt.tight_layout()
-    plt.legend()"""
+    plt.legend()
 
     plt.figure(9)
     plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
@@ -339,7 +346,7 @@ for i in range(len(Nplot)):
     plt.tight_layout()
     plt.legend()
 
-    """plt.figure(12)
+    plt.figure(12)
     plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['EC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EC Concentration - separator (kg/m3)')

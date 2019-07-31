@@ -28,6 +28,7 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     elyte = objs['elyte']
     oxide = objs['oxide']
     inter = objs['inter']
+    tpb = objs['tpb']
     air_elyte = objs['air_elyte']
     Li_b = objs['Li_b']
     Li_s = objs['Li_s']
@@ -47,7 +48,7 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     E_carb_inv = params['E_carb_inv']
     E_sep_inv = params['E_sep_inv']
 
-    A_int = params['A_int']
+    #A_int = params['A_int']
     C_dl = params['C_dl']
     R_sep = params['R_sep']
 
@@ -69,7 +70,11 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     elyte.TDY = T, rho, SV[SVptr['elyte']]/rho
     Xk_next = elyte.X
     Ck_next = elyte.concentrations
-    inter.coverages = abs(SV[SVptr['theta']])
+    #inter.coverages = abs(SV[SVptr['theta']])
+
+    E_oxide_next = SV[SVptr['E_oxide']]
+
+    E_elyte_next = 1. - params['E_carb'] - E_oxide_next
 
     # Mass transport and ionic current at air/elyte BC
     Nk_top = air_elyte.get_net_production_rates(elyte)
@@ -85,12 +90,20 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         phi_elyte_next = SV[SVptr['phi']+SV_move+SV_single_cath]
         Xk_this = Xk_next
         Ck_this = Ck_next
+        E_elyte_this = E_elyte_next
+        E_oxide_this = E_oxide_next
+
+        # Area of oxide surface per unit volume:
+        A_oxide = 3.*E_oxide_this/params['r_oxide']
+
+        # Area of carbon surface per unit volume:
+        A_carb = params['A_int'] - E_oxide_this*1.5/params['r_oxide']
 
         # Calculate chemical production terms:
-        i_far = inter.get_net_production_rates(cath_b) * ct.faraday
-        sdot_elyte_int = inter.get_net_production_rates(elyte) * A_int
+        i_far = tpb.get_net_production_rates(cath_b) * ct.faraday * A_carb
+        sdot_elyte_int = tpb.get_net_production_rates(elyte) * A_carb
         sdot_elyte_dl = np.zeros_like(sdot_elyte_int)
-        sdot_surf = inter.get_net_production_rates(inter)
+        sdot_oxide = tpb.get_net_production_rates(oxide) * A_carb
 
         # Elyte state for 'next node'
         rho = abs(sum(SV[SVptr['elyte']+SV_move+SV_single_cath]))
@@ -104,10 +117,8 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         Dk_elyte = diff_coeffs(Ck_int, objs, params)
 
         Nk_bot = -(Dk_elyte[0] * (Ck_next - Ck_this) + \
-            Dk_elyte[1] * (phi_elyte_next - phi_elyte_this)) * dyInv_cath / \
-            E_carb_inv**geom['bruggman']
-
-        #print(j,Nk_bot)
+            Dk_elyte[1] * (phi_elyte_next - phi_elyte_this)) * dyInv_cath * \
+            E_elyte_this**geom['bruggman']
 
         # Ionic current out of node
         i_io_bot = ct.faraday * sum(Zk_elyte * Nk_bot)
@@ -115,16 +126,17 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         #elyte.TDY = T, sum(SV[SVptr['elyte']+SV_move]), SV[SVptr['elyte']+SV_move]
 
         # Calculate change in double layer potential
-        i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far*A_int          # double layer current
-        dSVdt[SVptr['phi']+SV_move] = i_dl / (C_dl*A_int)
+        i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far#*A_int          # double layer current
+        dSVdt[SVptr['phi']+SV_move] = i_dl / (C_dl*A_carb)
 
         # Calculate change in electrolyte concentrations
         sdot_elyte_dl[ptr['Li+']] = -i_dl / (ct.faraday * Zk_elyte[ptr['Li+']])
         dSVdt[SVptr['elyte']+SV_move] = ((Nk_top - Nk_bot) * dyInv_cath \
-                                        + (sdot_elyte_int + sdot_elyte_dl)) * W_elyte * E_carb_inv
+                                        + (sdot_elyte_int + sdot_elyte_dl)) * W_elyte / E_elyte_this
 
         # Calculate change in surface coverages
-        dSVdt[SVptr['theta']+SV_move] = sdot_surf/inter.site_density
+        dSVdt[SVptr['E_oxide']+SV_move] = params['molar_vol oxide']*sdot_oxide
+        #dSVdt[SVptr['theta']+SV_move] = sdot_surf/inter.site_density
 
         # Set next 'top' flux and ionic current as current 'bottom'
         Nk_top = Nk_bot
@@ -135,9 +147,12 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
         # Set potentials and concentrations for 'next' node
         cath_b.electric_potential = 0.
         #elyte.TDY = T, sum(SV[SVptr['elyte']+SV_move]), SV[SVptr['elyte']+SV_move]
-        coverages = abs(SV[SVptr['theta']+SV_move])
-        inter.coverages = coverages#SV[SVptr['theta']+SV_move]
+        #coverages = abs(SV[SVptr['theta']+SV_move])
+        #inter.coverages = coverages#SV[SVptr['theta']+SV_move]
         elyte.electric_potential = phi_elyte_next
+
+        E_oxide_next = SV[SVptr['E_oxide']+SV_move]
+        E_elyte_next = 1. - params['E_carb'] - E_oxide_next
 
     " --- Post-loop --- "
     # Set previous 'next' as current 'this'
@@ -145,67 +160,43 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
     # Read out reaction terms, before setting electrolyte object state to that
     #   of the first separator node:
 
-    # Calculate Faradaic current
-    i_far = inter.get_net_production_rates(cath_b) * ct.faraday
-
-    # Production rate of electrolyte species:
-    sdot_elyte_int = inter.get_net_production_rates(elyte) * A_int
-    sdot_elyte_dl = np.zeros_like(sdot_elyte_int)
-
-    # Production rate of surface species:
-    sdot_surf = inter.get_net_production_rates(inter)
-
     phi_elyte_this = phi_elyte_next
     Xk_this = Xk_next
     Ck_this = Ck_next
+    E_elyte_this = E_elyte_next
+    E_oxide_this = E_oxide_next
 
-    elyte.TDY = T, abs(sum(SV[SVptr['sep_elyte']])), SV[SVptr['sep_elyte']]/abs(sum(SV[SVptr['sep_elyte']]))
-    Xk_next = elyte.X
-    Ck_next = elyte.concentrations
+    # Area of oxide surface per unit volume:
+    A_oxide = 3.*E_oxide_this/params['r_oxide']
 
-    elyte.TDY = T, abs(sum(SV[SVptr['elyte']+SV_move])), SV[SVptr['elyte']+SV_move]/abs(sum(SV[SVptr['elyte']+SV_move]))
+    # Area of carbon surface per unit volume:
+    A_carb = params['A_int'] - E_oxide_this*1.5/params['r_oxide']
 
-    # Molar transport and ionic current at separator BC
+    # Calculate Faradaic current
+    i_far = tpb.get_net_production_rates(cath_b) * A_carb * ct.faraday
+
+    # Production rate of electrolyte species:
+    sdot_elyte_int = tpb.get_net_production_rates(elyte) * A_carb
+    sdot_elyte_dl = np.zeros_like(sdot_elyte_int)
+    sdot_oxide = tpb.get_net_production_rates(oxide) * A_carb
+
     i_io_bot = i_ext
-
-    """Ck_int = (Ck_this/dyInv_cath + Ck_next/dyInv_sep)/(1./dyInv_cath + 1./dyInv_sep)
-
-    Dk_elyte = diff_coeffs(Ck_int, objs, params)
-
-    dyInv = 2./(1./dyInv_cath + 1./dyInv_sep)
-    E_inv = (1./dyInv_cath + 1./dyInv_sep)/(1./(E_carb_inv*dyInv_cath) + 1./(E_sep_inv*dyInv_sep))
-
-    dCk = (Ck_next - Ck_this)# * dyInv
-#    phi_elyte_next = phi_elyte_this + \
-#         (-(i_io_bot + ct.faraday*sum(Zk_elyte*(Dk_elyte[0]*dCk / (E_inv**geom['bruggman'])))) / \
-#         (-ct.faraday*sum(Zk_elyte*Dk_elyte[1]*dyInv / (E_inv**geom['bruggman']))))
-
-    phi_elyte_next = phi_elyte_this - \
-        (i_io_bot*E_inv**geom['bruggman']/(dyInv*ct.faraday) + sum(Zk_elyte*Dk_elyte[0]*dCk))/sum(Zk_elyte*Dk_elyte[1])
-
-
-    Nk_bot = -(Dk_elyte[0] * (Ck_next - Ck_this) + \
-            Dk_elyte[1] * (phi_elyte_next - phi_elyte_this))* dyInv / \
-            (E_inv**geom['bruggman'])
-
-    print(Nk_bot)
-
-    i_io_bot_check = ct.faraday * sum(Zk_elyte * Nk_bot)"""
 
     Nk_bot = np.zeros_like(Nk_top)
     Nk_bot[ptr['Li+']] = i_io_bot / (ct.faraday * Zk_elyte[ptr['Li+']])
 
     # Calculate change in double layer potential
-    i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far*A_int              # double layer current
-    dSVdt[SVptr['phi']+SV_move] = i_dl / (C_dl*A_int)
+    i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far#*A_carb              # double layer current
+    dSVdt[SVptr['phi']+SV_move] = i_dl / (C_dl*A_carb)
 
     # Calculate change in electrolyte concentrations
     sdot_elyte_dl[ptr['Li+']] = -i_dl / (ct.faraday * Zk_elyte[ptr['Li+']])
     dSVdt[SVptr['elyte']+SV_move] = ((Nk_top - Nk_bot) * dyInv_cath + \
-                                    (sdot_elyte_int + sdot_elyte_dl)) * W_elyte * E_carb_inv
+                                    (sdot_elyte_int + sdot_elyte_dl)) * W_elyte / E_elyte_this
 
-    # Calculate change in surface coverages
-    dSVdt[SVptr['theta']+SV_move] = sdot_surf/ inter.site_density
+
+    dSVdt[SVptr['E_oxide']+SV_move] = params['molar_vol oxide']*sdot_oxide
+
 
     " ======================================== SEPARATOR ======================================== "
     # Initialize SV pointer offset for separator
