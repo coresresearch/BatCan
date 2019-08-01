@@ -16,12 +16,13 @@ from scipy.integrate import solve_ivp
 
 from Li_O2_Model import LiO2_func as func
 
+plt.close('all')
 
 """ BEGIN USER INPUTS """
 "============================================================================"
 # Initial values
 phi_elyte_init = -3.19                  # double layer voltage [V]
-theta_init = 0.                         # initial surface coverage [-]
+theta_init = 0.2                         # initial surface coverage [-]
 E_elyte_init = 0.5                      # initial electrolyte volume fraction [-]
 E_oxide_init = 1e-12                    # initial oxide volume fraction [-]
 E_binder_init = 0.                      # initial binder volume fraction [-]
@@ -32,18 +33,21 @@ atol = 1e-8
 rtol = 1e-6
 
 # Simulation time and external current
-tspan = 3.15e3                                      # [s]
-i_ext = -1e-2                                       # [A/m2]
+t_ocv = 1e8                                       # [s]
+i_ext = -1e-5                                       # [A/m2]
+tspan = 25e6*9e-3/abs(i_ext)
 
 # Model parameters
-Nx = 1                                              # 1D model
-Ny = 4                                              # no. cells in the y-direction
-Nvars = 3                                           # no. of variables
-transport = 'dst'                                   # set transport: cst or dst
+Ny_cath = 3                                         # no. cells in cathode
+Ny_sep = 3                                          # no. cells in separator
+transport = 'cst'                                   # set transport: cst or dst
 
 # Geometric parameters
-th_ca = 110e-6                                      # cathode thickness [m]
-dyInv = Ny/th_ca                                    # inverse dy [1/m]
+th_cath = 110e-6                                    # cathode thickness [m]
+dyInv_cath = Ny_cath / th_cath                      # inverse cathode discritization [1/m]
+th_sep = 1.55e-3                                    # separator thickness [m]
+dyInv_sep = Ny_sep / th_sep                         # inverse separator discritization [1/m]
+R_sep = 3.7 * ((20e-3)**2*np.pi/4)                  # separator resistance (Ohm*m2)
 d_part = 10e-6                                      # carbon particle diameter [m]
 d_oxide = 2e-6                                      # oxide particle diameter [m]
 th_oxide = 0.5e-6                                   # thickness of oxide ellipsoid [m]
@@ -54,10 +58,12 @@ A_oxide = np.pi * d_oxide**2 / 4                    # oxide area contacting carb
 V_oxide = 2/3 * np.pi * (d_oxide/2)**2 * th_oxide   # oxide volume [m3]
 A_grid = 6.65e-18                                   # area per grid [m2]
 A_int_grid = E_carbon * A_grid /V_part              # grid area per volume [m2/m3]
-E_carb = 0.8                                        # carbon paper porosity
-E_carb_inv = 1/E_carb                               # inverse of carbon porosity
+E_carb = 0.2                                        # carbon paper porosity
+E_carb_inv = 1 / E_carb                             # inverse of carbon porosity
+E_sep = 0.9                                         # separator porosity
+E_sep_inv = 1 / E_sep                               # inverse of separator porosity
 
-# Load geometric paramters in 'geom' dictionary
+# Load geometric parameters in 'geom' dictionary
 geom = {}
 geom['bruggman'] = 1.5
 geom['tau_cath'] = E_carb / (E_carb**(1+geom['bruggman']))
@@ -88,6 +94,7 @@ gas = ct.Solution(ctifile,'air')
 cath_b = ct.Solution(ctifile,'graphite')
 elyte = ct.Solution(ctifile,'electrolyte')
 oxide = ct.Solution(ctifile,'Li2O2')
+tpb = ct.Interface(ctifile,'cathode_tpb',[elyte, oxide, cath_b])
 inter = ct.Interface(ctifile,'cathode_surf',[elyte,cath_b])
 air_elyte = ct.Interface(ctifile,'air_elyte',[gas,elyte])
 Li_b = ct.Solution(ctifile,'Lithium')
@@ -97,8 +104,12 @@ Li_s = ct.Interface(ctifile,'Li_surface',[Li_b,elyte])
 gas.TP = TP
 air_elyte.TP = TP
 elyte.TP = TP
+oxide.TP = TP
 inter.TP = TP
+tpb.TP = TP
 cath_b.TP = TP
+Li_b.TP = TP
+Li_s.TP = TP
 
 # Define electrolyte ionic conductivities
 sigma_io = np.zeros_like(elyte.X)
@@ -112,6 +123,7 @@ objs['cath_b'] = cath_b
 objs['elyte'] = elyte
 objs['oxide'] = oxide
 objs['inter'] = inter
+objs['tpb'] = tpb
 objs['air_elyte'] = air_elyte
 objs['Li_b'] = Li_b
 objs['Li_s'] = Li_s
@@ -134,13 +146,20 @@ params['E_elyte_0'] = E_elyte_init
 params['sigma'] = sigma_io
 params['rtol'] = rtol
 params['atol'] = atol
-params['Ny'] = Ny
-params['dyInv'] = dyInv
+params['Ny_cath'] = Ny_cath
+params['dyInv_cath'] = dyInv_cath
+params['Ny_sep'] = Ny_sep
+params['dyInv_sep'] = dyInv_sep
 params['A_int'] = A_int
 params['C_dl'] = C_dl
+params['E_carb'] = E_carb
 params['E_carb_inv'] = E_carb_inv
+params['E_sep_inv'] = E_sep_inv
 params['Zk_elyte'] = Zk_elyte
+params['R_sep'] = R_sep
 params['transport'] = transport
+params['r_oxide'] = 0.5*d_oxide
+params['molar_vol oxide'] = 45.881*.001 / 2.31 # Molar volume of Li2O2 [m3/kmol]
 
 # CST Parameters:
 params['D_Li_a'] = 8.794e-17
@@ -197,34 +216,55 @@ params['Dk_mig_elyte_o'] = params['Dk_elyte_o'] * Zk_elyte * ct.faraday / ct.gas
 
 # Store solution vector pointers in a common 'SVptr' dict
 SVptr = {}
-SVptr['phi'] = 0                                        # double layer potential in solution vector SV
-SVptr['elyte'] = np.arange(1, elyte.n_species + 1)      # electrolyte densities in solution vector SV
-SVptr['theta'] = np.arange(6, len(inter.X) + 6)         # surface coverage in SV
+SVptr['phi'] = 0                                                                        # double layer potential in SV
+SVptr['elyte'] = np.arange(1, elyte.n_species + 1)
+SVptr['E_oxide'] = SVptr['elyte'][-1]+1                                    # cathode electrolyte concentrations in SV
+#SVptr['theta'] = np.arange(SVptr['elyte'][-1]+1,SVptr['elyte'][-1]+1 + len(inter.X))    # surface coverage in SV
+#SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
+#SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*Ny_cath , (SVptr['theta'][-1]+1)*Ny_cath +elyte.n_species)  # separator electrolyte concentrations in SV
 
 # Store plot pointers in a common 'pltptr' dict
 pltptr = {}
-pltptr['O2'] = 1
-pltptr['Li+'] = 2
-pltptr['PF6-'] = 3
-pltptr['EC'] = 4
-pltptr['EMC'] = 5
+pltptr['O2'] = elyte.species_index('O2(e)')
+pltptr['Li+'] = elyte.species_index('Li+(e)')
+pltptr['PF6-'] = elyte.species_index('Pf6-(e)')
+pltptr['EC'] = elyte.species_index('EC(e)')
+pltptr['EMC'] = elyte.species_index('EMC(e)')
 
 # Set inital values
-rho_elyte_init = elyte.Y*elyte.density                          # electrolyte concentrations
-theta_init = [0, 1]                                             # surface coverages
-SV_single = np.r_[phi_elyte_init,rho_elyte_init,theta_init]     # store in an array
-SV_0 = np.tile(SV_single,Ny)
-params['SV_single'] = len(SV_single)                            # put length of single SV into 'params' for indexing
+rho_elyte_init = elyte.Y*elyte.density                              # electrolyte concentrations
+#theta_init = [theta_init, 1-theta_init]                                                 # surface coverages
 
-# Solve function using IVP solver
-SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], SV_0, method='BDF',atol=params['atol'],rtol=params['rtol'])
+SV_single_cath = np.r_[phi_elyte_init,rho_elyte_init,E_oxide_init]    # store in an array
+SV0_cath = np.tile(SV_single_cath,Ny_cath)                          # tile for discritization
+params['SV_single_cath'] = len(SV_single_cath)                      # put length of single cathode SV into 'params' for indexing
+
+#SV_single_sep = rho_elyte_init
+#SV_elyte = np.tile(SV_single_sep,Ny_sep)
+#SV0_sep = np.r_[SV_elyte,phi_elyte_init]
+rho_elyte_sep_init = rho_elyte_init
+SV_single_sep = np.r_[rho_elyte_sep_init]                         # electric potential and species mass densities in separator
+SV0_sep = np.tile(SV_single_sep,Ny_sep)                             # tile for discritization
+params['SV_single_sep'] = len(SV_single_sep)                        # put length of single separator SV into 'params' for indexing
+
+#SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
+SV0 = SV0_cath
+
+params['i_ext'] = 0.0
+
+SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, t_ocv], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])#,max_step=1e-6)
+
+SV0 = SV.y[:,-1]
+
+params['i_ext'] = i_ext
+SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])#,max_step=1e-6)
 
 """ Plot solutions to concentrations and potentials """
 "============================================================================"
-Nplot = np.linspace(1,Ny,Ny)
+Nplot = np.linspace(1,Ny_cath,Ny_cath)
 
 for i in range(len(Nplot)):
-    SV_move = i * len(SV_single)
+    SV_move = i * len(SV_single_cath)
 
     plt.figure(1)
     plt.plot(SV.t,SV.y[SVptr['phi']+SV_move,:],label=i+1)
@@ -234,44 +274,90 @@ for i in range(len(Nplot)):
     plt.legend()
 
     plt.figure(2)
-    plt.plot(SV.t,SV.y[SVptr['theta'][0]+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['E_oxide']+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
-    plt.ylabel('Li2O2 Surface Coverage')
+    plt.ylabel('Li2O2 Volume Fraction')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(3)
-    plt.plot(SV.t,SV.y[pltptr['Li+']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Li+ Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(4)
-    plt.plot(SV.t,SV.y[pltptr['O2']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['O2']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('O2 Concentration (kg/m3)')
     plt.legend()
 
     plt.figure(5)
-    plt.plot(SV.t,SV.y[pltptr['PF6-']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['PF6-']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('PF6- Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
-    plt.figure(6)
-    plt.plot(SV.t,SV.y[pltptr['EC']+SV_move,:],label=i+1)
+    """plt.figure(6)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['EC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EC Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(7)
-    plt.plot(SV.t,SV.y[pltptr['EMC']+SV_move,:],label=i+1)
+    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['EMC']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EMC Concentration (kg/m3)')
     plt.tight_layout()
+    plt.legend()"""
+
+Nplot = np.linspace(1,Ny_sep,Ny_sep)
+
+"""for i in range(len(Nplot)):
+    SV_move = i * len(SV_single_sep)
+
+    plt.figure(8)
+    plt.plot(SV.t,SV.y[SVptr['sep_phi']+SV_move,:],label=i+1)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Double Layer Potential - separator/anode (V)')
+    plt.tight_layout()
     plt.legend()
+
+    plt.figure(9)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Li+ Concentration - separator (kg/m3)')
+    plt.tight_layout()
+    plt.legend()
+
+    plt.figure(10)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['O2']]+SV_move,:],label=i+1)
+    plt.xlabel('Time (s)')
+    plt.ylabel('O2 Concentration - separator (kg/m3)')
+    plt.legend()
+
+    plt.figure(11)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['PF6-']]+SV_move,:],label=i+1)
+    plt.xlabel('Time (s)')
+    plt.ylabel('PF6- Concentration - separator (kg/m3)')
+    plt.tight_layout()
+    plt.legend()
+
+    plt.figure(12)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['EC']]+SV_move,:],label=i+1)
+    plt.xlabel('Time (s)')
+    plt.ylabel('EC Concentration - separator (kg/m3)')
+    plt.tight_layout()
+    plt.legend()
+
+    plt.figure(13)
+    plt.plot(SV.t,SV.y[SVptr['sep_elyte'][pltptr['EMC']]+SV_move,:],label=i+1)
+    plt.xlabel('Time (s)')
+    plt.ylabel('EMC Concentration - separator (kg/m3)')
+    plt.tight_layout()
+    plt.legend()"""
 
 plt.show()
