@@ -35,25 +35,28 @@ class cst:
     z_k = []
     rho_bar = []
     params = []
+    T_0 = []
+    T = []
 
     def coeffs():
         z_k = cst.z_k; C_k = cst.C_k; ptr_el = cst.ptr_el; params = cst.params
+        T_0 = cst.T_0; T = cst.T
         C_Li = C_k[cst.ptr_el['Li']]            # Concentration of lithium
         C_sol = C_k[cst.ptr_el['solvents']]     # Concentration of the solvent
         
         Dk_el = params['Dk_elyte_o']
         
-        # Polynomial fit for chemical diffusion coefficient of lithium in elyte
-#        Dk_el[cst.ptr_el['Li']] = (params['D_Li_a']*C_Li**2
-#                                 + params['D_Li_b']*C_Li
-#                                 + params['D_Li_c'])
-        
+        # Polynomial fit for chemical diffusion coefficient of lithium in elyte       
         Dk_el[cst.ptr_el['Li']] = ((params['D_Li_a']*C_Li**2 
                           + params['D_Li_b']*C_Li + params['D_Li_c'])
                           *(params['D_Li_d']*C_Li**2 + params['D_Li_e']*C_Li 
                           + params['D_Li_f'])/(params['D_Li_g'] 
                           + params['D_Li_h']*C_Li + params['D_Li_i']*C_Li**2 
                           + params['D_Li_j']*C_Li**3)*sum(cst.C_k)/sum(C_sol))
+    
+        # Modify diffusion coefficient term to include an Arrhenius-like
+        #   temperature dependence
+        Dk_el[cst.ptr_el['Li']] = Dk_el[cst.ptr_el['Li']]*np.exp((T-T_0)/ct.gas_constant/T_0)
         
         # Assume diffusion coefficient for cation same as anion
         Dk_el[cst.ptr_el['PF6']] = Dk_el[cst.ptr_el['Li']]
@@ -71,7 +74,7 @@ class cst:
                + params['sigma_elyte_b']*C_Li**1.5
                + params['sigma_elyte_c']*C_Li**3)
         
-        sigma = sigma*10
+        sigma = sigma*10*np.exp((T-T_0)/ct.gas_constant/T_0)
         
         # Polynomial fit for thermodynamic factor: (1 + d(ln f)/d(ln C_Li))
         thermo_factor = ((params['gamma_elyte_a']*C_Li**2 
@@ -84,9 +87,7 @@ class cst:
         C = cst.rho_bar
         sigma_D = 2*(tk_el[ptr_el['Li']] - 1)*C*thermo_factor/z_k[ptr_el['Li']] \
                 / ct.faraday
-#        sigma_D = (2*ct.gas_constant*elyte.TP[0]*sigma*(tk_el_0 - 1)
-#                * thermo_factor/ct.faraday)
-        # ADD -1 FOR PF6 IN divCharge
+
         Dk_el = Dk_el + sigma_D*tk_el/C_k/params['divCharge']/ct.faraday
         
         Dk_migr_el = tk_el*sigma/params['divCharge']/ct.faraday
@@ -111,58 +112,58 @@ class cst_2:
     
 "=============================== Old functions ==============================="
 
-# Dilute Solution Theory (dst)
-def dst_fun(Ck_elyte,params):
-    Dk_elyte = params['Dk_elyte_o']
-    Dk_mig_elyte = params['Dk_mig_elyte_o'] * Ck_elyte
-
-    return Dk_elyte, Dk_mig_elyte
-
-# Concentrated Solution Theory (cst)
-def cst_fun(Ck_elyte,objs,params):
-    elyte = objs['elyte']
-
-    C_Li = Ck_elyte[params['iLi_elyte']]*1000
-    C_EC = Ck_elyte[params['iEC_elyte']]*1000
-    C_EMC = Ck_elyte[params['iEMC_elyte']]*1000
-
-    Dk_elyte = params['Dk_elyte_o']
-
-    # Chemical diffusion coefficent for Li+ and PF6- in elyte
-    Dk_elyte[params['iLi_elyte']] = (params['D_Li_a']*C_Li**2 + \
-                                params['D_Li_b']*C_Li + params['D_Li_c']) * \
-                                (params['D_Li_d']*C_Li**2 + params['D_Li_e']*C_Li + \
-                                params['D_Li_f']) / (params['D_Li_g'] + params['D_Li_h']*C_Li + \
-                                params['D_Li_i']*C_Li**2 + params['D_Li_j']*C_Li**3) * \
-                                sum(1000*Ck_elyte) / (C_EC + C_EMC)
-
-    Dk_elyte[params['iPF6_elyte']] = Dk_elyte[params['iLi_elyte']]
-
-    # Positive ion transference number
-    tk_elyte_o = params['t_elyte_a'] + params['t_elyte_b']*C_Li + \
-                  params['t_elyte_c']*C_Li**2 + params['t_elyte_d']*C_Li**3
-
-    tk_elyte = abs(params['polarity_k']) * \
-            ((params['polarity_k'] + 1) * tk_elyte_o/2 - \
-            (params['polarity_k'] - 1) * (1 - tk_elyte_o)/2)
-    
-    # Effective conductivity
-    sigma = params['sigma_elyte_a']*C_Li + \
-            params['sigma_elyte_b']*C_Li**1.5 + \
-            params['sigma_elyte_c']*C_Li**3
-
-    # Thermodynamic factor - (1 - df/d(ln C_Li))
-    thermo_factor = (params['gamma_elyte_a']*C_Li**2 + \
-            params['gamma_elyte_b']*C_Li + params['gamma_elyte_c']) / \
-            (params['gamma_elyte_d'] + params['gamma_elyte_e']*C_Li + \
-            params['gamma_elyte_f']*C_Li**2 + params['gamma_elyte_g']*C_Li**3)
-
-    # Diffusional conductivity
-    sigma_D = 2*ct.gas_constant*elyte.TP[0] * \
-              sigma*(tk_elyte_o - 1)*thermo_factor / ct.faraday
-
-    Dk_elyte = Dk_elyte + sigma_D*tk_elyte / (Ck_elyte*params['divCharge']*ct.faraday)
-
-    Dk_mig_elyte = tk_elyte * sigma / params['divCharge'] / ct.faraday
-
-    return Dk_elyte, Dk_mig_elyte
+## Dilute Solution Theory (dst)
+#def dst_fun(Ck_elyte,params):
+#    Dk_elyte = params['Dk_elyte_o']
+#    Dk_mig_elyte = params['Dk_mig_elyte_o'] * Ck_elyte
+#
+#    return Dk_elyte, Dk_mig_elyte
+#
+## Concentrated Solution Theory (cst)
+#def cst_fun(Ck_elyte,objs,params):
+#    elyte = objs['elyte']
+#
+#    C_Li = Ck_elyte[params['iLi_elyte']]*1000
+#    C_EC = Ck_elyte[params['iEC_elyte']]*1000
+#    C_EMC = Ck_elyte[params['iEMC_elyte']]*1000
+#
+#    Dk_elyte = params['Dk_elyte_o']
+#
+#    # Chemical diffusion coefficent for Li+ and PF6- in elyte
+#    Dk_elyte[params['iLi_elyte']] = (params['D_Li_a']*C_Li**2 + \
+#                                params['D_Li_b']*C_Li + params['D_Li_c']) * \
+#                                (params['D_Li_d']*C_Li**2 + params['D_Li_e']*C_Li + \
+#                                params['D_Li_f']) / (params['D_Li_g'] + params['D_Li_h']*C_Li + \
+#                                params['D_Li_i']*C_Li**2 + params['D_Li_j']*C_Li**3) * \
+#                                sum(1000*Ck_elyte) / (C_EC + C_EMC)
+#
+#    Dk_elyte[params['iPF6_elyte']] = Dk_elyte[params['iLi_elyte']]
+#
+#    # Positive ion transference number
+#    tk_elyte_o = params['t_elyte_a'] + params['t_elyte_b']*C_Li + \
+#                  params['t_elyte_c']*C_Li**2 + params['t_elyte_d']*C_Li**3
+#
+#    tk_elyte = abs(params['polarity_k']) * \
+#            ((params['polarity_k'] + 1) * tk_elyte_o/2 - \
+#            (params['polarity_k'] - 1) * (1 - tk_elyte_o)/2)
+#    
+#    # Effective conductivity
+#    sigma = params['sigma_elyte_a']*C_Li + \
+#            params['sigma_elyte_b']*C_Li**1.5 + \
+#            params['sigma_elyte_c']*C_Li**3
+#
+#    # Thermodynamic factor - (1 - df/d(ln C_Li))
+#    thermo_factor = (params['gamma_elyte_a']*C_Li**2 + \
+#            params['gamma_elyte_b']*C_Li + params['gamma_elyte_c']) / \
+#            (params['gamma_elyte_d'] + params['gamma_elyte_e']*C_Li + \
+#            params['gamma_elyte_f']*C_Li**2 + params['gamma_elyte_g']*C_Li**3)
+#
+#    # Diffusional conductivity
+#    sigma_D = 2*ct.gas_constant*elyte.TP[0] * \
+#              sigma*(tk_elyte_o - 1)*thermo_factor / ct.faraday
+#
+#    Dk_elyte = Dk_elyte + sigma_D*tk_elyte / (Ck_elyte*params['divCharge']*ct.faraday)
+#
+#    Dk_mig_elyte = tk_elyte * sigma / params['divCharge'] / ct.faraday
+#
+#    return Dk_elyte, Dk_mig_elyte
