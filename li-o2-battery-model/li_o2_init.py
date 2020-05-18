@@ -10,6 +10,7 @@ import cantera as ct
 from li_o2_inputs import *
 
 "============================================================================"
+"  CANTERA OJECT SETUP  "
 # Import necessary phases from Cantera
 # Make objects to handle calculations
 gas = ct.Solution(ctifile,'gas')
@@ -48,6 +49,8 @@ objs['air_elyte'] = air_elyte
 objs['Li_b'] = Li_b
 objs['Li_s'] = Li_s
 
+"============================================================================"
+"  INPUT PARAMETER STORAGE  "
 # Store parameters in a common 'params' dict
 params = {}
 params['i_ext'] = i_ext
@@ -71,15 +74,24 @@ A_carbon = 4. * np.pi * (d_part / 2.)**2.
 # Initial carbon innterface area per unit volume cathode [m2/m3 total]
 params['A_carbon_init'] = params['eps_carbon'] * A_carbon / V_carbon
 
-params['i_dl_species'] = elyte.species_index(dl_species)
-
-" Transport parameters: "
-params['E_sep_inv'] = 1/eps_sep
-params['transport'] = transport
+# Oxide particle radius:
 params['r_oxide'] = 0.5*d_oxide
 
-# Transport parameters:
+# Index of the electrolyte species responsible for double layer current
+#   (this is usually the Li ion).
+params['i_dl_species'] = elyte.species_index(dl_species)
+
+params['E_sep_inv'] = 1/eps_sep
+
+"============================================================================"
+"  TRANSPORT PEROPERTIES -- CALCULATION AND STORAGE  "
+# Transport model: dilute (dst) or concentrated (cst) solution theory:
+params['transport'] = transport
+
+# Bruggeman coefficient
 params['bruggman'] = n_bruggeman
+# Initial cathode tortuosity factor:
+# TODO: calculate this property in real-time.
 params['tau_cath'] = params['eps_carbon']**(-params['bruggman'])
 
 # Store elyte diffusion coefficients and elementary charge:
@@ -110,34 +122,27 @@ if params['transport'] == 'cst':
     # Li activity coefficients:
     params['gamma_elyte'] = gamma_elyte_CST
     # Magnitude of 1/z_k for electrolyte species.  Need to take care to prevent 
-    #  division by zero. First create a copy of the electrolyte species charges:
+    #  division by zero, so we really just staore the non-zero cahrges 
+    #  ('nz_charges'). First create a copy of the electrolyte species charges:
     nz_charges = abs(params['Zk_elyte'])
     # Now overwrite all zeros with ones.
     nz_charges[nz_charges == 0] = 1.
     # Divide by this new array. For un-cahrged species, the transferrence number is already equal to zero, so the value of `div_charge` is irrelevant:
     params['div_charge'] = 1./nz_charges
 
-" Solution vector construction: "
+"============================================================================"
+"  SOLUTION VECTORE SETUP  "
 # Store solution vector pointers in a common 'SVptr' dict
 SVptr = {}
 # Variables per finite volume (aka 'node'): elyte electric potential, oxide 
 #     density, electrolyte species densities
 nvars_node = int(elyte.n_species + 2)
 
-
 SVptr['phi'] = 0                # double layer potential in SV
 SVptr['elyte'] = np.arange(1, elyte.n_species + 1)
 SVptr['E_oxide'] = SVptr['elyte'][-1]+1 
 #SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
 #SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*Ny_cath , (SVptr['theta'][-1]+1)*Ny_cath +elyte.n_species)  # separator electrolyte concentrations in SV
-
-# Store plot pointers in a common 'pltptr' dict
-pltptr = {}
-pltptr['O2'] = elyte.species_index('O2(e)')
-pltptr['Li+'] = elyte.species_index('Li+(e)')
-pltptr['PF6-'] = elyte.species_index('Pf6-(e)')
-pltptr['EC'] = elyte.species_index('C3H4O3(e)')
-pltptr['EMC'] = elyte.species_index('C4H8O3(e)')
 
 # Set inital values
 rho_elyte_init = elyte.Y*elyte.density     # electrolyte concentrations
@@ -156,3 +161,13 @@ params['SV_single_sep'] = len(SV_single_sep)                        # put length
 
 #SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
 SV0 = SV0_cath
+
+"============================================================================"
+"  POINTER FOR POST-PROCESSING / PLOTTING  "
+# Store plot pointers in a common 'pltptr' dict
+pltptr = {}
+pltptr['O2'] = elyte.species_index('O2(e)')
+pltptr['Li+'] = elyte.species_index('Li+(e)')
+pltptr['PF6-'] = elyte.species_index('Pf6-(e)')
+pltptr['EC'] = elyte.species_index('C3H4O3(e)')
+pltptr['EMC'] = elyte.species_index('C4H8O3(e)')
