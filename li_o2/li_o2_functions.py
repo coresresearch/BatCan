@@ -44,13 +44,11 @@ def LiO2_func(t,SV,params,objs,geom,ptr,SVptr):
 
     Ny_sep = params['Ny_sep']
     dyInv_sep = params['dyInv_sep']
-
-    E_carb_inv = params['E_carb_inv']
+    
     E_sep_inv = params['E_sep_inv']
 
     #A_int = params['A_int']
     C_dl = params['C_dl']
-    R_sep = params['R_sep']
 
     Zk_elyte = params['Zk_elyte']
 
