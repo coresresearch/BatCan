@@ -7,16 +7,7 @@
 
 units(length = "m", time = "s", quantity = "kmol", act_energy = "kJ/mol")
 
-#ideal_gas(name = "air2",
-#      elements = " O  N  Ar ",
-#      species = """ O  O2  N  NO  NO2  N2O  N2  AR """,
-#      transport = "Mix",
-#      initial_state = state(temperature = 300.0,
-#                            pressure = OneAtm,
-#                            mole_fractions = 'O2:0.21, N2:0.78, AR:0.01')    )
-
-
-ideal_gas(name = "air",
+ideal_gas(name = "gas",
       elements = " O ",
       species = """ O2 """,
       transport = "Mix",
@@ -34,9 +25,9 @@ metal(name = "graphite",
 
 incompressible_solid(name = "electrolyte",
     elements = " C H O Li E F P ",
-    species = " O2(e) Li+(e) PF6-(e) EC(e) EMC(e) ",
+    species = " O2(e) Li+(e) PF6-(e) C3H4O3(e) C4H8O3(e) ",
     density = (1208.2, 'kg/m3'),
-    initial_state 	= state(mole_fractions = 'O2(e):0.00067635,  Li+(e):0.07868679,  PF6-(e):0.07868679,  EC(e):0.28312595,  EMC(e):0.55882413'))
+    initial_state 	= state(mole_fractions = 'O2(e):0.00067635,  Li+(e):0.07868679,  PF6-(e):0.07868679,  C3H4O3(e):0.28312595,  C4H8O3(e):0.55882413'))
 
 incompressible_solid(name = "Li2O2",
     elements = " Li O ",
@@ -68,7 +59,7 @@ ideal_interface(name = "air_elyte",
     species = " (dummy) ",
     site_density = (2.50e-5,'mol/cm2'),
     reactions = "air_int-*",
-    phases = " air electrolyte ")
+    phases = " gas electrolyte ")
 
 metal(name="Lithium",
     elements = "Li E",
@@ -190,23 +181,6 @@ species(name = "NO2",
     note = "L 7/88"
        )
 
-species(name = "N2O",
-    atoms = " N:2  O:1 ",
-    thermo = (
-       NASA( [  200.00,  1000.00], [  2.257150200E+00,   1.130472800E-02,
-               -1.367131900E-05,   9.681980600E-09,  -2.930718200E-12,
-                8.741774400E+03,   1.075799200E+01] ),
-       NASA( [ 1000.00,  6000.00], [  4.823072900E+00,   2.627025100E-03,
-               -9.585087400E-07,   1.600071200E-10,  -9.775230300E-15,
-                8.073404800E+03,  -2.201720700E+00] )
-             ),
-    transport = gas_transport(
-                     geom = "linear",
-                     diam =     3.83,
-                     well_depth =   232.40,
-                     rot_relax =     1.00),
-    note = "L 7/88"
-       )
 
 species(name = "N2",
     atoms = " N:2 ",
@@ -248,22 +222,15 @@ species(name = "AR",
 species( name = "electron",   atoms = "E:1",
         thermo = const_cp(h0 = (0.0, 'kcal/mol'), s0 = (0.0, 'J/mol/K')))
 
-#species( name = "solvent",   atoms = " ",
-#        thermo = const_cp(h0 = (0.0, 'kcal/mol')))
-
 species( name = "(dummy)", atoms = "", thermo = const_cp(h0 = (0.0, 'kJ/mol'), s0 = (0.0, 'J/mol/K')))
 
-#species( name = "C6",
-#    atoms = " C:6 ",
-#    thermo = const_cp(h0 = (0.0, 'kcal/mol')))
-
 species(
-	name 		= "EC(e)",
+	name 		= "C3H4O3(e)",
 	atoms 		= "C:3, H:4, O:3",
 	thermo 		= const_cp(h0 = (0.0, 'kJ/mol'), s0 = (0.0, 'J/mol/K')))
 
 species(
-	name 		= "EMC(e)",
+	name 		= "C4H8O3(e)",
 	atoms 		= "C:4, H:8, O:3",
 	thermo 		= const_cp(h0 = (0.0, 'kJ/mol'), s0 = (0.0, 'J/mol/K')))
 
