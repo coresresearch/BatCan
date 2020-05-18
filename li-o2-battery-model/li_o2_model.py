@@ -26,8 +26,8 @@ print('Equilibrating... \n')
 
 # Replace the user-defined current with 0.0 A/m^2
 params['i_ext'] = 0.0
-SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, t_ocv], \
-    SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])
+SV = solve_ivp(lambda t, y: func(t, y, params, objs, SVptr), [0, t_ocv], \
+    SV0, method='BDF', atol=params['atol'], rtol=params['rtol'])
 
 # Save the final state at the initial state for the simulation:
 SV0 = SV.y[:,-1]
@@ -35,8 +35,8 @@ SV0 = SV.y[:,-1]
 print('Discharging... \n')
 # Re-set the current to the user-provided value and integrate:
 params['i_ext'] = i_ext
-SV = solve_ivp(lambda t, y: func(t,y,params,objs,geom,ptr,SVptr), [0, tspan], \
-    SV0, method='BDF',atol=params['atol'],rtol=params['rtol'])
+SV = solve_ivp(lambda t, y: func(t, y, params, objs, SVptr), [0, tspan], \
+    SV0, method='BDF', atol=params['atol'], rtol=params['rtol'])
 
 """ Plot solutions to concentrations and potentials """
 "============================================================================"
@@ -59,28 +59,28 @@ for i in range(Ny_cath):
     plt.legend()
 
     plt.figure(3)
-    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
+    plt.plot(SV.t, SV.y[SVptr['elyte'][pltptr['Li+']]+SV_move,:],label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Li+ Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(4)
-    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['O2']]+SV_move,:],label=i+1)
+    plt.plot(SV.t, SV.y[SVptr['elyte'][pltptr['O2']]+SV_move,:], label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('O2 Concentration (kg/m3)')
     plt.legend()
 
     plt.figure(5)
-    plt.plot(SV.t,SV.y[SVptr['elyte'][pltptr['PF6-']]+SV_move,:],label=i+1)
+    plt.plot(SV.t, SV.y[SVptr['elyte'][pltptr['PF6-']]+SV_move,:], label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('PF6- Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(6)
-    A_carb = params['A_int'] - SV.y[SVptr['E_oxide']+SV_move,:]*1.5/params['r_oxide']
-    plt.plot(SV.t,A_carb, label=i+1)
+    A_carb = params['A_carbon_init'] - SV.y[SVptr['E_oxide']+SV_move,:]*1.5/params['r_oxide']
+    plt.plot(SV.t, A_carb, label=i+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Available surface area per unit volume.')
     plt.tight_layout()

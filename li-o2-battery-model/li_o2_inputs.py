@@ -59,4 +59,27 @@ D_k_elyte['O2(e)'] = 7e-10           # bulk diff coeff O2 in elyte (m2/s)
 D_k_elyte['C3H4O3(e)'] = 1.          # EC diffusion is fast
 D_k_elyte['C4H8O3(e)'] = 1.          # EMC diffusion is fast
 
+# Cantera's name for the electrolyte species assigned to double-layer currents 
+# (most likely the Li ion).
+dl_species = 'Li+(e)'
+
+# For transport calculations, need the names given to the Li ion, the 
+#    counter-ion, and the solvent molecules. 
+Li_elyte_name = 'Li+(e)'
+counter_ion_elyte_name = 'PF6-(e)'
+solvent_elyte_names = 'C3H4O3(e)', 'C4H8O3(e)'
+
+# CST Parameters:
+D_Li_CST = 8.794e-17, -3.972e-13, 4.862e-10, 0.28687e-6, 0.74678e-3, 0.44130, \
+    0.5508, 0.4717e-3, -0.4106e-6, 0.1287e-9, 2.0
+
+# Electrolyte conductivity (S/m)
+sigma_elyte_CST = 3.329e-3, -7.9373e-5, 0.1297e-9
+
+# Liquid activity coefficient
+gamma_elyte_CST = 2.8687e-7, 7.4678e-4, 0.44130, 0.5508, 4.717e-4, -4.106e-7, \
+    1.287e-10
+
+t_elyte_CST = 0.4492, -4.717e-4, 4.106e-7, -1.287e-10
+
 ctifile = 'Li_Air.cti'

@@ -10,7 +10,8 @@ import cantera as ct
 from li_o2_inputs import *
 
 "============================================================================"
-# Import necessary phases
+# Import necessary phases from Cantera
+# Make objects to handle calculations
 gas = ct.Solution(ctifile,'gas')
 cath_b = ct.Solution(ctifile,'graphite')
 elyte = ct.Solution(ctifile,'electrolyte')
@@ -21,7 +22,7 @@ air_elyte = ct.Interface(ctifile,'air_elyte',[gas,elyte])
 Li_b = ct.Solution(ctifile,'Lithium')
 Li_s = ct.Interface(ctifile,'Li_surface',[Li_b,elyte])
 
-# Set phase temperatures
+# Set temperature and pressure for all phse objects:
 gas.TP = TP
 air_elyte.TP = TP
 elyte.TP = TP
@@ -32,7 +33,10 @@ cath_b.TP = TP
 Li_b.TP = TP
 Li_s.TP = TP
 
-# Store these phases in a common 'objs' dict
+# Store these phases in a common 'objs' dict.
+# This takes the data from Cantera and stores data for use in a Python 
+# dictionary so we can efficiently pass them to various functions. A dictionary
+# associates a key word with a value.
 objs = {}
 objs['gas'] = gas
 objs['cath_b'] = cath_b
@@ -44,107 +48,41 @@ objs['air_elyte'] = air_elyte
 objs['Li_b'] = Li_b
 objs['Li_s'] = Li_s
 
-# Microstructure and geometry:
-# initial carbon volume fraction [-]
-eps_carbon = 1. - eps_elyte_init - eps_binder_init - eps_oxide_init      
-# Volume of a single carbon particle [m3]
-V_part = 4/3 * np.pi * (d_part / 2)**3
-# Surface area of a single carbon particle [m2]
-A_part = 4 * np.pi * (d_part / 2)**2
-# Carbon innterface area per unit volume cathode [m2/m3 total]
-A_int = eps_carbon * A_part / V_part
-# Oxide area contacting carbon particle, per particle [m2]
-A_oxide = np.pi * d_oxide**2 / 4
-# Volume of a single oxide torroid [m3]
-V_oxide = 2/3 * np.pi * (d_oxide/2)**2 * th_oxide   
-
-# Inverse thickness of a single cathode volume discritization [1/m]
-dyInv_cath = Ny_cath / th_cath  
-
-# inverse thickness of a single separator volume discritization [1/m]     
-dyInv_sep = Ny_sep / th_sep                         
-
-geom = {}
-geom['bruggman'] = n_bruggeman
-geom['tau_cath'] = eps_carbon / (eps_carbon**(1+geom['bruggman']))
-
-# Store pointers in a common 'ptr' dict
-ptr = {}
-# electron in the inter net_production_rates vector
-ptr['elec'] = elyte.n_species
-# electrolyte in the inter net_production_rates vector
-ptr['elyte'] = np.arange(0,elyte.n_species)
-# location of O2 in elyte phase
-ptr['O2_elyte'] = 0
-# location of Li+ in elyte phase
-ptr['Li+'] = 1
-# location of PF6- in elyte phase
-ptr['PF6-'] = 2
-# location of EC in elyte phase
-ptr['EC'] = 3                  
-# location of EMC in elyte phase  
-ptr['EMC'] = 4                 
-
 # Store parameters in a common 'params' dict
 params = {}
 params['i_ext'] = i_ext
-params['T'] = TP[0]
-params['E_elyte_0'] = eps_elyte_init
-# params['sigma'] = sigma_io
+params['TP'] = TP
 params['rtol'] = rtol
 params['atol'] = atol
 params['Ny_cath'] = Ny_cath
-params['dyInv_cath'] = dyInv_cath
+# Inverse thickness of a single cathode volume discritization [1/m]
+params['dyInv_cath'] =  Ny_cath / th_cath
 params['Ny_sep'] = Ny_sep
-params['dyInv_sep'] = dyInv_sep
-params['A_int'] = A_int
+# inverse thickness of a single separator volume discritization [1/m] 
+params['dyInv_sep'] =  Ny_sep / th_sep
 params['C_dl'] = C_dl
-params['E_carb'] = eps_carbon
+# Carbon volume fraction [-]
+params['eps_carbon'] = 1. - eps_elyte_init - eps_binder_init - eps_oxide_init
+
+# Volume of a single carbon particle [m3]
+V_carbon = 4./3. * np.pi * (d_part / 2.)**3.
+# Surface area of a single carbon particle [m2]
+A_carbon = 4. * np.pi * (d_part / 2.)**2.
+# Initial carbon innterface area per unit volume cathode [m2/m3 total]
+params['A_carbon_init'] = params['eps_carbon'] * A_carbon / V_carbon
+
+params['i_dl_species'] = elyte.species_index(dl_species)
+
+" Transport parameters: "
 params['E_sep_inv'] = 1/eps_sep
 params['transport'] = transport
 params['r_oxide'] = 0.5*d_oxide
-params['molar_vol oxide'] = 45.881*.001 / 2.31 # Molar volume of Li2O2 [m3/kmol]
 
-# CST Parameters:
-params['D_Li_a'] = 8.794e-17
-params['D_Li_b'] = -3.972e-13
-params['D_Li_c'] = 4.862e-10
-params['D_Li_d'] = 0.28687e-6
-params['D_Li_e'] = 0.74678e-3
-params['D_Li_f'] = 0.44130
-params['D_Li_g'] = 0.5508
-params['D_Li_h'] = 0.4717e-3
-params['D_Li_i'] = -0.4106e-6
-params['D_Li_j'] = 0.1287e-9
-params['D_Li_k'] = 2.0
+# Transport parameters:
+params['bruggman'] = n_bruggeman
+params['tau_cath'] = params['eps_carbon']**(-params['bruggman'])
 
-# Electrolyte conductivity (S/m)
-params['sigma_elyte_a'] = 3.329e-3
-params['sigma_elyte_b'] = -7.9373e-5
-params['sigma_elyte_c'] = 0.1297e-9
-
-# Liquid activity coefficient
-params['gamma_elyte_a'] = 2.8687e-7
-params['gamma_elyte_b'] = 7.4678e-4
-params['gamma_elyte_c'] = 0.44130
-params['gamma_elyte_d'] = 0.5508
-params['gamma_elyte_e'] = 4.717e-4
-params['gamma_elyte_f'] = -4.106e-7
-params['gamma_elyte_g'] = 1.287e-10
-
-params['divCharge'] = 1
-
-params['t_elyte_a'] = 0.4492
-params['t_elyte_b'] = -4.717e-4
-params['t_elyte_c'] = 4.106e-7
-params['t_elyte_d'] = -1.287e-10
-
-params['iO2_elyte'] = 0
-params['iLi_elyte'] = 1
-params['iPF6_elyte'] = 2
-params['iEC_elyte'] = 3
-params['iEMC_elyte'] = 4
-
+# Store elyte diffusion coefficients and elementary charge:
 params['Dk_elyte_o'] = np.zeros_like(elyte.X)
 params['Zk_elyte'] = np.zeros_like(elyte.X)
 for j in elyte.species_names:
@@ -152,26 +90,44 @@ for j in elyte.species_names:
     params['Zk_elyte'][elyte.species_index(j)] = elyte.species(j).charge
 
 params['polarity_k'] = np.sign(params['Zk_elyte'])
-# Store elyte diffusion coefficients
-# params['Dk_elyte_o'] = np.zeros(elyte.n_species)
-# params['Dk_mig_elyte_o'] = np.zeros(elyte.n_species)
-
-# params['Dk_elyte_o'][ptr['PF6-']] = D_PF6_elyte / geom['tau_cath']**3
-# params['Dk_elyte_o'][ptr['Li+']] = D_Li_elyte / geom['tau_cath']**3
-# params['Dk_elyte_o'][ptr['O2_elyte']] = D_O2_elyte / geom['tau_cath']**3
-# params['Dk_elyte_o'][ptr['EC']] = D_EC_elyte / geom['tau_cath']**3
-# params['Dk_elyte_o'][ptr['EMC']] = D_EMC_elyte / geom['tau_cath']**3
-
 params['Dk_mig_elyte_o'] = params['Dk_elyte_o']*params['Zk_elyte']*ct.faraday\
-     / ct.gas_constant / params['T']
+     / ct.gas_constant / params['TP'][0]
 
+if params['transport'] == 'cst':
+    # Cantera species indices for relevant species:
+    params['i_Li_elyte'] = elyte.species_index(Li_elyte_name)
+    params['i_counter_ion'] = elyte.species_index(counter_ion_elyte_name)
+    params['i_solvent_elyte'] = []
+    for n_sp in solvent_elyte_names:
+        params['i_solvent_elyte'].append(elyte.species_index(n_sp))
 
+    # Li diffusion coefficients:
+    params['D_Li_CST'] = D_Li_CST
+    # Transferrence number coefficients:
+    params['t_elyte'] = t_elyte_CST
+    # Ionic conductivity coefficients:
+    params['sigma_elyte'] = sigma_elyte_CST
+    # Li activity coefficients:
+    params['gamma_elyte'] = gamma_elyte_CST
+    # Magnitude of 1/z_k for electrolyte species.  Need to take care to prevent 
+    #  division by zero. First create a copy of the electrolyte species charges:
+    nz_charges = abs(params['Zk_elyte'])
+    # Now overwrite all zeros with ones.
+    nz_charges[nz_charges == 0] = 1.
+    # Divide by this new array. For un-cahrged species, the transferrence number is already equal to zero, so the value of `div_charge` is irrelevant:
+    params['div_charge'] = 1./nz_charges
+
+" Solution vector construction: "
 # Store solution vector pointers in a common 'SVptr' dict
 SVptr = {}
+# Variables per finite volume (aka 'node'): elyte electric potential, oxide 
+#     density, electrolyte species densities
+nvars_node = int(elyte.n_species + 2)
+
+
 SVptr['phi'] = 0                # double layer potential in SV
 SVptr['elyte'] = np.arange(1, elyte.n_species + 1)
-SVptr['E_oxide'] = SVptr['elyte'][-1]+1                                    # cathode electrolyte concentrations in SV
-#SVptr['theta'] = np.arange(SVptr['elyte'][-1]+1,SVptr['elyte'][-1]+1 + len(inter.X))    # surface coverage in SV
+SVptr['E_oxide'] = SVptr['elyte'][-1]+1 
 #SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
 #SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*Ny_cath , (SVptr['theta'][-1]+1)*Ny_cath +elyte.n_species)  # separator electrolyte concentrations in SV
 
@@ -184,8 +140,7 @@ pltptr['EC'] = elyte.species_index('C3H4O3(e)')
 pltptr['EMC'] = elyte.species_index('C4H8O3(e)')
 
 # Set inital values
-rho_elyte_init = elyte.Y*elyte.density                              # electrolyte concentrations
-#theta_init = [theta_init, 1-theta_init]                                                 # surface coverages
+rho_elyte_init = elyte.Y*elyte.density     # electrolyte concentrations
 
 SV_single_cath = np.r_[phi_elyte_init,rho_elyte_init,eps_oxide_init]    # store in an array
 SV0_cath = np.tile(SV_single_cath,Ny_cath)                          # tile for discritization
