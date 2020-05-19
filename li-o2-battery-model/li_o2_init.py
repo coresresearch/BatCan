@@ -57,12 +57,12 @@ params['i_ext'] = i_ext
 params['TP'] = TP
 params['rtol'] = rtol
 params['atol'] = atol
-params['Ny_cath'] = Ny_cath
+params['N_y_cath'] = N_y_cath
 # Inverse thickness of a single cathode volume discritization [1/m]
-params['dyInv_cath'] =  Ny_cath / th_cath
-params['Ny_sep'] = Ny_sep
+params['dyInv_cath'] =  N_y_cath / th_cath
+params['N_y_sep'] = N_y_sep
 # inverse thickness of a single separator volume discritization [1/m] 
-params['dyInv_sep'] =  Ny_sep / th_sep
+params['dyInv_sep'] =  N_y_sep / th_sep
 params['C_dl'] = C_dl
 # Carbon volume fraction [-]
 params['eps_carbon'] = 1. - eps_elyte_init - eps_binder_init - eps_oxide_init
@@ -131,33 +131,35 @@ if params['transport'] == 'cst':
     params['div_charge'] = 1./nz_charges
 
 "============================================================================"
-"  SOLUTION VECTORE SETUP  "
+"  SOLUTION VECTOR SETUP  "
 # Store solution vector pointers in a common 'SVptr' dict
 SVptr = {}
 # Variables per finite volume (aka 'node'): elyte electric potential, oxide 
 #     density, electrolyte species densities
 nvars_node = int(elyte.n_species + 2)
 
-SVptr['phi'] = 0                # double layer potential in SV
-SVptr['elyte'] = np.arange(1, elyte.n_species + 1)
-SVptr['E_oxide'] = SVptr['elyte'][-1]+1 
-#SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*Ny_cath                                       # separator double layer potential in SV
-#SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*Ny_cath , (SVptr['theta'][-1]+1)*Ny_cath +elyte.n_species)  # separator electrolyte concentrations in SV
+# double layer potential in solution vector SV
+SVptr['phi_dl'] = range(0, nvars_node*N_y_cath, nvars_node)                
+# Oxide volume fraction in solution vector SV
+SVptr['eps_oxide'] = range(1,nvars_node*N_y_cath, nvars_node)
+# electrolyte species mass densities in solution vector SV
+SVptr['rho_k_elyte'] = np.ndarray(shape=(N_y_cath, elyte.n_species),\
+    dtype='int')
+for i in range(N_y_cath):
+    SVptr['rho_k_elyte'][i,:] = range(2 + i*nvars_node, 2 + i*nvars_node + \
+         elyte.n_species)
+
+#SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*N_y_cath                                       # separator double layer potential in SV
+#SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*N_y_cath , (SVptr['theta'][-1]+1)*N_y_cath +elyte.n_species)  # separator electrolyte concentrations in SV
 
 # Set inital values
-rho_elyte_init = elyte.Y*elyte.density     # electrolyte concentrations
+# Electrolyte species mass densities (kg per m^3 of electrolyte)
+rho_k_elyte_init = elyte.Y*elyte.density     
 
-SV_single_cath = np.r_[phi_elyte_init,rho_elyte_init,eps_oxide_init]    # store in an array
-SV0_cath = np.tile(SV_single_cath,Ny_cath)                          # tile for discritization
-params['SV_single_cath'] = len(SV_single_cath)                      # put length of single cathode SV into 'params' for indexing
-
-#SV_single_sep = rho_elyte_init
-#SV_elyte = np.tile(SV_single_sep,Ny_sep)
-#SV0_sep = np.r_[SV_elyte,phi_elyte_init]
-rho_elyte_sep_init = rho_elyte_init
-SV_single_sep = np.r_[rho_elyte_sep_init]                         # electric potential and species mass densities in separator
-SV0_sep = np.tile(SV_single_sep,Ny_sep)                             # tile for discritization
-params['SV_single_sep'] = len(SV_single_sep)                        # put length of single separator SV into 'params' for indexing
+# Store in an array:
+SV_single_cath = np.r_[phi_elyte_init, eps_oxide_init, rho_k_elyte_init]
+# Tile for discritization
+SV0_cath = np.tile(SV_single_cath, N_y_cath)
 
 #SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
 SV0 = SV0_cath

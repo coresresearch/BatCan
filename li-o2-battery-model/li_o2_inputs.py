@@ -22,8 +22,8 @@ rtol = 1e-6
 
 " Microstructure and geometry "
 # Discretization
-Ny_cath = 5                         # no. cells in cathode
-Ny_sep = 3                          # no. cells in separator
+N_y_cath = 5                         # no. cells in cathode
+N_y_sep = 3                          # no. cells in separator
 
 # Geometric/microstructure parameters
 th_cath = 60e-6                     # cathode thickness [m]
