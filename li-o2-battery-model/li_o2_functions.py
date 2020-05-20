@@ -1,20 +1,15 @@
-"""
-Author:
-Amy LeBar (20 August 2018)
-Li-O2 Battery Model:
-This model examines the reactions taking place within the carbon-based
-cathode of a Li-O2 battery. Electrolyte = 1 M LiTFSI in TEGDME
-"""
+""" Functions for calculating Li-O2 battery performance """
 
-# Load any needed modules
-import numpy as np
-import cantera as ct
+" ================== Load needed modules =================="
+import numpy as np      # Support for multidimensional arrays and functions
+import cantera as ct    # Open source chemistry toolbox
 
 import sys
 sys.path.append('../')
 
 def LiO2_func(t, SV, params, objs, SVptr):
 
+    # Import diffusion coefficient calculator:
     if params['transport'] == 'cst':
         from functions.diffusion_coeffs import cst as diff_coeffs
     elif params['transport'] == 'dst':
@@ -22,18 +17,14 @@ def LiO2_func(t, SV, params, objs, SVptr):
     else:
         raise Exception('Please specify a valid transport model: cst or dst')
 
-    # Pull phases out of 'objs' inside function
-    gas = objs['gas']
-    cath_b = objs['cath_b']
-    elyte = objs['elyte']
-    oxide = objs['oxide']
-    inter = objs['inter']
-    tpb = objs['tpb']
-    air_elyte = objs['air_elyte']
-    Li_b = objs['Li_b']
-    Li_s = objs['Li_s']
+    # Initialize the residual vector:
+    dSVdt = np.zeros_like(SV)
+
+    #  Pull phase objects out of storage in 'objs', for convenient use:
+    gas, ca_bulk, elyte, oxide, ca_surf, tpb, air_elyte, Li_bulk, Li_surf = \
+        read_cantera_objs(objs)
     
-    # Read out and store some constants:
+    # Read out and store some constants locally:
     # Faraday's constant (C/kmol e-)
     F = ct.faraday
     # oxide molar volume
@@ -41,160 +32,141 @@ def LiO2_func(t, SV, params, objs, SVptr):
     # ELectrolyte molar weights
     W_elyte = elyte.molecular_weights
 
-    dSVdt = np.zeros_like(SV)
-
     # Pull parameters out of 'params' inside function
     i_ext = params['i_ext']
     T = params['TP'][0]
 
-    N_y_cath = params['N_y_cath']
-    dyInv_cath = params['dyInv_cath']
-
-    N_y_sep = params['N_y_sep']
-    dyInv_sep = params['dyInv_sep']
+    " ============================ CATHODE ============================ "
     
-    E_sep_inv = params['E_sep_inv']
+    # Initialize electrolyte species production rates due to double layer 
+    #    current:
+    sdot_dl = np.zeros_like(elyte.X)
 
-    C_dl = params['C_dl']
-
-    Zk_elyte = params['Zk_elyte']
-
-    W_elyte = elyte.molecular_weights
-
-    " ======================================== CATHODE ======================================== "
-    " --- Pre-loop --- "
+    # Read out conditions for first node (adjacent to current collector)
     j = 0
-    # Set potentials and concentrations for 'next'
-    cath_b.electric_potential = 0.
-    phi_elyte_next = SV[SVptr['phi_dl'][j]]
-    elyte.electric_potential = phi_elyte_next
-    rho = abs(sum(SV[SVptr['rho_k_elyte'][j]]))
-    elyte.TDY = T, rho, SV[SVptr['rho_k_elyte'][j]]/rho
-    Xk_next = elyte.X
-    Ck_next = elyte.concentrations
-    #inter.coverages = abs(SV[SVptr['theta']])
+    phi_elyte, eps_oxide, rho_k_elyte = read_state(SV, SVptr, j)
+    # Set the state of the relevant Cantera objects:
+    ca_bulk, oxide, elyte, gas = set_states(phi_elyte, rho_k_elyte, \
+        params, ca_bulk, oxide, elyte, gas)
+    # Calculate electrolyte properties:
+    #    - Species molar densities (kmol/m^3)
+    #    - Volume fraction
+    C_k_elyte = elyte.concentrations
+    eps_elyte = 1. - params['eps_carbon'] - eps_oxide
 
-    E_oxide_next = SV[SVptr['eps_oxide'][j]]
+    # Array of molar fluxes (kmol/m2/s) and ionic current (A/m2) at air/elyte BC
+    N_k_in = air_elyte.get_net_production_rates(elyte)
+    i_io_in = 0.
 
-    E_elyte_next = 1. - params['eps_carbon'] - E_oxide_next
+    # Initialize array of molar fluxes (kmol/m2/s) out of the volume:
+    N_k_out = np.zeros_like(N_k_in)
 
-    # Mass transport and ionic current at air/elyte BC
-    Nk_top = air_elyte.get_net_production_rates(elyte)
-    i_io_top = 0.
-
-    Nk_bot = np.zeros_like(Nk_top)
-
-    for j in np.arange(N_y_cath - 1):
-        phi_elyte_this = phi_elyte_next
-        phi_elyte_next = SV[SVptr['phi_dl'][j+1]]
-        Xk_this = Xk_next
-        Ck_this = Ck_next
-        E_elyte_this = E_elyte_next
-        E_oxide_this = E_oxide_next
-
-        # Area of oxide surface per unit volume:
-        A_oxide = 3.*E_oxide_this/params['r_oxide']
+    for j in np.arange(params['N_y_ca'] - 1):
 
         # Area of carbon surface per unit volume:
-        A_carb = params['A_carbon_init'] - E_oxide_this*1.5/params['r_oxide']
+        A_carb = params['A_carbon_init'] - eps_oxide*1.5/params['r_oxide']
 
-        # Calculate chemical production terms:
-        i_far = tpb.get_net_production_rates(cath_b) * F * A_carb
-        sdot_elyte_int = tpb.get_net_production_rates(elyte) * A_carb
-        sdot_elyte_dl = np.zeros_like(sdot_elyte_int)
+        # Calculate chemical & electron production terms (kmol or A per m^2-s):
+        i_far = tpb.get_net_production_rates(ca_bulk) * F * A_carb
+        sdot_elyte_surf = tpb.get_net_production_rates(elyte) * A_carb
         sdot_oxide = tpb.get_net_production_rates(oxide) * A_carb
 
         # Elyte state for 'next node'
-        rho = abs(sum(SV[SVptr['rho_k_elyte'][j+1]]))
-        elyte.TDY = T, rho, abs(SV[SVptr['rho_k_elyte'][j+1]])/rho
-        Xk_next = elyte.X
-        Ck_next = elyte.concentrations
+        phi_elyte_next, eps_oxide_next, rho_k_elyte_next = \
+            read_state(SV, SVptr, j+1)
+            
+        # Set the state of the relevant Cantera objects:
+        ca_bulk, oxide, elyte, gas = set_states(phi_elyte_next, \
+            rho_k_elyte_next, params, ca_bulk, oxide, elyte, gas)
+        # Calculate electrolyte properties:
+        #    - Species molar densities (kmol/m^3)
+        #    - Volume fraction
+        C_k_elyte_next = elyte.concentrations
+        eps_elyte_next = 1. - params['eps_carbon'] - eps_oxide_next
 
-        # Concentration at interface between nodes:
-        Ck_int = 0.5*(Ck_this + Ck_next)
+        # Concentration and volume fracion at interface between nodes:
+        C_k_elyte_int = 0.5*(C_k_elyte + C_k_elyte_next)
+        eps_elyte_int = 0.5*(eps_elyte + eps_elyte_next)
 
-        Dk_elyte = diff_coeffs(Ck_int, objs, params)
+        # Read out diffusion coefficients.  First array returned represents the 
+        #    chemical diffusion coefficients.  Second array returned represents 
+        #    the migration diffusion coefficients.
+        D_k_elyte = diff_coeffs(C_k_elyte_int, objs, params)
 
-        Nk_bot = -(Dk_elyte[0] * (Ck_next - Ck_this) + \
-            Dk_elyte[1] * (phi_elyte_next - phi_elyte_this)) * dyInv_cath * \
-            E_elyte_this**params['bruggman']
+        N_k_out = (D_k_elyte[0] * (C_k_elyte - C_k_elyte_next) + \
+            D_k_elyte[1]*(phi_elyte - phi_elyte_next))*params['dyInv_ca'] \
+            *eps_elyte_int**params['bruggman']
 
         # Ionic current out of node
-        i_io_bot = F * sum(Zk_elyte * Nk_bot)
-
-        #elyte.TDY = T, sum(SV[SVptr['rho_k_elyte'][j]]), SV[SVptr['rho_k_elyte'][j]]
+        i_io_out = F * sum(params['Z_k_elyte'] * N_k_out)
 
         # Calculate change in double layer potential
-        i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far#*A_int          # double layer current
-        dSVdt[SVptr['phi_dl'][j]] = i_dl / (C_dl*A_carb)
+        #    Double layer current
+        i_dl = (i_io_in - i_io_out)*params['dyInv_ca'] + i_far
+        dSVdt[SVptr['phi_dl'][j]] = i_dl / (params['C_dl']*A_carb)
 
         # Calculate change in electrolyte concentrations
-        sdot_elyte_dl[params['i_dl_species']] = -i_dl / \
-            (F * Zk_elyte[params['i_dl_species']])
+        #   Double layer current acts as a source/sink for one species:
+        sdot_dl[params['i_dl_species']] = -i_dl / \
+            (F * params['Z_k_elyte'][params['i_dl_species']])
         
-        dSVdt[SVptr['rho_k_elyte'][j]] = ((Nk_top - Nk_bot) * dyInv_cath \
-            + (sdot_elyte_int + sdot_elyte_dl)) * W_elyte / E_elyte_this
+        dSVdt[SVptr['rho_k_elyte_ca'][j]] = ((N_k_in - N_k_out) \
+            * params['dyInv_ca'] \
+            + (sdot_elyte_surf + sdot_dl)) * W_elyte / eps_elyte
 
         # Calculate change in oxide volume fraction
         dSVdt[SVptr['eps_oxide'][j]] = Vbar_oxide*sdot_oxide
 
-        # Set next 'top' flux and ionic current as current 'bottom'
-        Nk_top = Nk_bot
-        i_io_top = i_io_bot
+        # Set next 'in' fluxes and ionic current equal to current 'out' fluxes:
+        N_k_in = N_k_out
+        i_io_in = i_io_out
 
-        # Set potentials and concentrations for 'next' node
-        cath_b.electric_potential = 0.
-        elyte.electric_potential = phi_elyte_next
-        E_oxide_next = SV[SVptr['eps_oxide'][j+1]]
-        E_elyte_next = 1. - params['eps_carbon'] - E_oxide_next
+        # Set electrolyte properties equal to current "next" node properties:
+        phi_elyte = phi_elyte_next
+        C_k_elyte = C_k_elyte_next
+        eps_elyte = eps_elyte_next
 
-    " --- Post-loop --- "
+    " --- Volume adjacent to the separator --- "
     # Set previous 'next' as current 'this'
-    j = N_y_cath - 1
-    # Read out reaction terms, before setting electrolyte object state to that
-    #   of the first separator node:
-
-    phi_elyte_this = phi_elyte_next
-    Xk_this = Xk_next
-    Ck_this = Ck_next
-    E_elyte_this = E_elyte_next
-    E_oxide_this = E_oxide_next
-
-    # Area of oxide surface per unit volume:
-    A_oxide = 3.*E_oxide_this/params['r_oxide']
+    j = params['N_y_ca'] - 1
 
     # Area of carbon surface per unit volume:
-    A_carb = params['A_carbon_init'] - E_oxide_this*1.5/params['r_oxide']
+    A_carb = params['A_carbon_init'] - eps_oxide*1.5/params['r_oxide']
 
-    # Calculate Faradaic current
-    i_far = tpb.get_net_production_rates(cath_b) * A_carb * F
-
-    # Production rate of electrolyte species:
-    sdot_elyte_int = tpb.get_net_production_rates(elyte) * A_carb
-    sdot_elyte_dl = np.zeros_like(sdot_elyte_int)
+    # Calculate chemical & electron production terms (kmol or A per m^2-s):
+    i_far = tpb.get_net_production_rates(ca_bulk) * A_carb * F
+    sdot_elyte_surf = tpb.get_net_production_rates(elyte) * A_carb
     sdot_oxide = tpb.get_net_production_rates(oxide) * A_carb
 
-    i_io_bot = i_ext
+    # Charge neutrality on the cathode as a whole:
+    i_io_out = i_ext
 
-    Nk_bot = np.zeros_like(Nk_top)
-    Nk_bot[params['i_dl_species']] = i_io_bot / \
-        (F * Zk_elyte[params['i_dl_species']])
+    # TODO: #8 replace this with electro-diffusive flux:
+    N_k_out = np.zeros_like(N_k_in)
+    N_k_out[params['i_dl_species']] = i_io_out / \
+        (F * params['Z_k_elyte'][params['i_dl_species']])
 
     # Calculate change in double layer potential
-    i_dl = (i_io_top - i_io_bot) * dyInv_cath + i_far#*A_carb              # double layer current
-    dSVdt[SVptr['phi_dl'][j]] = i_dl / (C_dl*A_carb)
+    #    Double layer current
+    i_dl = (i_io_in - i_io_out)*params['dyInv_ca'] + i_far
+    dSVdt[SVptr['phi_dl'][j]] = i_dl / (params['C_dl']*A_carb)
 
+    # Double layer current acts as a source/sink for one species:
+    sdot_dl[params['i_dl_species']] = -i_dl\
+        / (F*params['Z_k_elyte'][params['i_dl_species']])
+    
     # Calculate change in electrolyte concentrations
-    sdot_elyte_dl[params['i_dl_species']] = -i_dl \
-        / (F * Zk_elyte[params['i_dl_species']])
-    dSVdt[SVptr['rho_k_elyte'][j]] = ((Nk_top - Nk_bot) * dyInv_cath + \
-                                    (sdot_elyte_int + sdot_elyte_dl)) * W_elyte / E_elyte_this
+    dSVdt[SVptr['rho_k_elyte_ca'][j]] = ((N_k_in - N_k_out)*params['dyInv_ca']\
+        + (sdot_elyte_surf + sdot_dl)) * W_elyte / eps_elyte
 
+    # Change in oxide volume fraction:
     dSVdt[SVptr['eps_oxide'][j]] = Vbar_oxide*sdot_oxide
 
 
-    " ======================================== SEPARATOR ======================================== "
+    " ============================== SEPARATOR ========================= "
     # Initialize SV pointer offset for separator
+
+
     """
 
     " --- Pre-loop --- "
@@ -202,43 +174,44 @@ def LiO2_func(t, SV, params, objs, SVptr):
     #Xk_next = elyte.X
     #phi_elyte_next = elyte.electric_potential
 
-    for j in np.arange(N_y_sep - 1):
-        Nk_top = Nk_bot
-        i_io_top = i_ext#i_io_bot
-        phi_elyte_this = phi_elyte_next
-        Xk_this = Xk_next
-        Ck_this = Ck_next
+    for j in np.arange(params['N_y_sep'] - 1):
+        N_k_in = N_k_out
+        i_io_in = i_ext#i_io_out
+        phi_elyte = phi_elyte_next
+        Xk = Xk_next
+        C_k_elyte = C_k_elyte_next
 
         rho_k = SV[SVptr['sep_elyte']+SV_move+SV_single_sep]
         elyte.TDY = T, abs(sum(rho_k)), rho_k/abs(sum(rho_k))
         Xk_next = elyte.X
-        Ck_next = elyte.concentrations
+        C_k_elyte_next = elyte.concentrations
 
-        Ck_int = 0.5*(Ck_this + Ck_next)
-        Dk_elyte = diff_coeffs(Ck_int, objs, params)
+        C_k_elyte_int = 0.5*(C_k_elyte + C_k_elyte_next)
+        D_k_elyte = diff_coeffs(C_k_elyte_int, objs, params)
 
-#        phi_elyte_next = phi_elyte_this - (i_io_top + F*ct.gas_constant*T*C_elyte \
-#                        * sum(Zk_elyte*u_k*(Xk_next - Xk_this)*dyInv_sep)) \
-#                        / (F**2*dyInv_sep * sum(Zk_elyte**2 * u_k * Ck_elyte))
+#        phi_elyte_next = phi_elyte \
+#           - (i_io_in + F*ct.gas_constant*T*C_elyte * sum(params['Z_k_elyte']*u_k* \
+#           (Xk_next - Xk)*params['dyInv_sep'])) \
+#           / (F**2*params['dyInv_sep'] * sum(params['Z_k_elyte']**2 * u_k * C_k_elyte))
 
-        dCk = (Ck_next - Ck_this) #* dyInv_sep
-        phi_elyte_next = phi_elyte_this + \
-             (-(i_io_bot + F*sum(Zk_elyte*(Dk_elyte[0]*dCk / (E_sep_inv**params['bruggman'])))) / \
-             (-F*sum(Zk_elyte*Dk_elyte[1]*dyInv_sep/(E_sep_inv**params['bruggman']))))
+        dC_k_elyte = (C_k_elyte_next - C_k_elyte) #* params['dyInv_sep']
+        phi_elyte_next = phi_elyte + \
+             (-(i_io_out + F*sum(params['Z_k_elyte']*(D_k_elyte[0]*dC_k_elyte / (params['eps_sep_inv']**params['bruggman'])))) / \
+             (-F*sum(params['Z_k_elyte']*D_k_elyte[1]*params['dyInv_sep']/(params['eps_sep_inv']**params['bruggman']))))
 
-        phi_elyte_next = phi_elyte_this - \
-            (i_io_bot*E_inv**params['bruggman']/(dyInv*F) + sum(Zk_elyte*Dk_elyte[0]*dCk))/sum(Zk_elyte*Dk_elyte[1])
+        phi_elyte_next = phi_elyte - \
+            (i_io_out*eps_inv**params['bruggman']/(dyInv*F) + sum(params['Z_k_elyte']*D_k_elyte[0]*dC_k_elyte))/sum(params['Z_k_elyte']*D_k_elyte[1])
 
-#        Nk_bot = - u_k * Ck_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk_this) * dyInv_sep \
-#                  + Zk_elyte * F * (phi_elyte_next - phi_elyte_this) * dyInv_sep)
-        Nk_bot = -(Dk_elyte[0] * (Ck_next - Ck_this) * dyInv_sep + \
-                   Dk_elyte[1] * (phi_elyte_next - phi_elyte_this) * dyInv_sep) / \
-                   (E_sep_inv**params['bruggman'])
+#        N_k_out = - u_k * C_k_elyte_elyte * ((ct.gas_constant * T) / Xk_int * (Xk_next - Xk) * params['dyInv_sep'] \
+#                  + params['Z_k_elyte'] * F * (phi_elyte_next - phi_elyte) * params['dyInv_sep'])
+        N_k_out = -(D_k_elyte[0] * (C_k_elyte_next - C_k_elyte) * params['dyInv_sep'] + \
+                   D_k_elyte[1] * (phi_elyte_next - phi_elyte) * params['dyInv_sep']) / \
+                   (params['eps_sep_inv']**params['bruggman'])
 
-        i_io_bot = F * sum(Zk_elyte * Nk_bot)
+        i_io_out = F * sum(params['Z_k_elyte'] * N_k_out)
 
         # Calculate change in electrolyte concentrations
-        dSVdt[SVptr['sep_elyte']+SV_move] = (Nk_top - Nk_bot) * dyInv_sep * W_elyte * E_sep_inv
+        dSVdt[SVptr['sep_elyte']+SV_move] = (N_k_in - N_k_out) * params['dyInv_sep'] * W_elyte * params['eps_sep_inv']
 
         # Set potentials and concentrations
         #elyte.TDY = T, sum(SV[SVptr['sep_elyte']+SV_move]), SV[SVptr['sep_elyte']+SV_move]
@@ -249,36 +222,79 @@ def LiO2_func(t, SV, params, objs, SVptr):
 
     " --- Post-loop --- "
     # Set next 'top' flux as current 'bottom'
-    Nk_top = Nk_bot
-    i_io_top = i_ext#i_io_bot
-    phi_elyte_this = phi_elyte_next
-    Xk_this = Xk_next
-    Ck_this = Ck_next
+    N_k_in = N_k_out
+    i_io_in = i_ext#i_io_out
+    phi_elyte = phi_elyte_next
+    Xk = Xk_next
+    C_k_elyte = C_k_elyte_next
 
-    i_io_bot = i_ext
-    Nk_bot = np.zeros_like(Nk_top)
+    i_io_out = i_ext
+    N_k_out = np.zeros_like(N_k_in)
 
-    Nk_bot[ptr['Li+']] = i_io_bot / (F * Zk_elyte[ptr['Li+']])
-    #print(Nk_bot)
-    dSVdt[SVptr['sep_elyte']+SV_move] = (Nk_top - Nk_bot) * dyInv_sep * W_elyte * E_sep_inv"""
+    N_k_out[ptr['Li+']] = i_io_out / (F * params['Z_k_elyte'][ptr['Li+']])
+    #print(N_k_out)
+    dSVdt[SVptr['sep_elyte']+SV_move] = (N_k_in - N_k_out) * params['dyInv_sep'] * W_elyte * params['eps_sep_inv']"""
 
     # Set lithium anode potential
 #    Li_b.electric_potential = elyte.electric_potential - SV[SVptr['sep_phi']+SV_move]
 
     # Transport and potential at anode BC
-#    Nk_bot = Li_s.get_net_production_rates(elyte)
-#    print('Nk_bot =',Nk_bot)
-#    i_io_bot_check = F * sum(Zk_elyte * Nk_bot)
-#    print('i_io_check =',i_io_bot_check,'i_ext = ',i_ext)
-#    Nk_bot = np.zeros_like(elyte.X)
-#    Nk_bot[ptr['Li+']] = i_ext * F
+#    N_k_out = Li_s.get_net_production_rates(elyte)
+#    print('N_k_out =',N_k_out)
+#    i_io_out_check = F * sum(params['Z_k_elyte'] * N_k_out)
+#    print('i_io_check =',i_io_out_check,'i_ext = ',i_ext)
+#    N_k_out = np.zeros_like(elyte.X)
+#    N_k_out[ptr['Li+']] = i_ext * F
 
     # Calculate double layer potential between separator and anode
 #    i_far = Li_s.get_net_production_rates(elyte)[ptr['Li+']] * F
 #    i_dl = i_ext - i_far
-#    dSVdt[SVptr['sep_phi']+SV_move] = i_dl / (C_dl) #* A_int)
+#    dSVdt[SVptr['sep_phi']+SV_move] = i_dl / (params['C_dl']) #* A_int)
 
     # Calculate change in electrolyte concentrations
-#    dSVdt[SVptr['sep_elyte']+SV_move] = (Nk_top - Nk_bot) * dyInv_sep * E_sep_inv
+#    dSVdt[SVptr['sep_elyte']+SV_move] = (N_k_in - N_k_out) * params['dyInv_sep'] * params['eps_sep_inv']
 
     return dSVdt
+
+
+" ================= HELPER FUNCTIONS ================= "
+    
+def read_cantera_objs(objs):
+    gas = objs['gas']
+    ca_bulk = objs['ca_bulk']
+    elyte = objs['elyte']
+    oxide = objs['oxide']
+    ca_surf = objs['ca_surf']
+    tpb = objs['tpb']
+    air_elyte = objs['air_elyte']
+    Li_bulk = objs['Li_bulk']
+    Li_surf = objs['Li_surf']
+
+    return gas, ca_bulk, elyte, oxide, ca_surf, tpb, air_elyte, Li_bulk, Li_surf
+
+def read_state(SV, SVptr, j):
+    # double layer (i.e. elyte) electric potential:
+    phi_elyte = SV[SVptr['phi_dl'][j]]
+
+    # Oxide volume fraction:
+    eps_oxide = SV[SVptr['eps_oxide'][j]]
+
+    # Electrolyte species mass fracionts:
+    rho_k_elyte = SV[SVptr['rho_k_elyte_ca'][j]]
+
+    return phi_elyte, eps_oxide, rho_k_elyte
+
+def set_states(phi_elyte, rho_k_elyte, params, ca_bulk, oxide, elyte, gas):
+    
+    rho = abs(sum(rho_k_elyte))
+    elyte.TDY = params['TP'][0], rho, rho_k_elyte/rho
+
+    ca_bulk.electric_potential = 0
+    oxide.electric_potential = 0
+    elyte.electric_potential = phi_elyte 
+    TP = params['TP']
+
+    oxide.TP = TP
+    gas.TP = TP
+
+    return ca_bulk, oxide, elyte, gas

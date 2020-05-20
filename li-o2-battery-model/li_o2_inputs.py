@@ -17,13 +17,13 @@ phi_elyte_init = -3.19              # double layer voltage [V]
 TP = 300, 101325                    # inital temp, pressure [K, Pa]
 
 # Tolerances (absolute and relative)
-atol = 1e-8
+atol = 1e-10
 rtol = 1e-6
 
 " Microstructure and geometry "
 # Discretization
-N_y_cath = 5                         # no. cells in cathode
-N_y_sep = 3                          # no. cells in separator
+N_y_ca = 5                         # no. cells in cathode
+N_y_sep = 1                          # no. cells in separator
 
 # Geometric/microstructure parameters
 th_cath = 60e-6                     # cathode thickness [m]

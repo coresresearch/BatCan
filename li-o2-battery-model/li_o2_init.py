@@ -14,25 +14,25 @@ from li_o2_inputs import *
 # Import necessary phases from Cantera
 # Make objects to handle calculations
 gas = ct.Solution(ctifile,'gas')
-cath_b = ct.Solution(ctifile,'graphite')
+ca_bulk = ct.Solution(ctifile,'graphite')
 elyte = ct.Solution(ctifile,'electrolyte')
 oxide = ct.Solution(ctifile,'Li2O2')
-tpb = ct.Interface(ctifile,'cathode_tpb',[elyte, oxide, cath_b])
-inter = ct.Interface(ctifile,'cathode_surf',[elyte,cath_b])
-air_elyte = ct.Interface(ctifile,'air_elyte',[gas,elyte])
-Li_b = ct.Solution(ctifile,'Lithium')
-Li_s = ct.Interface(ctifile,'Li_surface',[Li_b,elyte])
+tpb = ct.Interface(ctifile,'cathode_tpb',[elyte, oxide, ca_bulk])
+ca_surf = ct.Interface(ctifile,'cathode_surf',[elyte, ca_bulk])
+air_elyte = ct.Interface(ctifile,'air_elyte',[gas, elyte])
+Li_bulk = ct.Solution(ctifile,'Lithium')
+Li_surf = ct.Interface(ctifile,'Li_surface',[Li_bulk, elyte])
 
 # Set temperature and pressure for all phse objects:
 gas.TP = TP
 air_elyte.TP = TP
 elyte.TP = TP
 oxide.TP = TP
-inter.TP = TP
+ca_surf.TP = TP
 tpb.TP = TP
-cath_b.TP = TP
-Li_b.TP = TP
-Li_s.TP = TP
+ca_bulk.TP = TP
+Li_bulk.TP = TP
+Li_surf.TP = TP
 
 # Store these phases in a common 'objs' dict.
 # This takes the data from Cantera and stores data for use in a Python 
@@ -40,14 +40,14 @@ Li_s.TP = TP
 # associates a key word with a value.
 objs = {}
 objs['gas'] = gas
-objs['cath_b'] = cath_b
+objs['ca_bulk'] = ca_bulk
 objs['elyte'] = elyte
 objs['oxide'] = oxide
-objs['inter'] = inter
+objs['ca_surf'] = ca_surf
 objs['tpb'] = tpb
 objs['air_elyte'] = air_elyte
-objs['Li_b'] = Li_b
-objs['Li_s'] = Li_s
+objs['Li_bulk'] = Li_bulk
+objs['Li_surf'] = Li_surf
 
 "============================================================================"
 "  INPUT PARAMETER STORAGE  "
@@ -57,9 +57,9 @@ params['i_ext'] = i_ext
 params['TP'] = TP
 params['rtol'] = rtol
 params['atol'] = atol
-params['N_y_cath'] = N_y_cath
+params['N_y_ca'] = N_y_ca
 # Inverse thickness of a single cathode volume discritization [1/m]
-params['dyInv_cath'] =  N_y_cath / th_cath
+params['dyInv_ca'] =  N_y_ca / th_cath
 params['N_y_sep'] = N_y_sep
 # inverse thickness of a single separator volume discritization [1/m] 
 params['dyInv_sep'] =  N_y_sep / th_sep
@@ -91,19 +91,19 @@ params['transport'] = transport
 # Bruggeman coefficient
 params['bruggman'] = n_bruggeman
 # Initial cathode tortuosity factor:
-# TODO: calculate this property in real-time.
+# TODO: #7 calculate this property in real-time.
 params['tau_cath'] = params['eps_carbon']**(-params['bruggman'])
 
 # Store elyte diffusion coefficients and elementary charge:
-params['Dk_elyte_o'] = np.zeros_like(elyte.X)
-params['Zk_elyte'] = np.zeros_like(elyte.X)
+params['D_k_elyte_o'] = np.zeros_like(elyte.X)
+params['Z_k_elyte'] = np.zeros_like(elyte.X)
 for j in elyte.species_names:
-    params['Dk_elyte_o'][elyte.species_index(j)] = D_k_elyte[j]
-    params['Zk_elyte'][elyte.species_index(j)] = elyte.species(j).charge
+    params['D_k_elyte_o'][elyte.species_index(j)] = D_k_elyte[j]
+    params['Z_k_elyte'][elyte.species_index(j)] = elyte.species(j).charge
 
-params['polarity_k'] = np.sign(params['Zk_elyte'])
-params['Dk_mig_elyte_o'] = params['Dk_elyte_o']*params['Zk_elyte']*ct.faraday\
-     / ct.gas_constant / params['TP'][0]
+params['polarity_k'] = np.sign(params['Z_k_elyte'])
+params['D_k_mig_elyte_o'] = params['D_k_elyte_o']*params['Z_k_elyte'] \
+    * ct.faraday / ct.gas_constant / params['TP'][0]
 
 if params['transport'] == 'cst':
     # Cantera species indices for relevant species:
@@ -124,7 +124,7 @@ if params['transport'] == 'cst':
     # Magnitude of 1/z_k for electrolyte species.  Need to take care to prevent 
     #  division by zero, so we really just staore the non-zero cahrges 
     #  ('nz_charges'). First create a copy of the electrolyte species charges:
-    nz_charges = abs(params['Zk_elyte'])
+    nz_charges = abs(params['Z_k_elyte'])
     # Now overwrite all zeros with ones.
     nz_charges[nz_charges == 0] = 1.
     # Divide by this new array. For un-cahrged species, the transferrence number is already equal to zero, so the value of `div_charge` is irrelevant:
@@ -136,21 +136,26 @@ if params['transport'] == 'cst':
 SVptr = {}
 # Variables per finite volume (aka 'node'): elyte electric potential, oxide 
 #     density, electrolyte species densities
-nvars_node = int(elyte.n_species + 2)
+nvars_node_ca = int(elyte.n_species + 2)
 
 # double layer potential in solution vector SV
-SVptr['phi_dl'] = range(0, nvars_node*N_y_cath, nvars_node)                
+SVptr['phi_dl'] = range(0, nvars_node_ca*N_y_ca, nvars_node_ca)                
 # Oxide volume fraction in solution vector SV
-SVptr['eps_oxide'] = range(1,nvars_node*N_y_cath, nvars_node)
+SVptr['eps_oxide'] = range(1,nvars_node_ca*N_y_ca, nvars_node_ca)
 # electrolyte species mass densities in solution vector SV
-SVptr['rho_k_elyte'] = np.ndarray(shape=(N_y_cath, elyte.n_species),\
+SVptr['rho_k_elyte_ca'] = np.ndarray(shape=(N_y_ca, elyte.n_species),\
     dtype='int')
-for i in range(N_y_cath):
-    SVptr['rho_k_elyte'][i,:] = range(2 + i*nvars_node, 2 + i*nvars_node + \
-         elyte.n_species)
+for j in range(N_y_ca):
+    SVptr['rho_k_elyte_ca'][j,:] = range(2 + j*nvars_node_ca, \
+        2 + j*nvars_node_ca + elyte.n_species)
 
-#SVptr['sep_phi'] = (SVptr['theta'][-1]+1)*N_y_cath                                       # separator double layer potential in SV
-#SVptr['sep_elyte'] = np.arange((SVptr['theta'][-1]+1)*N_y_cath , (SVptr['theta'][-1]+1)*N_y_cath +elyte.n_species)  # separator electrolyte concentrations in SV
+nvars_node_sep = int(elyte.n_species)
+SVptr['rho_k_elyte_sep'] = np.ndarray(shape=(N_y_sep, elyte.n_species),\
+    dtype='int')
+for j in range(N_y_sep):
+    SVptr['rho_k_elyte_sep'][j,:] = range(nvars_node_ca*N_y_ca \
+        + j*nvars_node_sep, nvars_node_ca*N_y_ca + j*nvars_node_sep \
+        + elyte.n_species)
 
 # Set inital values
 # Electrolyte species mass densities (kg per m^3 of electrolyte)
@@ -159,9 +164,12 @@ rho_k_elyte_init = elyte.Y*elyte.density
 # Store in an array:
 SV_single_cath = np.r_[phi_elyte_init, eps_oxide_init, rho_k_elyte_init]
 # Tile for discritization
-SV0_cath = np.tile(SV_single_cath, N_y_cath)
+SV0_cath = np.tile(SV_single_cath, N_y_ca)
 
-#SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
+SV_single_sep = rho_k_elyte_init
+SV0_sep = np.tile(SV_single_sep, N_y_sep)
+
+# SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
 SV0 = SV0_cath
 
 "============================================================================"

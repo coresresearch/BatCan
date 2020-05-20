@@ -5,7 +5,7 @@ Amy LeBar 24 April 2019
 Diffusion coefficient function
 Inputs: bulk diffusion coefficents,
 
-Outputs: chemical diffusion coefficient (Dk_elyte), and migration term (Dk_mig_elyte)
+Outputs: chemical diffusion coefficient (D_k_elyte), and migration term (D_k_mig_elyte)
 """
 # Load needed modules
 import cantera as ct
@@ -13,10 +13,10 @@ import numpy as np
 
 # Dilute Solution Theory (dst)
 def dst(Ck_elyte,objs,params):
-    Dk_elyte = params['Dk_elyte_o']
-    Dk_mig_elyte = params['Dk_mig_elyte_o'] * Ck_elyte
+    D_k_elyte = params['D_k_elyte_o']
+    D_k_mig_elyte = params['D_k_mig_elyte_o'] * Ck_elyte
 
-    return Dk_elyte, Dk_mig_elyte
+    return D_k_elyte, D_k_mig_elyte
 
 # Concentrated Solution Theory (cst)
 def cst(Ck_elyte,objs,params):
@@ -30,17 +30,17 @@ def cst(Ck_elyte,objs,params):
         #     C_EC = Ck_elyte[params['iEC_elyte']]*1000
         #     C_EMC = Ck_elyte[params['iEMC_elyte']]*1000
 
-    Dk_elyte = params['Dk_elyte_o']
+    D_k_elyte = params['D_k_elyte_o']
 
     # Chemical diffusion coefficent for Li+ and PF6- in elyte
-    Dk_elyte[params['i_Li_elyte']] = (params['D_Li_CST'][0]*C_Li**2 \
+    D_k_elyte[params['i_Li_elyte']] = (params['D_Li_CST'][0]*C_Li**2 \
         + params['D_Li_CST'][1]*C_Li + params['D_Li_CST'][2]) \
         * (params['D_Li_CST'][3]*C_Li**2 + params['D_Li_CST'][4]*C_Li  \
         + params['D_Li_CST'][5]) / (params['D_Li_CST'][6] \
         + params['D_Li_CST'][7]*C_Li + params['D_Li_CST'][8]*C_Li**2 \
         + params['D_Li_CST'][9]*C_Li**3) * sum(1000*Ck_elyte) / C_solvent
 
-    Dk_elyte[params['i_counter_ion']] = Dk_elyte[params['i_Li_elyte']]
+    D_k_elyte[params['i_counter_ion']] = D_k_elyte[params['i_Li_elyte']]
 
     # Positive ion transference number
     tk_elyte_o = params['t_elyte'][0] + params['t_elyte'][1]*C_Li \
@@ -65,9 +65,9 @@ def cst(Ck_elyte,objs,params):
     sigma_D = 2*ct.gas_constant*elyte.TP[0] * \
         sigma*(tk_elyte_o - 1)*thermo_factor / ct.faraday
 
-    Dk_elyte = Dk_elyte + sigma_D * tk_elyte * params['div_charge'] \
+    D_k_elyte = D_k_elyte + sigma_D * tk_elyte * params['div_charge'] \
             / (Ck_elyte*ct.faraday)
 
-    Dk_mig_elyte = tk_elyte * sigma * params['div_charge'] / ct.faraday
+    D_k_mig_elyte = tk_elyte * sigma * params['div_charge'] / ct.faraday
 
-    return Dk_elyte, Dk_mig_elyte
+    return D_k_elyte, D_k_mig_elyte

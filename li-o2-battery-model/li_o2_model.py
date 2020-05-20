@@ -41,7 +41,7 @@ SV = solve_ivp(lambda t, y: func(t, y, params, objs, SVptr), [0, tspan], \
 """ Plot solutions to concentrations and potentials """
 "============================================================================"
 
-for j in range(N_y_cath):
+for j in range(N_y_ca):
     SV_move = j * len(SV_single_cath)
 
     plt.figure(1)
@@ -59,20 +59,20 @@ for j in range(N_y_cath):
     plt.legend()
 
     plt.figure(3)
-    plt.plot(SV.t, SV.y[SVptr['rho_k_elyte'][j][pltptr['Li+']],:],label=j+1)
+    plt.plot(SV.t, SV.y[SVptr['rho_k_elyte_ca'][j][pltptr['Li+']],:],label=j+1)
     plt.xlabel('Time (s)')
     plt.ylabel('Li+ Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(4)
-    plt.plot(SV.t, SV.y[SVptr['rho_k_elyte'][j][pltptr['O2']],:], label=j+1)
+    plt.plot(SV.t, SV.y[SVptr['rho_k_elyte_ca'][j][pltptr['O2']],:], label=j+1)
     plt.xlabel('Time (s)')
     plt.ylabel('O2 Concentration (kg/m3)')
     plt.legend()
 
     plt.figure(5)
-    plt.plot(SV.t, SV.y[SVptr['rho_k_elyte'][j][pltptr['PF6-']],:], label=j+1)
+    plt.plot(SV.t, SV.y[SVptr['rho_k_elyte_ca'][j][pltptr['PF6-']],:], label=j+1)
     plt.xlabel('Time (s)')
     plt.ylabel('PF6- Concentration (kg/m3)')
     plt.tight_layout()
@@ -86,14 +86,14 @@ for j in range(N_y_cath):
     plt.tight_layout()
     plt.legend()
     """plt.figure(6)
-    plt.plot(SV.t,SV.y[SVptr['rho_k_elyte'][0][pltptr['EC']]+SV_move,:],label=j+1)
+    plt.plot(SV.t,SV.y[SVptr['rho_k_elyte_ca'][0][pltptr['EC']]+SV_move,:],label=j+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EC Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
 
     plt.figure(7)
-    plt.plot(SV.t,SV.y[SVptr['rho_k_elyte'][0][pltptr['EMC']]+SV_move,:],label=j+1)
+    plt.plot(SV.t,SV.y[SVptr['rho_k_elyte_ca'][0][pltptr['EMC']]+SV_move,:],label=j+1)
     plt.xlabel('Time (s)')
     plt.ylabel('EMC Concentration (kg/m3)')
     plt.tight_layout()
