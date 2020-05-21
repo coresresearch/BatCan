@@ -81,7 +81,7 @@ params['r_oxide'] = 0.5*d_oxide
 #   (this is usually the Li ion).
 params['i_dl_species'] = elyte.species_index(dl_species)
 
-params['E_sep_inv'] = 1/eps_sep
+params['eps_sep_inv'] = 1./eps_sep
 
 "============================================================================"
 "  TRANSPORT PEROPERTIES -- CALCULATION AND STORAGE  "
@@ -90,9 +90,6 @@ params['transport'] = transport
 
 # Bruggeman coefficient
 params['bruggman'] = n_bruggeman
-# Initial cathode tortuosity factor:
-# TODO: #7 calculate this property in real-time.
-params['tau_cath'] = params['eps_carbon']**(-params['bruggman'])
 
 # Store elyte diffusion coefficients and elementary charge:
 params['D_k_elyte_o'] = np.zeros_like(elyte.X)
