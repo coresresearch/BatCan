@@ -7,8 +7,8 @@
 t_ocv = 1e8                                     # [s]
 # Discharge or charge current.
 # TODO #5: calculate i_ext as a function of a user-supplied C-rate:
-i_ext = -1e-3                       # External current [A/m2]
-DoD = 0.25                          # Depth of discharge (out of 1.0)
+i_ext = -1.2e-1                       # External current [A/m2]
+DoD = 0.5                          # Depth of discharge (out of 1.0)
 # TODO #6: calculate tspan as a function of C_rate and DoD
 tspan = DoD*23e6*9e-3/abs(i_ext)    # Simulation time for charge/discharge [s]
 
@@ -17,8 +17,8 @@ phi_elyte_init = -3.19              # double layer voltage [V]
 TP = 300, 101325                    # inital temp, pressure [K, Pa]
 
 # Tolerances (absolute and relative)
-atol = 1e-10
-rtol = 1e-6
+atol = 1e-6
+rtol = 1e-3
 
 " Microstructure and geometry "
 # Discretization

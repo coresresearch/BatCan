@@ -140,30 +140,30 @@ SVptr['phi_dl'] = range(0, nvars_node_ca*N_y_ca, nvars_node_ca)
 # Oxide volume fraction in solution vector SV
 SVptr['eps_oxide'] = range(1,nvars_node_ca*N_y_ca, nvars_node_ca)
 # electrolyte species mass densities in solution vector SV
-SVptr['rho_k_elyte_ca'] = np.ndarray(shape=(N_y_ca, elyte.n_species),\
+SVptr['C_k_elyte_ca'] = np.ndarray(shape=(N_y_ca, elyte.n_species),\
     dtype='int')
 for j in range(N_y_ca):
-    SVptr['rho_k_elyte_ca'][j,:] = range(2 + j*nvars_node_ca, \
+    SVptr['C_k_elyte_ca'][j,:] = range(2 + j*nvars_node_ca, \
         2 + j*nvars_node_ca + elyte.n_species)
 
 nvars_node_sep = int(elyte.n_species)
-SVptr['rho_k_elyte_sep'] = np.ndarray(shape=(N_y_sep, elyte.n_species),\
+SVptr['C_k_elyte_sep'] = np.ndarray(shape=(N_y_sep, elyte.n_species),\
     dtype='int')
 for j in range(N_y_sep):
-    SVptr['rho_k_elyte_sep'][j,:] = range(nvars_node_ca*N_y_ca \
+    SVptr['C_k_elyte_sep'][j,:] = range(nvars_node_ca*N_y_ca \
         + j*nvars_node_sep, nvars_node_ca*N_y_ca + j*nvars_node_sep \
         + elyte.n_species)
 
 # Set inital values
 # Electrolyte species mass densities (kg per m^3 of electrolyte)
-rho_k_elyte_init = elyte.Y*elyte.density     
+C_k_elyte_init = elyte.concentrations
 
 # Store in an array:
-SV_single_cath = np.r_[phi_elyte_init, eps_oxide_init, rho_k_elyte_init]
+SV_single_cath = np.r_[phi_elyte_init, eps_oxide_init, C_k_elyte_init]
 # Tile for discritization
 SV0_cath = np.tile(SV_single_cath, N_y_ca)
 
-SV_single_sep = rho_k_elyte_init
+SV_single_sep = C_k_elyte_init
 SV0_sep = np.tile(SV_single_sep, N_y_sep)
 
 # SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
