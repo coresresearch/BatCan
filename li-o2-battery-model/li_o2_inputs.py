@@ -7,14 +7,16 @@
 t_ocv = 1e8                                     # [s]
 # Discharge or charge current.
 # TODO #5: calculate i_ext as a function of a user-supplied C-rate:
-i_ext = -1.2e-1                       # External current [A/m2]
-DoD = 0.5                          # Depth of discharge (out of 1.0)
+i_ext = -1.5e-1                       # External current [A/m2]
+DoD = 0.75                          # Depth of discharge (out of 1.0)
 # TODO #6: calculate tspan as a function of C_rate and DoD
-tspan = DoD*23e6*9e-3/abs(i_ext)    # Simulation time for charge/discharge [s]
+tspan = DoD*23e7*9e-3/abs(i_ext)    # Simulation time for charge/discharge [s]
 
 phi_elyte_init = -3.19              # double layer voltage [V]
 
-TP = 300, 101325                    # inital temp, pressure [K, Pa]
+Molarity_elyte = 1.0                # Moles of Li salt per L of electrolyte.
+
+TP = 300, 21278.25                    # inital temp, pressure [K, Pa]
 
 # Tolerances (absolute and relative)
 atol = 1e-6
@@ -22,11 +24,11 @@ rtol = 1e-3
 
 " Microstructure and geometry "
 # Discretization
-N_y_ca = 5                         # no. cells in cathode
+N_y_ca = 10                         # no. cells in cathode
 N_y_sep = 1                          # no. cells in separator
 
 # Geometric/microstructure parameters
-th_cath = 60e-6                     # cathode thickness [m]
+th_cath = 600e-6                     # cathode thickness [m]
 th_sep = 1.55e-3                    # separator thickness [m]
 d_part = 10e-6                      # carbon particle diameter [m]
 d_oxide = 2e-6                      # oxide particle diameter [m]

@@ -30,15 +30,8 @@ def LiO2_func(t, SV, params, objs, SVptr):
     # oxide molar volume
     Vbar_oxide = oxide.mean_molecular_weight / oxide.density_mass
 
-    # Pull parameters out of 'params' inside function
-    i_ext = params['i_ext']
-
     " ============================ CATHODE ============================ "
     
-    # Initialize electrolyte species production rates due to double layer 
-    #    current:
-    sdot_dl = np.zeros_like(elyte.X)
-
     # Read out conditions for first node (adjacent to current collector)
     j = 0
     phi_elyte, eps_oxide, C_k_elyte = read_state(SV, SVptr, j)
@@ -60,9 +53,9 @@ def LiO2_func(t, SV, params, objs, SVptr):
         # Area of carbon surface per unit volume:
         A_carb = params['A_carbon_init'] - eps_oxide*1.5/params['r_oxide']
 
-        # Calculate chemical & electron production terms (kmol or A per m^2-s):
-        i_far = tpb.get_net_production_rates(ca_bulk) * F * A_carb
+        # Calculate chemical & electron production terms (kmol or A per m^3-s):
         sdot_elyte_surf = tpb.get_net_production_rates(elyte) * A_carb
+        # Faradaic current transfers positive current to the electrolyte
         i_far = sum(sdot_elyte_surf*params['Z_k_elyte']) * F
         sdot_oxide = tpb.get_net_production_rates(oxide) * A_carb
 
@@ -95,16 +88,16 @@ def LiO2_func(t, SV, params, objs, SVptr):
         # Calculate change in double layer potential
         #    Double layer current
         i_dl = (i_io_in - i_io_out)*params['dyInv_ca'] + i_far
-        dSVdt[SVptr['phi_dl'][j]] = i_dl / (params['C_dl']*A_carb)
+        dSVdt[SVptr['phi_dl'][j]] = i_dl \
+            / (params['C_dl'] * params['A_carbon_init'])
 
         # Calculate change in electrolyte concentrations
         #   Double layer current acts as a source/sink for one species:
-        sdot_dl[params['i_dl_species']] = -i_dl / \
+        sdot_elyte_surf[params['i_dl_species']] += -i_dl / \
             (F * params['Z_k_elyte'][params['i_dl_species']])
         
         dSVdt[SVptr['C_k_elyte_ca'][j]] = ((N_k_in - N_k_out) \
-            * params['dyInv_ca'] \
-            + (sdot_elyte_surf + sdot_dl)) / eps_elyte
+            * params['dyInv_ca'] + sdot_elyte_surf) / eps_elyte
 
         # Calculate change in oxide volume fraction
         dSVdt[SVptr['eps_oxide'][j]] = Vbar_oxide*sdot_oxide
@@ -119,19 +112,19 @@ def LiO2_func(t, SV, params, objs, SVptr):
         eps_elyte = eps_elyte_next
 
     " --- Volume adjacent to the separator --- "
-    # Set previous 'next' as current 'this'
     j = params['N_y_ca'] - 1
 
     # Area of carbon surface per unit volume:
     A_carb = params['A_carbon_init'] - eps_oxide*1.5/params['r_oxide']
 
-    # Calculate chemical & electron production terms (kmol or A per m^2-s):
-    i_far = tpb.get_net_production_rates(ca_bulk) * A_carb * F
+    # Calculate chemical & electron production terms (kmol or A per m^3-s):
     sdot_elyte_surf = tpb.get_net_production_rates(elyte) * A_carb
+    # Faradaic current transfers positive current to the electrolyte
+    i_far = sum(sdot_elyte_surf*params['Z_k_elyte']) * F
     sdot_oxide = tpb.get_net_production_rates(oxide) * A_carb
 
     # Charge neutrality on the cathode as a whole:
-    i_io_out = i_ext
+    i_io_out = params['i_ext']
 
     # TODO: #8 replace this with electro-diffusive flux:
     N_k_out = np.zeros_like(N_k_in)
@@ -144,12 +137,12 @@ def LiO2_func(t, SV, params, objs, SVptr):
     dSVdt[SVptr['phi_dl'][j]] = i_dl / (params['C_dl']*A_carb)
 
     # Double layer current acts as a source/sink for one species:
-    sdot_dl[params['i_dl_species']] = -i_dl\
+    sdot_elyte_surf[params['i_dl_species']] += -i_dl\
         / (F*params['Z_k_elyte'][params['i_dl_species']])
     
     # Calculate change in electrolyte concentrations
     dSVdt[SVptr['C_k_elyte_ca'][j]] = ((N_k_in - N_k_out)*params['dyInv_ca']\
-        + (sdot_elyte_surf + sdot_dl)) / eps_elyte
+        + sdot_elyte_surf) / eps_elyte
 
     # Change in oxide volume fraction:
     dSVdt[SVptr['eps_oxide'][j]] = Vbar_oxide*sdot_oxide

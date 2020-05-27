@@ -102,14 +102,14 @@ params['polarity_k'] = np.sign(params['Z_k_elyte'])
 params['D_k_mig_elyte_o'] = params['D_k_elyte_o']*params['Z_k_elyte'] \
     * ct.faraday / ct.gas_constant / params['TP'][0]
 
-if params['transport'] == 'cst':
-    # Cantera species indices for relevant species:
-    params['i_Li_elyte'] = elyte.species_index(Li_elyte_name)
-    params['i_counter_ion'] = elyte.species_index(counter_ion_elyte_name)
-    params['i_solvent_elyte'] = []
-    for n_sp in solvent_elyte_names:
-        params['i_solvent_elyte'].append(elyte.species_index(n_sp))
+# Cantera species indices for relevant species:
+params['i_Li_elyte'] = elyte.species_index(Li_elyte_name)
+params['i_counter_ion'] = elyte.species_index(counter_ion_elyte_name)
+params['i_solvent_elyte'] = []
+for n_sp in solvent_elyte_names:
+    params['i_solvent_elyte'].append(elyte.species_index(n_sp))
 
+if params['transport'] == 'cst':
     # Li diffusion coefficients:
     params['D_Li_CST'] = D_Li_CST
     # Transferrence number coefficients:
@@ -126,6 +126,39 @@ if params['transport'] == 'cst':
     nz_charges[nz_charges == 0] = 1.
     # Divide by this new array. For un-cahrged species, the transferrence number is already equal to zero, so the value of `div_charge` is irrelevant:
     params['div_charge'] = 1./nz_charges
+
+
+
+# Use the user-provided electrolyte salt molarity to set the initial 
+#    electrolyte composition:
+# Li+ and PF6- molar masses:
+W_Li = elyte.molecular_weights[params['i_Li_elyte']]
+Y_Li = W_Li*Molarity_elyte/elyte.density_mass
+W_counter = elyte.molecular_weights[params['i_counter_ion']]
+Y_counter = W_counter*Molarity_elyte/elyte.density_mass
+
+# Save initial mass fractions from input file.  Assume all non-salt species should keep the same ratio.
+Y_initial = elyte.Y
+
+# Initial salt mass fraction from input file:
+Y_salt_initial = Y_initial[params['i_Li_elyte']] \
+    + Y_initial[params['i_counter_ion']]
+# New salt mass fraction:
+Y_salt_new = Y_Li + Y_counter
+# CHange in salt mass fraction:
+dY_salt = Y_salt_new - Y_salt_initial
+
+# Scale all other species mass fractions so that the sum of all mass fractions 
+#    equals one:
+scaling_factor = 1 - dY_salt/(1 - Y_salt_initial)
+Y_new = Y_initial * scaling_factor
+
+# Set salt species mass fractions:
+Y_new[params['i_Li_elyte']] = Y_Li
+Y_new[params['i_counter_ion']] = Y_counter
+
+# Set Cantera object:
+elyte.Y = Y_new
 
 "============================================================================"
 "  SOLUTION VECTOR SETUP  "
