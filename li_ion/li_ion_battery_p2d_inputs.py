@@ -69,8 +69,9 @@ class Inputs():
 
     "Cantera and CTI file info:"
 #    ctifile = 'lithium_ion_battery_ideal_LCO.cti'
-    ctifile = 'lithium_ion_battery_updated.cti'
-#    ctifile = 'lithium_ion_battery_mod.cti'
+#    ctifile = 'lithium_ion_battery_updated.cti'
+#    ctifile = 'lithium_ion_battery_mod.yml'
+    ctifile = 'lithium_ion_battery.yaml'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'

@@ -48,7 +48,7 @@ from li_ion_battery_p2d_post_process import plot_potential, plot_electrode, plot
 from li_ion_battery_p2d_post_process import plot_cap
 
 import sys
-sys.path.append('C:\\Users\\dkorff\\Research\\BatCan-repo\\functions')
+sys.path.append('..\\functions')
 
 import diffusion_coeffs
 transport = getattr(diffusion_coeffs, Inputs.elyte_flux_model)
