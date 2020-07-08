@@ -42,7 +42,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 20
+    C_rate = 1
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -70,8 +70,9 @@ class Inputs():
     "Cantera and CTI file info:"
 #    ctifile = 'lithium_ion_battery_ideal_LCO.cti'
 #    ctifile = 'lithium_ion_battery_updated.cti'
-#    ctifile = 'lithium_ion_battery_mod.yml'
-    ctifile = 'lithium_ion_battery.yaml'
+    ctifile = 'lithium_ion_battery_mod.yml'
+#    ctifile = 'lithium_ion_battery.yaml'
+#    ctifile = 'LiBatteryFull.cti'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'

@@ -313,6 +313,8 @@ class li_ion(Implicit_Problem):
         transport.z_k = Inputs.z_k_elyte
         transport.Dk_el_0 = an.D_el_eff
         transport.params = bat.cst_params
+        transport.T = Inputs.T
+        transport.T_0 = Inputs.T
                         
 # %%
         """============================ANODE================================"""
@@ -333,7 +335,6 @@ class li_ion(Implicit_Problem):
             offset = int(offsets[j - 1])
 
             i_el_p = an.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*an.dyInv
-            
             transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
             transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
