@@ -13,8 +13,10 @@ import numpy as np
 from li_ion_battery_p2d_inputs import Inputs
 
 def set_state(offset, SV, ed, surf, el, conductor, ptr):
-                    
-    ed.X = [SV[offset + ptr['X_ed'][-1]], 1 - SV[offset + ptr['X_ed'][-1]]]
+    
+    if ed.name == Inputs.cathode_phase:              
+        ed.X = [SV[offset + ptr['X_ed'][-1]], 1 - SV[offset + ptr['X_ed'][-1]]]
+    
     ed.electric_potential = SV[offset + ptr['Phi_ed']]
     
     conductor.electric_potential = SV[offset + ptr['Phi_ed']]

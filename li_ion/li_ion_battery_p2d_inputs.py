@@ -18,7 +18,7 @@ class Inputs():
     n_comps = flag_anode + flag_sep + flag_cathode
     
     # Number of discretized volumes in the y-direction:
-    npoints_anode = 5*flag_anode
+    npoints_anode = 1*flag_anode
     npoints_cathode = 5*flag_cathode
     npoints_elyte = 3*flag_sep
     
@@ -53,7 +53,7 @@ class Inputs():
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
     #   concentrated solution theory ('cst').
-    elyte_flux_model = 'cst'
+    elyte_flux_model = 'dst'
     
     # Simulation temperature (or initial temperature)
     T = 300  # [K]
@@ -63,16 +63,13 @@ class Inputs():
     # Range of value is from 0 to 1.
     SOC_0 = 0.03
 
-    # Number of "shells" in anode particle:
-    nshells_anode = 5
+    # Number of "shells" in cathode particle:
     n_shells_cathode = 5
 
     "Cantera and CTI file info:"
-#    ctifile = 'lithium_ion_battery_ideal_LCO.cti'
-#    ctifile = 'lithium_ion_battery_updated.cti'
-    ctifile = 'lithium_ion_battery_mod.yml'
+#    ctifile = 'lithium_ion_battery_mod.yml'
 #    ctifile = 'lithium_ion_battery.yaml'
-#    ctifile = 'LiBatteryFull.cti'
+    ctifile = 'lithium_ion_battery_ideal.yml'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'
@@ -80,8 +77,7 @@ class Inputs():
     anode_surf_phase = 'edge_anode_electrolyte'
     cathode_surf_phase = 'edge_cathode_electrolyte'
 
-    Li_species_anode = 'Li[anode]'
-    Vac_species_anode = 'V[anode]'
+    Li_species_anode = 'Li[s]'
     Li_species_cathode = 'Li[cathode]'
     Vac_species_cathode = 'V[cathode]'
     

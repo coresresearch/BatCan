@@ -144,8 +144,7 @@ def main():
                       'Charging', 0, fig1, axes1)
             
         if Inputs.plot_electrode_profiles == 1:
-            plot_electrode(tags['X_an'], tags['X_cat'], SV_ch_df, 
-                           'Charging', 0, fig2, axes2)
+            plot_electrode(tags['X_cat'], SV_ch_df, 'Charging', 0, fig2, axes2)
         
         if Inputs.plot_elyte_profiles == 1:
             plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_ch_df,
@@ -190,7 +189,7 @@ def main():
                                'Re-equilibrating', 1, None, fig1, axes1)
             
             if Inputs.plot_electrode_profiles == 1:
-                plot_electrode(tags['X_an'], tags['X_cat'], SV_req_df, 
+                plot_electrode(tags['X_cat'], SV_req_df, 
                                'Re-equilibrating', 1, fig2, axes2)
                 
             if Inputs.plot_elyte_profiles == 1:
@@ -234,7 +233,7 @@ def main():
                       'Discharging', 1+(Inputs.flag_re_equil*Inputs.phi_time), fig1, axes1)
             
         if Inputs.plot_electrode_profiles == 1:
-            plot_electrode(tags['X_an'], tags['X_cat'], SV_dch_df, 
+            plot_electrode(tags['X_cat'], SV_dch_df, 
                            'Discharging', 1+Inputs.flag_re_equil, fig2, axes2)
             
         if Inputs.plot_elyte_profiles == 1:
@@ -308,7 +307,6 @@ class li_ion(Implicit_Problem):
         s2 = set_state(offset, SV, anode, anode_s, elyte, conductor, ptr)
         
         # Diffusive flux scaling factors
-        k = np.arange(0, an.nshells+1)/an.nshells
         transport.ptr_el = bat.ptr_el
         transport.z_k = Inputs.z_k_elyte
         transport.Dk_el_0 = an.D_el_eff
@@ -316,64 +314,14 @@ class li_ion(Implicit_Problem):
         transport.T = Inputs.T
         transport.T_0 = Inputs.T
                         
+
 # %%
         """============================ANODE================================"""
-        """INTERIOR NODES"""
-        for j in np.arange(1, an.npoints):
-            # Save previous node outlet conditions as new inlet conditions
-            N_io_m = N_io_p
-            i_io_m = i_io_p
-            i_el_m = i_el_p
-            s1 = s2
-
-            # Shift forward to NEXT node
-            offset = int(offsets[j])
-
-            s2 = set_state(offset, SV, anode, anode_s, elyte, conductor, ptr)
-
-            # Shift back to THIS node, set THIS node outlet conditions
-            offset = int(offsets[j - 1])
-
-            i_el_p = an.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*an.dyInv
-            transport.C_k = (s2['X_k_el']*s2['rho_el'] 
-                           + s1['X_k_el']*s1['rho_el'])/2.
-            transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
-            D_k, D_k_migr = transport.coeffs()
-            
-            N_io_p, i_io_p = elyte_flux(s1, s2, an.dyInv, an, D_k, D_k_migr)
-
-            i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
-
-#            DiffFlux = solid_flux(SV, offset, ptr, s1, an)
-            X_Li = SV[offset + ptr['X_ed']]
-            DiffFlux = np.zeros([an.nshells+1])
-            DiffFlux[1:-1] = an.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/an.dr
-            DiffFlux[-1] = -s1['sdot'][an.ptr['iFar']]/s1['rho_ed']
-
-            """Calculate the change in X_LiC6 in the particle interior."""
-            res[offset + an.ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
-            - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
-            * an.A_surf/an.eps_ed/an.V_shell))
-
-            """Change in electrolyte_composition"""
-            res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
-            - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf)
-            /s1['rho_el']/an.eps_elyte))
-
-            """Double-layer voltage"""
-            res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
-            - (-i_Far_1 + i_io_m - i_io_p)*an.dyInv/an.C_dl/an.A_surf)
-
-            """Algebraic equation for ANODE electric potential boundary condition"""
-            res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
-            
-# %%
-        """============================ANODE================================"""
-        """Separator boundary"""
+        """Current collector boundary"""
         # Save previous node outlet conditions as new inlet conditions
-        N_io_m = N_io_p
-        i_io_m = i_io_p
-        i_el_m = i_el_p
+        N_io_m = 0
+        i_io_m = 0
+        i_el_m = i_ext
         s1 = s2
      
         # Shift forward to NEXT node, first separator node (j=0)
@@ -397,17 +345,6 @@ class li_ion(Implicit_Problem):
         D_k, D_k_migr = transport.coeffs()
             
         N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
-        
-#        DiffFlux = solid_flux(SV, offset, ptr, s1, an)
-        X_Li = SV[offset + ptr['X_ed']]
-        DiffFlux = np.zeros([an.nshells+1])
-        DiffFlux[1:-1] = an.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/an.dr
-        DiffFlux[-1] = -s1['sdot'][an.ptr['iFar']]/s1['rho_ed']
-    
-        """Calculate the change in X_LiC6 in the particle interior."""
-        res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
-        - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
-        * an.A_surf/an.eps_ed/an.V_shell))
 
         """Change in electrolyte_composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -598,13 +535,13 @@ class li_ion(Implicit_Problem):
         # Anode events
         event1 = np.zeros([an.npoints])
         event2 = np.zeros([an.npoints])
-        event3 = np.zeros([an.npoints*an.nshells])
-        event4 = np.zeros([an.npoints*an.nshells])
+#        event3 = np.zeros([an.npoints*an.nshells])
+#        event4 = np.zeros([an.npoints*an.nshells])
         
         event1 = y[an.ptr_vec['Phi_dl']]
         event2 = 5 - y[an.ptr_vec['Phi_dl']]
-        event3 = an.X_Li_max - y[an.ptr_vec['X_ed']]
-        event4 = y[an.ptr_vec['X_ed']] - an.X_Li_min
+#        event3 = an.X_Li_max - y[an.ptr_vec['X_ed']]
+#        event4 = y[an.ptr_vec['X_ed']] - an.X_Li_min
             
         # Cathode events
         event5 = np.zeros([cat.npoints])
@@ -629,9 +566,10 @@ class li_ion(Implicit_Problem):
         event12 = y[cat.ptr_vec['X_k_elyte']]
 
         # Concatenate events into one array
-        events = np.concatenate((event1, event2, event3, event4, 
-                                 event5, event6, event7, event8, 
-                                 event9, event10, event11, event12))
+        holder = np.array([event1, event2])
+        events = np.concatenate((holder, event5, event6, 
+                                 event7, event8, event9, event10, 
+                                 event11, event12))
 
         return events
 
@@ -643,10 +581,8 @@ class li_ion(Implicit_Problem):
         event_ptr = {}
         event_ptr['An_phi1'] = an.npoints
         event_ptr['An_phi2'] = event_ptr['An_phi1'] + an.npoints
-        event_ptr['An_Xed1'] = event_ptr['An_phi2'] + an.npoints*an.nshells
-        event_ptr['An_Xed2'] = event_ptr['An_Xed1'] + an.npoints*an.nshells
         
-        event_ptr['Cat_phi1'] = event_ptr['An_Xed2'] + cat.npoints
+        event_ptr['Cat_phi1'] = event_ptr['An_phi2'] + cat.npoints
         event_ptr['Cat_phi2'] = event_ptr['Cat_phi1'] + cat.npoints
         event_ptr['Cat_Xed1'] = event_ptr['Cat_phi2'] + cat.npoints*cat.nshells
         event_ptr['Cat_Xed2'] = event_ptr['Cat_Xed1'] + cat.npoints*cat.nshells
@@ -662,13 +598,7 @@ class li_ion(Implicit_Problem):
         elif any(state_info[event_ptr['An_phi1']:event_ptr['An_phi2']]):
             print('Cutoff: anode double-layer blew up')
             raise TerminateSimulation
-        elif any(state_info[event_ptr['An_phi2']:event_ptr['An_Xed1']]):
-            print('Cutoff: Anode shell fully lithiated')
-            raise TerminateSimulation
-        elif any(state_info[event_ptr['An_Xed1']:event_ptr['An_Xed2']]):
-            print('Cutoff: Anode shell fully de-lithiated')
-            raise TerminateSimulation
-        elif any(state_info[event_ptr['An_Xed2']:event_ptr['Cat_phi1']]):
+        elif any(state_info[event_ptr['An_phi2']:event_ptr['Cat_phi1']]):
             print('Cutoff: Cathode double layer flipped sign')
             raise TerminateSimulation
         elif any(state_info[event_ptr['Cat_phi1']:event_ptr['Cat_phi2']]):

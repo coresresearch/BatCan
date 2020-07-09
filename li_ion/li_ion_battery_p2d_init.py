@@ -31,13 +31,13 @@ cathode_surf_obj = ct.Interface(Inputs.ctifile,Inputs.cathode_surf_phase,
 
 
 # Anode initial conditions:
-LiC6_0 = Inputs.Li_an_min + Inputs.SOC_0*(Inputs.Li_an_max - Inputs.Li_an_min)
-C6_0 = 1 - LiC6_0
-X_an_init = '{}:{}, {}:{}'.format(Inputs.Li_species_anode, LiC6_0,
-    Inputs.Vac_species_anode, C6_0)
+#LiC6_0 = Inputs.Li_an_min + Inputs.SOC_0*(Inputs.Li_an_max - Inputs.Li_an_min)
+#C6_0 = 1 - LiC6_0
+#X_an_init = '{}:{}, {}:{}'.format(Inputs.Li_species_anode, LiC6_0,
+#    Inputs.Vac_species_anode, C6_0)
 
 # Set Cantera object states
-anode_obj.X = X_an_init
+#anode_obj.X = X_an_init
 anode_obj.TP = Inputs.T, ct.one_atm
 elyte_obj.TP = Inputs.T, ct.one_atm
 anode_surf_obj.TP = Inputs.T, ct.one_atm
@@ -91,30 +91,24 @@ class anode():
     # Number of nodes in the y-direction:
     npoints = Inputs.npoints_anode
 
-    # Number of "shells" in anode particle:
-    nshells = Inputs.nshells_anode
-
     # Initial conditions: UPDATE TO GENERALIZE FOR MULT. SPEC - DK 8/31/18
 
     # Anode variables for a given volume include X_Li for each shell, Phi_an,
     #       Phi_elyte, and rho_k_elyte for all elyte species.
-    nVars = nshells + 2 + elyte_obj.n_species
+    nVars = 2 + elyte_obj.n_species
 
     # Pointers
     ptr = {}
     ptr['iFar'] = elyte_obj.species_index(Inputs.Li_species_elyte)
-    ptr['X_ed'] = np.arange(0, Inputs.nshells_anode)
-    ptr['X_k_elyte'] = nshells + np.arange(0,elyte_obj.n_species)
-    ptr['Phi_ed'] = nshells + elyte_obj.n_species
-    ptr['Phi_dl'] = nshells + elyte_obj.n_species + 1
+    ptr['X_k_elyte'] = np.arange(0,elyte_obj.n_species)
+    ptr['Phi_ed'] = elyte_obj.n_species
+    ptr['Phi_dl'] = elyte_obj.n_species + 1
     
     ptr_vec = {}
-    ptr_vec['X_ed'] = ptr['X_ed']
     ptr_vec['X_k_elyte'] = ptr['X_k_elyte']
     ptr_vec['Phi_ed'] = ptr['Phi_ed']
     ptr_vec['Phi_dl'] = ptr['Phi_dl']
     for i in np.arange(1, npoints):
-        ptr_vec['X_ed'] = np.append(ptr_vec['X_ed'], ptr['X_ed'] + i*nVars)
         ptr_vec['X_k_elyte'] = np.append(ptr_vec['X_k_elyte'], 
                                            ptr['X_k_elyte'] + i*nVars)
         ptr_vec['Phi_ed'] = np.append(ptr_vec['Phi_ed'], ptr['Phi_ed'] + i*nVars)
@@ -147,30 +141,9 @@ class anode():
     r_pore = Inputs.r_p_an
     d_part = Inputs.d_part_an
     dyInv = npoints/Inputs.H_an
-    dr = d_part*0.5/nshells
 
     # Calculate the current density [A/m^2] corresponding to a C_rate of 1:
     oneC = eps_ed*anode_obj.density_mole*Inputs.H_an*ct.faraday/3600
-
-    # Calculate the percent volume of a single graphite particle that exists in
-    #   each 'shell'. I.e. for shell j, what is the volume of that shell,
-    #   relative to the total particle volume? The radius of the volume is
-    #   currently discretized evenly (i.e. 'dr' the differential radius is
-    #   constant). Certainly other discretizations (such as constant
-    #   differential volume) are possible (and perhaps better).
-    #
-    #   Because the volume is 4/3 pi*r^3, the volume of the shell relative to
-    #   the total volume is (r_shell/r_particle)^3, and the differential volume
-    #   relative to the total, for shell 'j' is:
-    #       (r_shell(j+1)^3 - r_shell(j)^3)/r_particle^3
-    #   Because the radius is discretized evenly, the radius of shell j, r_j,
-    #   relative to the total radius r_particle, is:
-    #       r_j/r_particle = j/nshells
-
-    V_shell = np.zeros([nshells])
-    nsr3 = 1/nshells/nshells/nshells
-    for j in np.arange(0, nshells, 1):
-        V_shell[j] = ((j+1)**3 - (j)**3)*nsr3
 
     # Electronic conductivity of the electrode phase:
     sigma_eff_ed = Inputs.sigma_an*eps_ed/tau_ed**3
@@ -372,10 +345,7 @@ class solver_inputs():
     
     offsets = anode.offsets
     ptr = anode.ptr
-    for j in range(anode.npoints):
-        SV_0[offsets[j] + ptr['X_ed']] = np.ones([anode.nshells])*X_an_0[0]
-        algvar[offsets[j] + ptr['X_ed']] = 1
-    
+    for j in range(anode.npoints):    
         SV_0[offsets[j] + ptr['X_k_elyte']] = elyte_obj.X
         algvar[offsets[j] + ptr['X_k_elyte']] = 1
     

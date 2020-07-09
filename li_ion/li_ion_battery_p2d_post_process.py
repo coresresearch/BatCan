@@ -62,7 +62,7 @@ def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
 
 """========================================================================="""
 
-def plot_electrode(X_an, X_cat, SV_df, stage, yax, fig, axes):
+def plot_electrode(X_cat, SV_df, stage, yax, fig, axes):
     
     t = SV_df['Time']
     fontsize = 26
@@ -80,14 +80,14 @@ def plot_electrode(X_an, X_cat, SV_df, stage, yax, fig, axes):
     elif Inputs.flag_cathode and not Inputs.flag_anode:
         axes_cat = axes[yax]
     
-    if Inputs.flag_anode:
-        index = []
-        for i in np.arange(0, anode.npoints):
-            offset = i*anode.nshells
-            index_add = [0+offset, anode.nshells-1+offset]
-            index = np.append(index, index_add)
-            
-        X_an = [X_an[i] for i in index.astype(int)]
+#    if Inputs.flag_anode:
+#        index = []
+#        for i in np.arange(0, anode.npoints):
+#            offset = i*anode.nshells
+#            index_add = [0+offset, anode.nshells-1+offset]
+#            index = np.append(index, index_add)
+#            
+#        X_an = [X_an[i] for i in index.astype(int)]
         
         # Plot anode composition
         SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes_an,
@@ -296,9 +296,6 @@ def tag_strings(SV):
         V_an[0+offset:1+offset] = \
             SV_eq_labels[ptr['Phi_ed']+offset:ptr['Phi_dl']+offset+1]
             
-        X_an[0+offset:anode.nshells+offset] = \
-            SV_eq_labels[0+offset:anode.nshells+offset]
-            
         rho_el_an[0+offset:elyte_obj.n_species+offset] = \
             SV_eq_labels[ptr['X_k_elyte'][0]+offset:ptr['X_k_elyte'][-1]+offset+1]
                 
@@ -323,7 +320,7 @@ def tag_strings(SV):
     
     V_sep = V_sep.tolist()
     tags = {}
-    tags['Phi_an'] = V_an; tags['Phi_cat'] = V_cat; tags['X_an'] = X_an; tags['X_cat'] = X_cat
+    tags['Phi_an'] = V_an; tags['Phi_cat'] = V_cat; tags['X_cat'] = X_cat
     tags['X_el_an'] = rho_el_an; tags['X_el_cat'] = rho_el_cat; tags['X_el_sep'] = X_el_sep
     tags['Phi_sep'] = V_sep
 
@@ -348,21 +345,16 @@ def Label_Columns(t, SV, anode_np, sep_np, cat_np):
     newcols = {}
     for j in np.arange(0, anode_np):
         offset = anode.offsets[j]  # Set node offset value for loop
-        
-        # Loop over number of shells in anode
-        for k in np.arange(0, anode.nshells):
-            newcols_an = {k + offset: 'X_an'+str(j+1)+str(k+1)}
-            newcols.update(newcols_an)
             
         # Loop over number of species in electrolyte
         for k in np.arange(0, elyte_obj.n_species):
             species = elyte_obj.species_names[k]
-            newcols_el = {k + anode.nshells + offset: 'X_'+species+'_an'+str(j+1)}
+            newcols_el = {k + offset: 'X_'+species+'_an'+str(j+1)}
             newcols.update(newcols_el)
             
         # Add tags for electrode and double layer potentials
-        newcols_phi = {0+anode.nshells+elyte_obj.n_species+offset: 'Phi_an'+str(j+1),
-                       1+anode.nshells+elyte_obj.n_species+offset: 'Phi_an_dl'+str(j+1)}
+        newcols_phi = {0+elyte_obj.n_species+offset: 'Phi_an'+str(j+1),
+                       1+elyte_obj.n_species+offset: 'Phi_an_dl'+str(j+1)}
         newcols.update(newcols_phi)
         
         SV_df.rename(columns=newcols, inplace=True)
@@ -390,7 +382,7 @@ def Label_Columns(t, SV, anode_np, sep_np, cat_np):
         offset = cathode.offsets[j]  # Set node offset value for loop
         
         # Loop over number of shells in anode
-        for k in np.arange(0, anode.nshells):
+        for k in np.arange(0, cathode.nshells):
             newcols_cat = {k + offset: 'X_cat'+str(j+1)+str(k+1)}
             newcols.update(newcols_cat)
             
