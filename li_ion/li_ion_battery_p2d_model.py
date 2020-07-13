@@ -550,7 +550,7 @@ class li_ion(Implicit_Problem):
         event8 = np.zeros([cat.npoints*cat.nshells])
         
         event5 = y[cat.ptr_vec['Phi_dl']]
-        event6 = 5 - y[cat.ptr_vec['Phi_ed']]
+        event6 = 4.2 - y[cat.ptr_vec['Phi_ed']]
         event7 = cat.X_Li_max - y[cat.ptr_vec['X_ed']]
         event8 = y[cat.ptr_vec['X_ed']] - cat.X_Li_min
                

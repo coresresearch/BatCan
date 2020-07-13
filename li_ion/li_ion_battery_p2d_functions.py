@@ -81,7 +81,7 @@ def solid_flux(SV, offset, ptr, s1, ed):
 
 def setup_plots(plt, rate_tag):
     if Inputs.plot_potential_profiles == 1:
-        fig1, axes1 = plt.subplots(sharey="row", figsize=(14,6), nrows=1, 
+        fig1, axes1 = plt.subplots(sharey="row", figsize=(10,6), nrows=1, 
                                    ncols = 2+(Inputs.flag_re_equil*Inputs.phi_time))
         plt.subplots_adjust(wspace = 0.15, hspace = 0.4)
         fig1.text(0.15, 0.8, rate_tag, fontsize=20, 
@@ -90,7 +90,7 @@ def setup_plots(plt, rate_tag):
     if Inputs.plot_electrode_profiles == 1:
         nrows = Inputs.flag_anode + Inputs.flag_cathode
         ncols = 2 + Inputs.flag_re_equil
-        fig2, axes2 = plt.subplots(sharey="row", figsize=(18,9), nrows=nrows,
+        fig2, axes2 = plt.subplots(sharey="row", figsize=(10,9), nrows=nrows,
                                    ncols=ncols)
         plt.subplots_adjust(wspace=0.15, hspace=0.4)
         fig2.text(0.15, 0.8, rate_tag, fontsize=20, 
@@ -99,7 +99,7 @@ def setup_plots(plt, rate_tag):
     if Inputs.plot_elyte_profiles == 1:
         nrows = Inputs.flag_anode + Inputs.flag_cathode + Inputs.flag_sep
         ncols = 2 + Inputs.flag_re_equil
-        fig3, axes3 = plt.subplots(sharey="row", figsize=(18,9), nrows=nrows,
+        fig3, axes3 = plt.subplots(sharey="row", figsize=(10,9), nrows=nrows,
                                     ncols=ncols)
         plt.subplots_adjust(wspace=0.15, hspace=0.4)
         fig3.text(0.15, 0.8, rate_tag, fontsize=20, 

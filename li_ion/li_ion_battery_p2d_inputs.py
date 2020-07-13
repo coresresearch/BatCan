@@ -42,7 +42,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 1
+    C_rate = 0.1
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
