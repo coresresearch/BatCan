@@ -51,6 +51,11 @@ class Inputs():
     #   discretization of the electrode particles
     particle_method = 'dr'
     
+    # String to set the kinetics method used for the anode interface. Options
+    #   are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use the
+    #   Marcus-Hush-Chidley theory
+    anode_kinetics = 'MHC'
+    
     # Set electrolyte transport model to eithe dilute solution ('dst') or
     #   concentrated solution theory ('cst').
     elyte_flux_model = 'dst'
@@ -77,11 +82,11 @@ class Inputs():
     anode_surf_phase = 'edge_anode_electrolyte'
     cathode_surf_phase = 'edge_cathode_electrolyte'
 
-    Li_species_anode = 'Li[s]'
+    Li_species_anode = 'Li(s)'
     Li_species_cathode = 'Li[cathode]'
     Vac_species_cathode = 'V[cathode]'
     
-    Li_species_elyte = 'Li+[elyt]'
+    Li_species_elyte = 'Li+(e)'
 
     Phi_anode_init = 0.0
     Phi_elyte_init = 2.5

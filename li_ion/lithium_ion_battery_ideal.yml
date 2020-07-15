@@ -56,24 +56,27 @@ phases:
 - name: anode
   thermo: fixed-stoichiometry
   elements: [Li]
-  species: ['Li[s]']
+  species: ['Li(s)']
   density: 0.534 kg/m^3
   state:
     T: 300.0 K
     P: 1 atm
+
 - name: cathode
   thermo: ideal-condensed
   elements: [Li, Co, O]
   species: ['Li[cathode]', 'V[cathode]']
   standard-concentration-basis: unity
+
 - name: electrolyte
   thermo: ideal-condensed
   elements: [Li, P, F, C, H, O, E]
-  species: ['C3H4O3[elyt]', 'C4H6O3[elyt]', 'Li+[elyt]', 'PF6-[elyt]']
+  species: ['C3H4O3(e)', 'C4H6O3(e)', 'Li+(e)', 'PF6-(e)']
   state:
-    X: {'C3H4O3[elyt]': 0.47901, 'C4H6O3[elyt]': 0.37563, 'Li+[elyt]': 0.07268,
-      'PF6-[elyt]': 0.07268}
+    X: {'C3H4O3(e)': 0.47901, 'C4H6O3(e)': 0.37563, 'Li+(e)': 0.07268,
+      'PF6-(e)': 0.07268}
   standard-concentration-basis: unity
+
 - name: electron
   thermo: electron-cloud
   elements: [E]
@@ -81,21 +84,46 @@ phases:
   state:
     X: {electron: 1.0}
   density: 1.0 kg/m^3
-- name: edge_anode_electrolyte
+
+- name: lithium_surf_marcus
   thermo: ideal-surface
-  species: [(dummy)]
+  species: [(surf)]
   kinetics: surface
-  reactions: [edge_anode_electrolyte-reactions]
-  site-density: 0.01 mol/cm^2
+  reactions: [marcus-reactions]
+  state:
+    T: 300.0
+    P: 1 atm
+  site-density: 3.48e-2
+
+- name: lithium_surf_mhc
+  thermo: ideal-surface
+  species: [(surf)]
+  kinetics: surface
+  reactions: [marcus-hush-chidsey-reactions]
+  state:
+    T: 300.0
+    P: 1 atm
+  site-density: 3.48e-2
+
+- name: lithium_surf_butler_volmer
+  thermo: ideal-surface
+  species: [(surf)]
+  kinetics: surface
+  reactions: [butlervolmer-reactions]
+  state:
+    T: 300.0
+    P: 1 atm
+  site-density: 3.48e-2
+
 - name: edge_cathode_electrolyte
   thermo: ideal-surface
-  species: [(dummy)]
+  species: [(surf)]
   kinetics: surface
   reactions: [edge_cathode_electrolyte-reactions]
   site-density: 0.01 mol/cm^2
 
 species:
-- name: Li[s]
+- name: Li(s)
   composition: {Li: 1}
   thermo:
     model: constant-cp
@@ -104,6 +132,7 @@ species:
   equation-of-state:
     model: constant-volume
     molar-volume: 12.998 cm^3/mol
+
 - name: Li[cathode]
   composition: {Li: 1, Co: 1, O: 2}
   thermo:
@@ -120,6 +149,7 @@ species:
     BinarySolidSolutionTabulatedThermo class are used.
     Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
     2017) (used to calculate species molar volume as molecular weight/density).
+
 - name: V[cathode]
   composition: {Co: 1, O: 2}
   thermo:
@@ -136,7 +166,8 @@ species:
     for this phase.
     Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
     2017) (used to calculate species molar volume as molecular weight/density).
-- name: C3H4O3[elyt]
+
+- name: C3H4O3(e)
   composition: {C: 3, H: 4, O: 3}
   thermo:
     model: constant-cp
@@ -151,7 +182,8 @@ species:
     as molecular weight (MW)/density)
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
-- name: C4H6O3[elyt]
+
+- name: C4H6O3(e)
   composition: {C: 4, H: 6, O: 3}
   thermo:
     model: constant-cp
@@ -166,7 +198,8 @@ species:
     as molecular weight (MW)/density)
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
-- name: Li+[elyt]
+
+- name: Li+(e)
   composition: {Li: 1, E: -1}
   thermo:
     model: constant-cp
@@ -181,7 +214,8 @@ species:
     as molecular weight (MW)/density)
     Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
     Chemistry", Wiley-VCH (2006)
-- name: PF6-[elyt]
+
+- name: PF6-(e)
   composition: {P: 1, F: 6, E: 1}
   thermo:
     model: constant-cp
@@ -196,6 +230,7 @@ species:
     as molecular weight (MW)/density)
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
+
 - name: electron
   composition: {E: 1}
   thermo:
@@ -206,7 +241,8 @@ species:
     Electron, MW: 0.000545 g/mol
     Molar enthalpy and entropy set to zero (dummy entries because chemical
     potential is set to zero for a "metal" phase)
-- name: (dummy)
+
+- name: (surf)
   composition: {}
   thermo:
     model: constant-cp
@@ -214,15 +250,41 @@ species:
     s0: 0.0 J/mol/K
   note: Dummy species (needed for defining the interfaces)
 
-edge_anode_electrolyte-reactions:
-- equation: Li+[elyt] + electron <=> Li[s]  # Reaction 1
+marcus-reactions:
+- equation: Li(s) <=> Li+(e) + electron
+  type: marcus
   id: anode_reaction
-  rate-constant: {A: 6e2, b: 0.0, Ea: 20.0 kJ/mol}
-  exchange-current-density-formulation: true
-  beta: 0.5
+  rate-constant: {A: 1.5, b: 0.0, Ea: 0.0}
+  transfer-coefficients:
+    beta: 0.5
+    lambda: 1.2472e7 # Molecular reorganization energy to form the transition state (J per kmol of elementary charge transferred.)
+  state-dependence:
+    reference-state: {Li+(e): 0.17} # Species refernce concentrations. Units must match activity concentration for that phase.
+
+marcus-hush-chidsey-reactions:
+- equation: Li(s) <=> Li+(e) + electron
+  type: marcus-hush-chidsey
+  id: anode_reaction
+  rate-constant: {A: 1.5, b: 0.0, Ea: 0.0}
+  transfer-coefficients:
+    lambda: 1.2472e7 # Molecular reorganization energy to form the transition
+    # state (J per kmol of elementary charge transferred.)
+  state-dependence:
+    reference-state: {Li+(e): 0.17} #Species refernce concentrations. Units must match activity concentration for that phase
+
+butlervolmer-reactions:
+- equation: Li(s) <=> Li+(e) + electron
+  type: butler-volmer
+  id: anode_reaction
+  rate-constant: {A: 1.5, b: 0.0, Ea: 0.0}
+  transfer-coefficients:
+    beta: 0.5
+  state-dependence:
+    reference-state: {Li+(e): 0.17} #Species refernce concentrations. Units must match activity concentration for that phase
 
 edge_cathode_electrolyte-reactions:
-- equation: Li+[elyt] + V[cathode] + electron <=> Li[cathode]  # Reaction 2
+- equation: Li+(e) + V[cathode] + electron <=> Li[cathode]  # Reaction 2
+  type: butler-volmer
   id: cathode_reaction
   rate-constant: {A: 5.629e+11, b: 0.0, Ea: 58.0 kJ/mol}
   exchange-current-density-formulation: true

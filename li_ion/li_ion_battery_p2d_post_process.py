@@ -73,8 +73,8 @@ def plot_electrode(X_cat, SV_df, stage, yax, fig, axes):
         showlegend = 0
     
     if Inputs.flag_anode and Inputs.flag_cathode:
-        axes_an = axes[0, yax]
-        axes_cat = axes[1, yax]
+#        axes_an = axes[0, yax]
+        axes_cat = axes[yax]
     elif Inputs.flag_anode and not Inputs.flag_cathode:
         axes_an = axes[yax]
     elif Inputs.flag_cathode and not Inputs.flag_anode:
@@ -90,15 +90,15 @@ def plot_electrode(X_cat, SV_df, stage, yax, fig, axes):
 #        X_an = [X_an[i] for i in index.astype(int)]
         
         # Plot anode composition
-        SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes_an,
-                             xlim = [0, t.iloc[-1]], ylim = [-0.1, 1.1])
-        SV_plot.set_title(stage, fontsize = fontsize)
-        SV_plot.set_ylabel('$X_{LiC_6}$', fontsize = fontsize)
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
-        SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
-                       borderaxespad = 0, frameon = False).set_visible(False)
-        SV_plot.tick_params(axis='both', labelsize = 18)
-        SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+#        SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes_an,
+#                             xlim = [0, t.iloc[-1]], ylim = [-0.1, 1.1])
+#        SV_plot.set_title(stage, fontsize = fontsize)
+#        SV_plot.set_ylabel('$X_{LiC_6}$', fontsize = fontsize)
+#        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
+#        SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
+#                       borderaxespad = 0, frameon = False).set_visible(False)
+#        SV_plot.tick_params(axis='both', labelsize = 18)
+#        SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
     if Inputs.flag_cathode:
         index = []

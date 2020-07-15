@@ -24,8 +24,16 @@ elyte_obj = ct.Solution(Inputs.ctifile,Inputs.elyte_phase)
 cathode_obj = ct.Solution(Inputs.ctifile,Inputs.cathode_phase)
 conductor_obj = ct.Solution(Inputs.ctifile,Inputs.metal_phase)
 
-anode_surf_obj = ct.Interface(Inputs.ctifile,Inputs.anode_surf_phase,
-    [anode_obj,elyte_obj,conductor_obj])
+if Inputs.anode_kinetics == 'Marcus':
+    anode_surf_obj = ct.Interface(Inputs.ctifile, 'lithium_surf_marcus',
+        [anode_obj, elyte_obj, conductor_obj])
+elif Inputs.anode_kinetics == 'BV':
+    anode_surf_obj = ct.Interface(Inputs.ctifile, 'lithium_surf_butler_volmer', 
+        [anode_obj, elyte_obj, conductor_obj])
+elif Inputs.anode_kinetics == 'MHC':
+    anode_surf_obj = ct.Interface(Inputs.ctifile, 'lithium_surf_mhc',
+        [anode_obj, elyte_obj, conductor_obj])
+
 cathode_surf_obj = ct.Interface(Inputs.ctifile,Inputs.cathode_surf_phase,
     [cathode_obj,elyte_obj,conductor_obj])
 

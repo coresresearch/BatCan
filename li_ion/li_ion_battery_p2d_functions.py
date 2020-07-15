@@ -88,7 +88,7 @@ def setup_plots(plt, rate_tag):
                   bbox=dict(facecolor='white', alpha=0.5))
         
     if Inputs.plot_electrode_profiles == 1:
-        nrows = Inputs.flag_anode + Inputs.flag_cathode
+        nrows = Inputs.flag_cathode
         ncols = 2 + Inputs.flag_re_equil
         fig2, axes2 = plt.subplots(sharey="row", figsize=(10,9), nrows=nrows,
                                    ncols=ncols)
