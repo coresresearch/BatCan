@@ -12,6 +12,8 @@ import importlib
 import li_ion_battery_p2d_inputs
 importlib.reload(li_ion_battery_p2d_inputs)
 from li_ion_battery_p2d_inputs import Inputs
+#import sys
+#print(sys.path)
 
 #import sys
 #sys.path.append('C:\\Users\\dkorff\\Research\\BatCan-repo')
@@ -37,7 +39,7 @@ elif Inputs.anode_kinetics == 'MHC':
 cathode_surf_obj = ct.Interface(Inputs.ctifile,Inputs.cathode_surf_phase,
     [cathode_obj,elyte_obj,conductor_obj])
 
-
+#print(anode_surf_obj())
 # Anode initial conditions:
 #LiC6_0 = Inputs.Li_an_min + Inputs.SOC_0*(Inputs.Li_an_max - Inputs.Li_an_min)
 #C6_0 = 1 - LiC6_0

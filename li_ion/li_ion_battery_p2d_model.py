@@ -345,6 +345,8 @@ class li_ion(Implicit_Problem):
         D_k, D_k_migr = transport.coeffs()
             
         N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
+        
+#        print(i_Far_1, i_io_p, '\n\n')
 
         """Change in electrolyte_composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -353,10 +355,11 @@ class li_ion(Implicit_Problem):
 
         """Double-layer voltage"""
         res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
-        - (-i_Far_1 + i_io_m - i_io_p)*an.dyInv/an.C_dl/an.A_surf)
+        - (-i_Far_1 + i_el_m - i_el_p)*an.dyInv/an.C_dl/an.A_surf)
 
         """Algebraic equation for ANODE electric potential boundary condition"""
-        res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
+        res[offset + ptr['Phi_ed']] = i_el_m - i_el_p + i_io_m - i_io_p
+#        SV[an.ptr['Phi_ed']]
         
 # %%
         """================================================================="""
@@ -521,7 +524,8 @@ class li_ion(Implicit_Problem):
         - (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)
         
         """Algebraic equation for CATHODE electric potential"""
-        res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
+        res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
+#        (i_el_m - i_el_p + i_io_m - i_io_p)
                         
         return res
 

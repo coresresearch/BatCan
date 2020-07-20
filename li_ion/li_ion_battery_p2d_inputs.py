@@ -42,7 +42,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 0.1
+    C_rate = 0.2
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -54,7 +54,11 @@ class Inputs():
     # String to set the kinetics method used for the anode interface. Options
     #   are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use the
     #   Marcus-Hush-Chidley theory
-    anode_kinetics = 'MHC'
+    anode_kinetics = 'BV'
+    
+    # Set the roughness factor for the dense lithium anode. This will affect
+    #   the effective surface area of the lithium anode.
+    anode_roughness = 1.2
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
     #   concentrated solution theory ('cst').
