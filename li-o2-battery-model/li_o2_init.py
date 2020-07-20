@@ -199,8 +199,9 @@ SV0_cath = np.tile(SV_single_cath, N_y_ca)
 SV_single_sep = C_k_elyte_init
 SV0_sep = np.tile(SV_single_sep, N_y_sep)
 
-# SV0 = np.r_[SV0_cath,SV0_sep]                                       # combine initial values
-SV0 = SV0_cath
+
+SV0 = np.r_[SV0_cath,SV0_sep]                # combine initial values
+# SV0 = SV0_cath
 
 "============================================================================"
 "  POINTER FOR POST-PROCESSING / PLOTTING  "

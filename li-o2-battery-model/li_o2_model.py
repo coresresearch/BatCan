@@ -34,9 +34,9 @@ SV0 = SV.y[:,-1]
 
 print('Discharging... \n')
 # Re-set the current to the user-provided value and integrate:
-params['i_ext'] = i_ext
-SV = solve_ivp(lambda t, y: func(t, y, params, objs, SVptr), [0, tspan], \
-    SV0, method='BDF', atol=params['atol'], rtol=params['rtol'])
+# params['i_ext'] = i_ext
+# SV = solve_ivp(lambda t, y: func(t, y, params, objs, SVptr), [0, tspan], \
+#     SV0, method='BDF', atol=params['atol'], rtol=params['rtol'])
 
 """ Plot solutions to concentrations and potentials """
 "============================================================================"
@@ -74,9 +74,18 @@ for j in range(N_y_ca):
     plt.figure(5)
     plt.plot(SV.t, SV.y[SVptr['C_k_elyte_ca'][j][pltptr['PF6-']],:], label=j+1)
     plt.xlabel('Time (s)')
+    plt.ylabel('Charge Concentration (kg/m3)')
+    plt.tight_layout()
+    plt.legend()
+
+
+    plt.figure(7)
+    plt.plot(SV.t, SV.y[SVptr['C_k_elyte_ca'][j][pltptr['PF6-']],:]+ SV.y[SVptr['C_k_elyte_ca'][j][pltptr['Li+']],:], label=j+1)
+    plt.xlabel('Time (s)')
     plt.ylabel('PF6- Concentration (kg/m3)')
     plt.tight_layout()
     plt.legend()
+
 
     plt.figure(6)
     A_carb = params['A_carbon_init'] - SV.y[SVptr['eps_oxide'][j],:]*1.5/params['r_oxide']

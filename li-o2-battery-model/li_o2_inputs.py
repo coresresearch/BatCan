@@ -12,11 +12,11 @@ DoD = 0.75                          # Depth of discharge (out of 1.0)
 # TODO #6: calculate tspan as a function of C_rate and DoD
 tspan = DoD*23e7*9e-3/abs(i_ext)    # Simulation time for charge/discharge [s]
 
-phi_elyte_init = -3.19              # double layer voltage [V]
+phi_elyte_init = -3.23              # double layer voltage [V]
 
 Molarity_elyte = 1.0                # Moles of Li salt per L of electrolyte.
 
-TP = 300, 21278.25                    # inital temp, pressure [K, Pa]
+TP = 300, 21278.25                   # inital temp, pressure [K, Pa]
 
 # Tolerances (absolute and relative)
 atol = 1e-6
@@ -25,7 +25,7 @@ rtol = 1e-3
 " Microstructure and geometry "
 # Discretization
 N_y_ca = 10                         # no. cells in cathode
-N_y_sep = 1                          # no. cells in separator
+N_y_sep = 3                          # no. cells in separator
 
 # Geometric/microstructure parameters
 th_cath = 600e-6                     # cathode thickness [m]

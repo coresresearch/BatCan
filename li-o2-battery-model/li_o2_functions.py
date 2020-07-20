@@ -34,12 +34,11 @@ def LiO2_func(t, SV, params, objs, SVptr):
     
     # Read out conditions for first node (adjacent to current collector)
     j = 0
-    phi_elyte, eps_oxide, C_k_elyte = read_state(SV, SVptr, j)
+    phi_elyte, C_k_elyte, eps_oxide, eps_elyte = read_state(SV, SVptr, params,\
+         j)
     # Set the state of the relevant Cantera objects:
     ca_bulk, oxide, elyte, gas = set_states(phi_elyte, C_k_elyte, \
         params, ca_bulk, oxide, elyte, gas)
-    # Calculate electrolyte volume fraction
-    eps_elyte = 1. - params['eps_carbon'] - eps_oxide
 
     # Array of molar fluxes (kmol/m2/s) and ionic current (A/m2) at air/elyte BC
     N_k_in = air_elyte.get_net_production_rates(elyte)
@@ -49,6 +48,7 @@ def LiO2_func(t, SV, params, objs, SVptr):
     N_k_out = np.zeros_like(N_k_in)
 
     for j in np.arange(params['N_y_ca'] - 1):
+        print(j, N_k_in)
 
         # Area of carbon surface per unit volume:
         A_carb = params['A_carbon_init'] - eps_oxide*1.5/params['r_oxide']
@@ -60,14 +60,12 @@ def LiO2_func(t, SV, params, objs, SVptr):
         sdot_oxide = tpb.get_net_production_rates(oxide) * A_carb
 
         # Elyte state for 'next node'
-        phi_elyte_next, eps_oxide_next, C_k_elyte_next = \
-            read_state(SV, SVptr, j+1)
+        phi_elyte_next, C_k_elyte_next, eps_oxide_next, eps_elyte_next = \
+            read_state(SV, SVptr, params, j+1)
             
         # Set the state of the relevant Cantera objects:
         ca_bulk, oxide, elyte, gas = set_states(phi_elyte_next, \
             C_k_elyte_next, params, ca_bulk, oxide, elyte, gas)
-        # Calculate electrolyte volume fraction
-        eps_elyte_next = 1. - params['eps_carbon'] - eps_oxide_next
 
         # Concentration and volume fracion at interface between nodes:
         C_k_elyte_int = 0.5*(C_k_elyte + C_k_elyte_next)
@@ -88,6 +86,7 @@ def LiO2_func(t, SV, params, objs, SVptr):
         # Calculate change in double layer potential
         #    Double layer current
         i_dl = (i_io_in - i_io_out)*params['dyInv_ca'] + i_far
+
         dSVdt[SVptr['phi_dl'][j]] = i_dl \
             / (params['C_dl'] * params['A_carbon_init'])
 
@@ -110,6 +109,7 @@ def LiO2_func(t, SV, params, objs, SVptr):
         phi_elyte = phi_elyte_next
         C_k_elyte = C_k_elyte_next
         eps_elyte = eps_elyte_next
+        eps_oxide = eps_oxide_next
 
     " --- Volume adjacent to the separator --- "
     j = params['N_y_ca'] - 1
@@ -257,7 +257,7 @@ def read_cantera_objs(objs):
 
     return gas, ca_bulk, elyte, oxide, ca_surf, tpb, air_elyte, Li_bulk, Li_surf
 
-def read_state(SV, SVptr, j):
+def read_state(SV, SVptr, params, j):
     # double layer (i.e. elyte) electric potential:
     phi_elyte = SV[SVptr['phi_dl'][j]]
 
@@ -272,7 +272,10 @@ def read_state(SV, SVptr, j):
     C_k_elyte[np.isnan(C_k_elyte)] = 1e-24
 
 
-    return phi_elyte, eps_oxide, C_k_elyte
+    # Calculate electrolyte volume fraction
+    eps_elyte = 1. - params['eps_carbon'] - eps_oxide
+
+    return phi_elyte, C_k_elyte, eps_oxide, eps_elyte
 
 def set_states(phi_elyte, C_k_elyte, params, ca_bulk, oxide, elyte, gas):
     
