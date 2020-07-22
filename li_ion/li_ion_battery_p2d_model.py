@@ -48,7 +48,7 @@ from li_ion_battery_p2d_post_process import plot_potential, plot_electrode, plot
 from li_ion_battery_p2d_post_process import plot_cap
 
 import sys
-sys.path.append('..\\functions')
+sys.path.append('../functions')
 
 import diffusion_coeffs
 transport = getattr(diffusion_coeffs, Inputs.elyte_flux_model)
@@ -63,7 +63,7 @@ def main():
     plt.close('all')
     
     atol = np.ones_like(SV_0)*1e-8
-    rtol = 1e-4   
+    rtol = 1e-6   
 
     # Start a timer:
     t_count = time.time()
@@ -594,7 +594,7 @@ class li_ion(Implicit_Problem):
         event8 = np.zeros([cat.npoints*cat.nshells])
         
         event5 = y[cat.ptr_vec['Phi_dl']]
-        event6 = 5 - y[cat.ptr_vec['Phi_ed']]
+        event6 = 5. - y[cat.ptr_vec['Phi_ed']]
         event7 = cat.X_Li_max - y[cat.ptr_vec['X_ed']]
         event8 = y[cat.ptr_vec['X_ed']] - cat.X_Li_min
                
