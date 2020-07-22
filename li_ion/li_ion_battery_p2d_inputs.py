@@ -42,7 +42,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 0.2
+    C_rate = 1
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -54,11 +54,11 @@ class Inputs():
     # String to set the kinetics method used for the anode interface. Options
     #   are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use the
     #   Marcus-Hush-Chidley theory
-    anode_kinetics = 'BV'
+    anode_kinetics = 'MHC'
     
     # Set the roughness factor for the dense lithium anode. This will affect
     #   the effective surface area of the lithium anode.
-    anode_roughness = 1.2
+    anode_roughness = 5
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
     #   concentrated solution theory ('cst').
@@ -102,7 +102,7 @@ class Inputs():
 
     "Anode geometry and transport"
     # Microstructure
-    eps_solid_an = 0.6  # Graphite volume fraction [-]
+    eps_solid_an = 0.8  # Graphite volume fraction [-]
     tau_an = 1.6        # Tortuosity - assume equal values for carbon and elyte [-]
     r_p_an = 5e-6       # Average pore radius [m]
     d_part_an = 5e-6    # Average particle diameter for graphite [m]
@@ -110,6 +110,7 @@ class Inputs():
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
     H_an = 25e-6        # Anode thickness [m]
+    H_Li = 20e-6        # Lithium foil thickness
 
     # Other Parameters
     C_dl_an = 1.5e-2    # Double-layer capacitance [F/m^2]

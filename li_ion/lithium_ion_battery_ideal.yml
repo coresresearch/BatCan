@@ -47,6 +47,8 @@ description: |-
   Species and site density are dummy entries (as we do not consider surface-
   adsorbed species)
 
+units: {length: cm}
+
 generator: cti2yaml
 cantera-version: 2.5.0a3
 date: Wed, 11 Dec 2019 16:59:07 -0500
@@ -284,10 +286,7 @@ butlervolmer-reactions:
 
 edge_cathode_electrolyte-reactions:
 - equation: Li+(e) + V[cathode] + electron <=> Li[cathode]  # Reaction 2
-  type: butler-volmer
   id: cathode_reaction
   rate-constant: {A: 4, b: 0.0, Ea: 58.0 kJ/mol}
-  transfer-coefficients:
-    beta: 0.5
-  state-dependence:
-    reference-state: {Li+(e): 0.17}
+  exchange-current-density-formulation: true
+  beta: 0.5

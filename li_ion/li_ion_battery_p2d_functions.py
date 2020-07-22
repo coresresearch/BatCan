@@ -58,7 +58,7 @@ def dilute_flux(s1, s2, dyInv, ed, D_k, D_migr_k):
     # Total molar concentration in electrolyte
     C_0 = (s2['rho_el'] + s1['rho_el'])/2.
     
-    N_io_p = (- D_k*C_0*(s2['X_k_el'] - s1['X_k_el'])*dyInv 
+    N_io_p = (- D_k*(s2['rho_el']*s2['X_k_el'] - s1['rho_el']*s1['X_k_el'])*dyInv 
               - D_migr_k*(z_k*F/R/T)*(s2['phi_el'] - s1['phi_el'])*dyInv)
     
 #    N_io_p = (-ed.u_Li_elyte*(R*T*C_0*(s2['X_k_el'] - s1['X_k_el'])

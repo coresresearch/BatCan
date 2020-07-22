@@ -335,31 +335,32 @@ class li_ion(Implicit_Problem):
         # Set j to final ANODE node
         j = an.npoints-1; offset = int(an.offsets[j])
 
-        i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
+        i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf
         
-        dyInv_boundary = 1/(0.5*(1/an.dyInv + 1/sep.dyInv))
-        
-        transport.C_k = (s2['X_k_el']*s2['rho_el'] 
-                           + s1['X_k_el']*s1['rho_el'])/2.
-        transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+        dyInv_boundary = 1/(0.5*(1/an.dyInv_el + 1/sep.dyInv))
+        w1 = sep.dy/(an.dy_el + sep.dy); w2 = an.dy_el/(an.dy_el + sep.dy)
+        transport.C_k = (s2['X_k_el']*s2['rho_el']*w2 
+                           + s1['X_k_el']*s1['rho_el']*w1)
+        transport.rho_bar = (s2['rho_el']*w2 + s1['rho_el']*w1)
         D_k, D_k_migr = transport.coeffs()
             
         N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
-        
-#        print(i_Far_1, i_io_p, '\n\n')
+
+        i_dl = i_Far_1 + i_el_m - i_el_p
+        R_dl = np.array((0, 0, i_dl/an.dy/F, 0))
 
         """Change in electrolyte_composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
-        - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf)
+        - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf*an.dyInv + R_dl)
         /s1['rho_el']/an.eps_elyte))
 
         """Double-layer voltage"""
         res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
-        - (-i_Far_1 + i_el_m - i_el_p)*an.dyInv/an.C_dl/an.A_surf)
+        - (-i_Far_1 + i_el_m - i_el_p)/an.C_dl/an.A_surf)
 
         """Algebraic equation for ANODE electric potential boundary condition"""
         res[offset + ptr['Phi_ed']] = i_el_m - i_el_p + i_io_m - i_io_p
-#        SV[an.ptr['Phi_ed']]
+
         
 # %%
         """================================================================="""
@@ -525,6 +526,7 @@ class li_ion(Implicit_Problem):
         
         """Algebraic equation for CATHODE electric potential"""
         res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
+#        SV[an.ptr['Phi_ed']]
 #        (i_el_m - i_el_p + i_io_m - i_io_p)
                         
         return res
@@ -563,7 +565,6 @@ class li_ion(Implicit_Problem):
         event10 = np.zeros([an.npoints*elyte.n_species])
         event11 = np.zeros([cat.npoints*elyte.n_species])
         event12 = np.zeros([cat.npoints*elyte.n_species])
-        
         event9  = 1 - y[an.ptr_vec['X_k_elyte']]
         event10 = y[an.ptr_vec['X_k_elyte']]
         event11 = 1 - y[cat.ptr_vec['X_k_elyte']]

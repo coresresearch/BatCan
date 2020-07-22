@@ -124,12 +124,10 @@ class anode():
         ptr_vec['Phi_ed'] = np.append(ptr_vec['Phi_ed'], ptr['Phi_ed'] + i*nVars)
         ptr_vec['Phi_dl'] = np.append(ptr_vec['Phi_dl'], ptr['Phi_dl'] + i*nVars)
 
-    # Anode/elyte interface area per unit volume
-    #   [m^2 interface / m_3 total electrode volume]
-    # For spherical particles, the total surface area per unit volume can be
-    #   calculated from the geometry. Since some particles will overlap, we
-    #   multiply by an 'overlap' input parameter.
-    A_surf = (1-Inputs.overlap_an)*6*Inputs.eps_solid_an/Inputs.d_part_an
+    # Lithium/electrolyte reaction interface area per planar electrode area.
+    #   Default value is 1 and it will be adjusted based on surface roughness
+    #   to scale the reaction interface area [m^2_rxn_int/m^2_electrode]
+    A_surf = 1*Inputs.anode_roughness #1/Inputs.H_an  
 
     # Set up solution vector
     nSV = npoints*nVars
@@ -151,6 +149,10 @@ class anode():
     r_pore = Inputs.r_p_an
     d_part = Inputs.d_part_an
     dyInv = npoints/Inputs.H_an
+    dy_el = Inputs.H_an - Inputs.H_Li
+    dyInv_el = 1/dy_el
+    dy = Inputs.H_an/npoints # This is actually the dy of the elyte volume in
+                             #  the anode, NOT the entire anode
 
     # Calculate the current density [A/m^2] corresponding to a C_rate of 1:
     oneC = eps_ed*anode_obj.density_mole*Inputs.H_an*ct.faraday/3600
@@ -192,6 +194,7 @@ class separator():
     # Geometric parameters:
     eps_elyte = Inputs.eps_elyte_sep
     dyInv = npoints/H
+    dy = H/npoints
     tau_sep = tau_sep
     
     u_Li_elyte = (Inputs.D_Li_elyte*eps_elyte/ct.gas_constant
@@ -284,6 +287,7 @@ class cathode():
     r_p = Inputs.r_p_ca
     d_part = Inputs.d_part_ca
     dyInv = npoints/Inputs.H_ca
+    dy = Inputs.H_ca/npoints
     dr = d_part*0.5/nshells
 
     # Calculate the current density [A/m^2] corresponding to a C_rate of 1:
