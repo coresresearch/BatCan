@@ -86,7 +86,7 @@ class Inputs():
     # Set initial SOC to generalize both electrode initial lithiation
     # Fully charged = anode fully lithiated, cathode fully de-lithiated.
     # Range of value is from 0 to 1.
-    SOC_0 = 0.03
+    SOC_0 = 0.01
 
     # Number of "shells" in cathode particle:
     n_shells_cathode = 5
