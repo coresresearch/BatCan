@@ -108,6 +108,7 @@ def main():
     
         # Obtain tag strings for dataframe columns
         tags = tag_strings(SV_eq_df)
+        print(SV_eq_df.iloc[-1, 74])
     
         print('Done equilibrating\n')
     
@@ -336,7 +337,7 @@ class li_ion(Implicit_Problem):
         j = an.npoints-1; offset = int(an.offsets[j])
 
         i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf
-        
+#        print(i_Far_1)
         dyInv_boundary = 1/(0.5*(1/an.dyInv_el + 1/sep.dyInv))
         w1 = sep.dy/(an.dy_el + sep.dy); w2 = an.dy_el/(an.dy_el + sep.dy)
         transport.C_k = (s2['X_k_el']*s2['rho_el']*w2 
@@ -346,8 +347,8 @@ class li_ion(Implicit_Problem):
             
         N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
 
-        i_dl = i_Far_1 + i_el_m - i_el_p
-        R_dl = np.array((0, 0, i_dl/an.dy/F, 0))
+        i_dl = -i_Far_1 - i_el_m + i_el_p
+        R_dl = np.array((0, 0, -i_dl/an.dy/F, 0))
 
         """Change in electrolyte_composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -356,7 +357,7 @@ class li_ion(Implicit_Problem):
 
         """Double-layer voltage"""
         res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
-        - (-i_Far_1 + i_el_m - i_el_p)/an.C_dl/an.A_surf)
+        - (i_dl)/an.C_dl/an.A_surf)
 
         """Algebraic equation for ANODE electric potential boundary condition"""
         res[offset + ptr['Phi_ed']] = i_el_m - i_el_p + i_io_m - i_io_p
@@ -528,6 +529,8 @@ class li_ion(Implicit_Problem):
         res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
 #        SV[an.ptr['Phi_ed']]
 #        (i_el_m - i_el_p + i_io_m - i_io_p)
+        
+#        print(SV, t)
                         
         return res
 
@@ -556,7 +559,7 @@ class li_ion(Implicit_Problem):
         event8 = np.zeros([cat.npoints*cat.nshells])
         
         event5 = y[cat.ptr_vec['Phi_dl']]
-        event6 = 4.2 - y[cat.ptr_vec['Phi_ed']]
+        event6 = 5 - y[cat.ptr_vec['Phi_ed']]
         event7 = cat.X_Li_max - y[cat.ptr_vec['X_ed']]
         event8 = y[cat.ptr_vec['X_ed']] - cat.X_Li_min
                

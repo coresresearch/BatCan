@@ -49,11 +49,6 @@ description: |-
 
 units: {length: cm}
 
-generator: cti2yaml
-cantera-version: 2.5.0a3
-date: Wed, 11 Dec 2019 16:59:07 -0500
-input-files: [lithium_ion_battery.cti]
-
 phases:
 - name: anode
   thermo: fixed-stoichiometry
@@ -66,8 +61,8 @@ phases:
 
 - name: cathode
   thermo: ideal-condensed
-  elements: [Li, Co, O]
-  species: ['Li[cathode]', 'V[cathode]']
+  elements: [Li, Fe, P, O]
+  species: ['Li(cathode)', 'V(cathode)']
   standard-concentration-basis: unity
 
 - name: electrolyte
@@ -117,12 +112,35 @@ phases:
     P: 1 atm
   site-density: 3.48e-2
 
-- name: edge_cathode_electrolyte
+- name: cathode_surf_marcus
   thermo: ideal-surface
   species: [(surf)]
   kinetics: surface
-  reactions: [edge_cathode_electrolyte-reactions]
-  site-density: 0.01 mol/cm^2
+  reactions: [cathode-marcus-reactions]
+  state:
+    T: 300.0 K
+    P: 1 atm
+  site-density: 3.48e-2
+
+- name: cathode_surf_mhc
+  thermo: ideal-surface
+  species: [(surf)]
+  kinetics: surface
+  reactions: [cathode-mhc-reactions]
+  state:
+    T: 300.0 K
+    P: 1 atm
+  site-density: 3.48e-2
+
+- name: cathode_surf_butler_volmer
+  thermo: ideal-surface
+  species: [(surf)]
+  kinetics: surface
+  reactions: [cathode-butler-volmer-reactions]
+  state:
+    T: 300.0 K
+    P: 1 atm
+  site-density: 3.48e-2
 
 species:
 - name: Li(s)
@@ -135,15 +153,15 @@ species:
     model: constant-volume
     molar-volume: 12.998 cm^3/mol
 
-- name: Li[cathode]
-  composition: {Li: 1, Co: 1, O: 2}
+- name: Li(cathode)
+  composition: {Li: 1, Fe: 1, P: 1, O: 4}
   thermo:
     model: constant-cp
-    h0: -350.65 kJ/mol
+    h0: -326.65 kJ/mol
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 20.432776617954072 cm^3/mol
+    molar-volume: 197.2 cm^3/mol
   note: |-
     Lithium cobalt oxide, MW: 97.8730 g/mol.
     Note this species includes the cobalt oxide host matrix.
@@ -152,15 +170,15 @@ species:
     Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
     2017) (used to calculate species molar volume as molecular weight/density).
 
-- name: V[cathode]
-  composition: {Co: 1, O: 2}
+- name: V(cathode)
+  composition: {Fe: 1, P: 1, O: 4}
   thermo:
     model: constant-cp
     h0: 0.0 kJ/mol
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 18.983716075156575 cm^3/mol
+    molar-volume: 188.5 cm^3/mol
   note: |-
     Vacancy in the cobalt oxide, MW: 90.9320 g/mol.
     Note this species includes the cobalt oxide host matrix.
@@ -256,7 +274,7 @@ marcus-reactions:
 - equation: Li(s) <=> Li+(e) + electron
   type: marcus
   id: anode_reaction
-  rate-constant: {A: 1.5, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.5e7, b: 0.0, Ea: 0.0}
   transfer-coefficients:
     beta: 0.5
     lambda: 1.2472e7 # Molecular reorganization energy to form the transition state (J per kmol of elementary charge transferred.)
@@ -267,7 +285,7 @@ marcus-hush-chidsey-reactions:
 - equation: Li(s) <=> Li+(e) + electron
   type: marcus-hush-chidsey
   id: anode_reaction
-  rate-constant: {A: 1.5, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.5e7, b: 0.0, Ea: 0.0}
   transfer-coefficients:
     lambda: 1.2472e7 # Molecular reorganization energy to form the transition
     # state (J per kmol of elementary charge transferred.)
@@ -278,15 +296,39 @@ butlervolmer-reactions:
 - equation: Li(s) <=> Li+(e) + electron
   type: butler-volmer
   id: anode_reaction
-  rate-constant: {A: 1.5, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.5e7, b: 0.0, Ea: 0.0}
   transfer-coefficients:
     beta: 0.5
   state-dependence:
     reference-state: {Li+(e): 0.17} #Species refernce concentrations. Units must match activity concentration for that phase
 
-edge_cathode_electrolyte-reactions:
-- equation: Li+(e) + V[cathode] + electron <=> Li[cathode]  # Reaction 2
+cathode-marcus-reactions:
+- equation: Li+(e) + V(cathode) + electron <=> Li(cathode)
+  type: marcus
   id: cathode_reaction
-  rate-constant: {A: 4, b: 0.0, Ea: 58.0 kJ/mol}
-  exchange-current-density-formulation: true
-  beta: 0.5
+  rate-constant: {A: 4e7, b: 0.0, Ea: 58.0 kJ/mol}
+  transfer-coefficients:
+    beta: 0.5
+    lambda: 1.2472e7
+  state-dependence:
+    reference-state: {Li+(e): 0.17, V(cathode): 0.5, Li(cathode: 0.5)}
+
+cathode-mhc-reactions:
+- equation: Li+(e) + V(cathode) + electron <=> Li(cathode)
+  type: marcus-hush-chidsey
+  id: cathode_reaction
+  rate-constant: {A: 4e7, b: 0.0, Ea: 58.0 kJ/mol}
+  transfer-coefficients:
+    lambda: 1.2472e7
+  state-dependence:
+    reference-state: {Li+(e): 0.17, V(cathode): 0.5, Li(cathode: 0.5)}
+
+cathode-butler-volmer-reactions:
+- equation: Li+(e) + V(cathode) + electron <=> Li(cathode)
+  type: butler-volmer
+  id: cathode_reaction
+  rate-constant: {A: 4e7, b: 0.0, Ea: 58.0 kJ/mol}
+  transfer-coefficients:
+    beta: 0.5
+  state-dependence:
+    reference-state: {Li+(e): 0.17, V(cathode): 0.5, Li(cathode: 0.5)}

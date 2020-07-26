@@ -36,8 +36,15 @@ elif Inputs.anode_kinetics == 'MHC':
     anode_surf_obj = ct.Interface(Inputs.ctifile, 'lithium_surf_mhc',
         [anode_obj, elyte_obj, conductor_obj])
 
-cathode_surf_obj = ct.Interface(Inputs.ctifile,Inputs.cathode_surf_phase,
-    [cathode_obj,elyte_obj,conductor_obj])
+if Inputs.cathode_kinetics == 'Marcus':
+    cathode_surf_obj = ct.Interface(Inputs.ctifile, 'cathode_surf_marcus',
+        [cathode_obj, elyte_obj, conductor_obj])
+elif Inputs.cathode_kinetics == 'BV':
+    cathode_surf_obj = ct.Interface(Inputs.ctifile, 'cathode_surf_butler_volmer', 
+        [cathode_obj, elyte_obj, conductor_obj])
+elif Inputs.cathode_kinetics == 'MHC':
+    cathode_surf_obj = ct.Interface(Inputs.ctifile, 'cathode_surf_mhc',
+        [cathode_obj, elyte_obj, conductor_obj])
 
 #print(anode_surf_obj())
 # Anode initial conditions:
@@ -141,6 +148,9 @@ class anode():
     X_Li_max = Inputs.Li_an_max
     X_Li_min = Inputs.Li_an_min
     D_Li_ed = Inputs.D_Li_an
+    
+    if Inputs.anode_SEI_flag:
+        R_SEI = 0.032 # SEI resistance in [Ohms]
 
     # Geometric parameters:
     eps_ed = Inputs.eps_solid_an

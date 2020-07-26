@@ -42,7 +42,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 1
+    C_rate = 3
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -51,10 +51,15 @@ class Inputs():
     #   discretization of the electrode particles
     particle_method = 'dr'
     
-    # String to set the kinetics method used for the anode interface. Options
+    # String to set the kinetics method used for the electrodes interface. Options
     #   are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use the
     #   Marcus-Hush-Chidley theory
-    anode_kinetics = 'MHC'
+    anode_kinetics = 'BV'
+    cathode_kinetics = 'BV'
+    
+    # Flag to turn on or off having an equivalent circuit SEI resistance
+    anode_SEI_flag = False
+    SEI_tol = 2 # Number of decimals to verify the currents are equal
     
     # Set the roughness factor for the dense lithium anode. This will affect
     #   the effective surface area of the lithium anode.
@@ -87,8 +92,8 @@ class Inputs():
     cathode_surf_phase = 'edge_cathode_electrolyte'
 
     Li_species_anode = 'Li(s)'
-    Li_species_cathode = 'Li[cathode]'
-    Vac_species_cathode = 'V[cathode]'
+    Li_species_cathode = 'Li(cathode)'
+    Vac_species_cathode = 'V(cathode)'
     
     Li_species_elyte = 'Li+(e)'
 

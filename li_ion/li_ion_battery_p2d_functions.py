@@ -11,18 +11,34 @@ Created on Thu Dec  6 11:37:06 2018
 import cantera as ct
 import numpy as np
 from li_ion_battery_p2d_inputs import Inputs
+from li_ion_battery_p2d_init import anode as an
 
 def set_state(offset, SV, ed, surf, el, conductor, ptr):
     
     if ed.name == Inputs.cathode_phase:              
         ed.X = [SV[offset + ptr['X_ed'][-1]], 1 - SV[offset + ptr['X_ed'][-1]]]
-    
+        
     ed.electric_potential = SV[offset + ptr['Phi_ed']]
-    
     conductor.electric_potential = SV[offset + ptr['Phi_ed']]
     
     el.X = SV[offset + ptr['X_k_elyte']]
-    el.electric_potential = SV[offset + ptr['Phi_dl']] + SV[offset + ptr['Phi_ed']]
+    el.electric_potential = SV[offset + ptr['Phi_dl']] + SV[offset + ptr['Phi_ed']]  
+    Phi_el = SV[offset + ptr['Phi_dl']] + SV[offset + ptr['Phi_ed']]
+    
+    if ed.name == Inputs.anode_phase and Inputs.anode_SEI_flag:
+        i = 0
+        Phi_SEI_ed = np.linspace(SV[offset + ptr['Phi_dl']], 0, 10000)
+        el.electric_potential = Phi_SEI_ed[i]
+        sdot_Far = -surf.get_net_production_rates(el)[ptr['iFar']]
+        i_Far = sdot_Far*ct.faraday*an.A_surf
+        i_SEI = (Phi_el - Phi_SEI_ed[i])/an.R_SEI
+        while np.round(i_SEI, Inputs.SEI_tol) != np.round(i_Far, Inputs.SEI_tol):
+#            print(Phi_SEI_ed[i], np.round(i_SEI, Inputs.SEI_tol), np.round(i_Far, Inputs.SEI_tol))
+            el.electric_potential = Phi_SEI_ed[i]
+            sdot_Far = -surf.get_net_production_rates(el)[ptr['iFar']]
+            i_Far = sdot_Far*ct.faraday*an.A_surf
+            i_SEI = (Phi_el - Phi_SEI_ed[i])/an.R_SEI
+            i += 1
     
     state = {}
     state['sdot'] = surf.get_net_production_rates(el)
