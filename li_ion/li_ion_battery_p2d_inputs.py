@@ -58,8 +58,8 @@ class Inputs():
     cathode_kinetics = 'BV'
     
     # Flag to turn on or off having an equivalent circuit SEI resistance
-    anode_SEI_flag = False
-    SEI_tol = 2 # Number of decimals to verify the currents are equal
+    anode_SEI_flag = True
+    SEI_tol = 3 # Number of decimals to verify the currents are equal
     
     # Set the roughness factor for the dense lithium anode. This will affect
     #   the effective surface area of the lithium anode.

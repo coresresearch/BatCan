@@ -27,17 +27,19 @@ def set_state(offset, SV, ed, surf, el, conductor, ptr):
     
     if ed.name == Inputs.anode_phase and Inputs.anode_SEI_flag:
         i = 0
-        Phi_SEI_ed = np.linspace(SV[offset + ptr['Phi_dl']], 0, 10000)
+        Phi_SEI_ed = np.linspace(SV[offset + ptr['Phi_dl']], 0, 1000)
         el.electric_potential = Phi_SEI_ed[i]
         sdot_Far = -surf.get_net_production_rates(el)[ptr['iFar']]
         i_Far = sdot_Far*ct.faraday*an.A_surf
         i_SEI = (Phi_el - Phi_SEI_ed[i])/an.R_SEI
-        while np.round(i_SEI, Inputs.SEI_tol) != np.round(i_Far, Inputs.SEI_tol):
+        err = i_Far - i_SEI
+        while err > 1/(10**Inputs.SEI_tol):
 #            print(Phi_SEI_ed[i], np.round(i_SEI, Inputs.SEI_tol), np.round(i_Far, Inputs.SEI_tol))
             el.electric_potential = Phi_SEI_ed[i]
             sdot_Far = -surf.get_net_production_rates(el)[ptr['iFar']]
             i_Far = sdot_Far*ct.faraday*an.A_surf
             i_SEI = (Phi_el - Phi_SEI_ed[i])/an.R_SEI
+            err = i_Far - i_SEI
             i += 1
     
     state = {}
