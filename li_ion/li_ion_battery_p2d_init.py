@@ -323,7 +323,11 @@ class cathode():
     for j in np.arange(0, nshells, 1):
         V_shell[j] = ((j+1)**3 - (j)**3)*nsr3
 
-    sigma_eff_ed = Inputs.sigma_ca*eps_ed/tau_ed**3
+    sigma_eff_solid = ((Inputs.wt_pct_active*Inputs.sigma_LFP 
+                        + Inputs.wt_pct_cond*Inputs.sigma_carbon)
+                        / (Inputs.wt_pct_active+Inputs.wt_pct_cond))
+    sigma_eff_ed = sigma_eff_solid*eps_ed/tau_ed**3
+    
     u_Li_elyte = (Inputs.D_Li_cat_el*eps_elyte/ct.gas_constant
           /Inputs.T/tau_ed**3)
     
