@@ -61,9 +61,12 @@ class Inputs():
     anode_SEI_flag = True
     SEI_tol = 3 # Number of decimals to verify the currents are equal
     
-    # Set the roughness factor for the dense lithium anode. This will affect
+    # Set the average roughness for the dense lithium anode. This will affect
     #   the effective surface area of the lithium anode.
-    anode_roughness = 5
+    anode_roughness = 130e-9  # [m]
+    anode_n_peaks = 1e6  # number of "peaks" in roughness calculation. 
+                         # the higher this value the more peaks are calculated
+                         # which will increase the effective surface area
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
     #   concentrated solution theory ('cst').

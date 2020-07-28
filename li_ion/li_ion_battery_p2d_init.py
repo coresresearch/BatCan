@@ -134,7 +134,7 @@ class anode():
     # Lithium/electrolyte reaction interface area per planar electrode area.
     #   Default value is 1 and it will be adjusted based on surface roughness
     #   to scale the reaction interface area [m^2_rxn_int/m^2_electrode]
-    A_surf = 1*Inputs.anode_roughness #1/Inputs.H_an  
+    A_surf = (1 + 4*Inputs.anode_roughness*(Inputs.anode_n_peaks - 1))
 
     # Set up solution vector
     nSV = npoints*nVars
