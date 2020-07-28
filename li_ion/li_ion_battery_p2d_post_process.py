@@ -64,6 +64,7 @@ def plot_potential(V_an, V_cat, SV, stage, yax, fig, axes):
                    frameon=False).set_visible(showlegend)
     SV_plot.tick_params(axis='both', labelsize=18)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    SV_plot.set_ylim((0,4.5))
 
 """========================================================================="""
 
@@ -276,6 +277,7 @@ def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
             plt.xlabel('$Capacity [Ah/kg]$', fontsize = fontsize)
         plt.ylabel('Voltage [V]', fontsize = fontsize)
         plt.legend(('Charge', 'Discharge'), loc = 3, fontsize = 14)
+        plt.ylim((0,4.5))
         plt.show()
     
     Capacity_ch_areal = -dt_ch*i_ext/3600         # A-h/m^2

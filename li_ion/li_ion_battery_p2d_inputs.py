@@ -23,7 +23,8 @@ class Inputs():
     npoints_elyte = 3*flag_sep
     
     # Flag to allow re-equilibration between charge/discharge
-    flag_re_equil = 0
+    flag_re_equil = 1
+    equil_time = 1e-3
     
     # These flags specify whether to plot various data
     plot_profiles_flag = 1
@@ -62,23 +63,20 @@ class Inputs():
     # String to set the kinetics method used for the electrodes interface. Options
     #   are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use the
     #   Marcus-Hush-Chidley theory
-    anode_kinetics = 'BV'
+    anode_kinetics = 'Marcus'
     cathode_kinetics = 'BV'
     
     # Flag to turn on or off having an equivalent circuit SEI resistance
     anode_SEI_flag = True
-    SEI_tol = 3 # Number of decimals to verify the currents are equal
+    SEI_tol = 5 # Number of decimals to verify the currents are equal
     
     # Set the average roughness for the dense lithium anode. This will affect
     #   the effective surface area of the lithium anode.
-    anode_roughness = 130e-9  # [m]
-    anode_n_peaks = 1e6  # number of "peaks" in roughness calculation. 
-                         # the higher this value the more peaks are calculated
-                         # which will increase the effective surface area
+    anode_roughness = 1
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
     #   concentrated solution theory ('cst').
-    elyte_flux_model = 'dst'
+    elyte_flux_model = 'cst'
     
     # Simulation temperature (or initial temperature)
     T = 300  # [K]
@@ -114,7 +112,7 @@ class Inputs():
 
     # Cutoff Values for lithiation and delithiation of anode:
     Li_an_min = 0.005; Li_an_max = 1 - Li_an_min
-    Li_cat_min = 0.005; Li_cat_max = 1 - Li_cat_min
+    Li_cat_min = 0.0001; Li_cat_max = 1 - Li_cat_min
 
     "Anode geometry and transport"
     # Microstructure
@@ -161,7 +159,7 @@ class Inputs():
     overlap_ca = 0.4     # Percentage of anode particle overlapping with other
                          #   anode particles.  Reduces total anode/elyte
                          #   surface area.
-    H_ca = 25e-6         # Cathode thickness [m]
+    H_ca = 40e-6         # Cathode thickness [m]
 
     # Other parameters:
     sigma_carbon = (2.5e5 + 3.3e2)*0.5  # Average conductivity of carbon [S/m]***

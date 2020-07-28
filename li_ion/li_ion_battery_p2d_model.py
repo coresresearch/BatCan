@@ -63,7 +63,7 @@ def main():
     plt.close('all')
     
     atol = np.ones_like(SV_0)*1e-8
-    rtol = 1e-6   
+    rtol = 1e-7  
 
     # Start a timer:
     t_count = time.time()
@@ -180,7 +180,7 @@ def main():
             sim_req.verbosity = 50
             sim_req.make_consistent('IDA_YA_YDP_INIT')
         
-            t_req, SV_req, SV_dot_req = sim_req.simulate(t_f)
+            t_req, SV_req, SV_dot_req = sim_req.simulate(Inputs.equil_time*t_f)
         
             SV_req_df = Label_Columns(t_req, SV_req, an.npoints, sep.npoints, 
                                  cat.npoints)
