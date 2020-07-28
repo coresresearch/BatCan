@@ -80,26 +80,7 @@ X_elyte_0 = elyte_obj.X
 
 """========================================================================="""
 """========================================================================="""
-"""========================================================================="""
-
-class battery:
-    
-    # The pointer dictionary created here depends on the structure of the 
-    #   electrolyte object in the CTI file. The default assumption is that
-    #   the organic solvents are the first x number of entries, the lithium
-    #   species is second to last, and the anion species is last
-    ptr_el = {}
-    ptr_el['solvents'] = np.arange(0, elyte_obj.n_species-2)
-    ptr_el['Li'] = elyte_obj.n_species - 2
-    ptr_el['PF6'] = elyte_obj.n_species - 1
-    
-    cst_params = Inputs.params.copy()
-#    for i, name in enumerate(elyte_obj.species_names):
-#        ptr_el[str(name)] = i
-        
-    
-    
-
+"""========================================================================="""  
 class anode():
 
     # Set flag so solver knows whether to implement the anode:
@@ -202,6 +183,7 @@ class separator():
     tau_sep = Inputs.tau_sep  # Tortuosity of separator
 
     # Geometric parameters:
+    eps = 1 - Inputs.eps_elyte_sep
     eps_elyte = Inputs.eps_elyte_sep
     dyInv = npoints/H
     dy = H/npoints
@@ -291,6 +273,7 @@ class cathode():
     D_Li_ed = Inputs.D_Li_ca
 
     # Geometric parameters:
+    H = Inputs.H_ca
     eps_ed = Inputs.eps_solid_ca
     eps_elyte = 1 - Inputs.eps_solid_ca
     tau_ed = Inputs.tau_ca
@@ -299,6 +282,9 @@ class cathode():
     dyInv = npoints/Inputs.H_ca
     dy = Inputs.H_ca/npoints
     dr = d_part*0.5/nshells
+    rho_ed = 1/((Inputs.wt_pct_active/cathode_obj.density_mass) + \
+             (Inputs.wt_pct_cond/Inputs.conductor_rho) + \
+             (Inputs.wt_pct_bind/Inputs.binder_rho))
 
     # Calculate the current density [A/m^2] corresponding to a C_rate of 1:
     oneC = eps_ed*cathode_obj.density_mole*Inputs.H_ca*ct.faraday/3600
@@ -342,6 +328,33 @@ class cathode():
 """========================================================================="""
 """========================================================================="""
 """========================================================================="""
+class battery:
+    
+    # The pointer dictionary created here depends on the structure of the 
+    #   electrolyte object in the CTI file. The default assumption is that
+    #   the organic solvents are the first x number of entries, the lithium
+    #   species is second to last, and the anion species is last
+    ptr_el = {}
+    ptr_el['solvents'] = np.arange(0, elyte_obj.n_species-2)
+    ptr_el['Li'] = elyte_obj.n_species - 2
+    ptr_el['PF6'] = elyte_obj.n_species - 1
+    
+    cst_params = Inputs.params.copy()
+#    for i, name in enumerate(elyte_obj.species_names):
+#        ptr_el[str(name)] = i
+    
+    H = Inputs.H_an + Inputs.H_ca + Inputs.H_elyte
+    
+    eps = (anode.eps_ed*Inputs.H_an+cathode.eps_ed*Inputs.H_ca+ \
+           separator.eps*Inputs.H_elyte)/H
+           
+    rho = (anode_obj.density_mass*anode.eps_ed*Inputs.H_an + \
+           Inputs.rho_sep*separator.eps*Inputs.H_elyte + \
+           cathode.rho_ed*cathode.eps_ed*cathode.H)/H
+    
+"""========================================================================="""
+"""========================================================================="""
+"""========================================================================="""
 
 class current():        
     def get_i_ext():
@@ -356,8 +369,10 @@ class current():
     if Inputs.flag_cathode == 1:
 #        print(anode.oneC, cathode.oneC)
         i_ext_set = -Inputs.C_rate*min(anode.oneC, cathode.oneC)  
+        i_ext_amp = -Inputs.C_rate*min(anode.oneC, cathode.oneC)
     elif Inputs.flag_cathode == 0:
         i_ext_set = -Inputs.C_rate*anode.oneC  
+        i_ext_amp = -Inputs.C_rate*min(anode.oneC, cathode.oneC)
 
 class solver_inputs():     
     

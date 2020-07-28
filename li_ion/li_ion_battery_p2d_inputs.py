@@ -51,6 +51,14 @@ class Inputs():
     #   discretization of the electrode particles
     particle_method = 'dr'
     
+    # Method of calculating gravimetric capacity. Either 'cathode' to normalize
+    #   by just the solid cathode material mass or 'cell' to normalize by
+    #   the total cell mass
+    grav_cap_method = 'cell'
+    
+    # Method of calculating capacity. Either 'areal' or 'grav'
+    cap_method = 'grav'
+    
     # String to set the kinetics method used for the electrodes interface. Options
     #   are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use the
     #   Marcus-Hush-Chidley theory
@@ -130,6 +138,7 @@ class Inputs():
     "Electrolyte geometry and transport"
     # Separator thickness [m]
     H_elyte = 25e-6
+    rho_sep = 970 # Density of separator material assuming HDPE [kg/m^3]
     # Elyte species bulk diffusion coefficients [m^2/s]
     D_Li_elyte = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     z_k_elyte = np.array([0., 0., 1., -1.])
@@ -140,9 +149,11 @@ class Inputs():
 
     "Cathode geometry and transport"
     # Microstructure:
-    wt_pct_active = 85 # Weight percent of active material [-]
-    wt_pct_cond = 10   # Weight percent of conductive additive [-]
+    wt_pct_active = 0.85 # Weight percent of active material [-]
+    wt_pct_cond = 0.10   # Weight percent of conductive additive [-]
     wt_pct_bind = 0.05   # Weight percent of binder (assumed dead material) [-]
+    conductor_rho = 2150 # Density of conductor, assumed carbon [kg/m^3]
+    binder_rho = 1780    # Density of binder, assumed PVDF [kg/m^3]
     eps_solid_ca = 0.5   # LiCoO2 volume fraction [-]
     tau_ca = 1.6         # Tortuosity - assume equal values for LiCoO2 and elyte [-]
     r_p_ca = 5e-6        # Average pore radius [m]

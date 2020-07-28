@@ -39,7 +39,7 @@ importlib.reload(li_ion_battery_p2d_init)
 from li_ion_battery_p2d_init import anode as an
 from li_ion_battery_p2d_init import cathode as cat
 from li_ion_battery_p2d_init import separator as sep
-from li_ion_battery_p2d_init import solver_inputs, current
+from li_ion_battery_p2d_init import solver_inputs, current, battery
 
 import li_ion_battery_p2d_post_process
 importlib.reload(li_ion_battery_p2d_post_process)
@@ -254,6 +254,36 @@ def main():
         
         plot_cap(SV_ch_df, SV_dch_df, rate_tag, current.i_ext_set,
                  Inputs.plot_cap_flag, tags)
+        
+    # %% Convert time to capacity and export
+    if Inputs.cap_method == 'areal':
+        file_name_dch = 'dch'+str(int(Inputs.C_rate))+"C"+"_A"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+'.csv'
+        file_name_ch = 'ch'+str(int(Inputs.C_rate))+"C"+"_A"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+'.csv'
+        SV_dch = SV_dch_df.copy()
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600
+        SV_ch = SV_ch_df.copy()
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600
+        SV_dch.to_csv(file_name_dch, index=False, header=True)
+        SV_ch.to_csv(file_name_ch, index=False, header=True)
+    elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cathode':
+        file_name_dch = 'dch'+str(int(Inputs.C_rate))+"C"+"_Gcat"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+'.csv'
+        file_name_ch = 'ch'+str(int(Inputs.C_rate))+"C"+"_Gcat"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+'.csv'
+        SV_dch = SV_dch_df.copy()
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cat.rho_ed/cat.H/cat.eps_ed
+        SV_ch = SV_ch_df.copy()
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cat.rho_ed/cat.H/cat.eps_ed
+        SV_dch.to_csv(file_name_dch, index=False, header=True)
+        SV_ch.to_csv(file_name_ch, index=False, header=True)
+    elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cell':
+        file_name_dch = 'dch'+str(int(Inputs.C_rate))+"C"+"_Gcell"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+'.csv'
+        file_name_ch = 'ch'+str(int(Inputs.C_rate))+"C"+"_Gcell"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+'.csv'
+        SV_dch = SV_dch_df.copy()
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
+        SV_ch = SV_ch_df.copy()
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
+        SV_dch.to_csv(file_name_dch, index=False, header=True)
+        SV_ch.to_csv(file_name_ch, index=False, header=True)
+
 
     elapsed = time.time() - t_count
     print('t_cpu=', elapsed, '\n')

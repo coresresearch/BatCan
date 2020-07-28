@@ -8,7 +8,7 @@ Created on Wed Sep 26 13:59:27 2018
 import importlib
 import li_ion_battery_p2d_init
 importlib.reload(li_ion_battery_p2d_init)
-from li_ion_battery_p2d_init import anode, cathode
+from li_ion_battery_p2d_init import anode, cathode, battery
 from li_ion_battery_p2d_init import separator as sep
 from li_ion_battery_p2d_init import anode_obj, cathode_obj, elyte_obj
 from li_ion_battery_p2d_init import current
@@ -21,7 +21,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
-def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
+def plot_potential(V_an, V_cat, SV, stage, yax, fig, axes):
     
     if stage == 'Discharging':
         showlegend = 1
@@ -29,6 +29,11 @@ def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
         showlegend = 0
     fontsize = 26
     
+    SV_df = SV.copy()
+    if Inputs.grav_cap_method == 'cathode':
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+    elif Inputs.grav_cap_method == 'cell':
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
     t = SV_df['Time']
     
     if Inputs.flag_cathode:
@@ -54,7 +59,7 @@ def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
     SV_plot = SV_df.plot(x='Time', y=V, ax=axes[yax], xlim=[0,t.iloc[-1]])
     SV_plot.set_title(stage, fontsize = fontsize)
     SV_plot.set_ylabel('Voltages [V]', fontsize = fontsize)
-    SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(True)
+    SV_plot.set_xlabel('Capacity [Ah/kg]', fontsize = fontsize).set_visible(True)
     SV_plot.legend(loc=2, bbox_to_anchor=(1.05, 1), ncol=1, borderaxespad=0,
                    frameon=False).set_visible(showlegend)
     SV_plot.tick_params(axis='both', labelsize=18)
@@ -62,8 +67,13 @@ def plot_potential(V_an, V_cat, SV_df, stage, yax, fig, axes):
 
 """========================================================================="""
 
-def plot_electrode(X_cat, SV_df, stage, yax, fig, axes):
+def plot_electrode(X_cat, SV, stage, yax, fig, axes):
     
+    SV_df = SV.copy()
+    if Inputs.grav_cap_method == 'cathode':
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+    elif Inputs.grav_cap_method == 'cell':
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
     t = SV_df['Time']
     fontsize = 26
     
@@ -114,7 +124,7 @@ def plot_electrode(X_cat, SV_df, stage, yax, fig, axes):
                              ylim = [-0.1, 1.1])
         SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
         SV_plot.set_ylabel('$X_{LiCoO2}$', fontsize = fontsize)
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(True)
+        SV_plot.set_xlabel('Capacity [Ah/kg]', fontsize = fontsize).set_visible(True)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
                        borderaxespad = 0, frameon = False).set_visible(showlegend)
         SV_plot.tick_params(axis='both', labelsize = 18)
@@ -124,8 +134,13 @@ def plot_electrode(X_cat, SV_df, stage, yax, fig, axes):
 
 """========================================================================="""
 
-def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV_df, stage, yax, fig, axes):
+def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV, stage, yax, fig, axes):
     
+    SV_df = SV.copy()
+    if Inputs.grav_cap_method == 'cathode':
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+    elif Inputs.grav_cap_method == 'cell':
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
     t = SV_df['Time']
     fontsize = 22
     
@@ -184,7 +199,7 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV_df, stage, yax, fig, axes):
                              xlim = [0, t.iloc[-1]], ylim = [ymin, ymax])
         SV_plot.set_title(stage, fontsize = fontsize)
         SV_plot.set_ylabel(r'$X_{Li^+, an}$', fontsize = fontsize)
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
+        SV_plot.set_xlabel('Capacity [Ah/kg]', fontsize = fontsize).set_visible(False)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                        frameon = False).set_visible(showlegend)
         SV_plot.tick_params(axis='both', labelsize = 18)
@@ -196,7 +211,7 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV_df, stage, yax, fig, axes):
                              xlim = [0, t.iloc[-1]], ylim = [ymin, ymax])
         SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
         SV_plot.set_ylabel(r'$X_{Li^+, cat}$', fontsize = fontsize)
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
+        SV_plot.set_xlabel('Capacity [Ah/kg]', fontsize = fontsize).set_visible(False)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                        frameon = False).set_visible(showlegend)
         SV_plot.tick_params(axis='both', labelsize = 18)
@@ -208,7 +223,7 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV_df, stage, yax, fig, axes):
                              xlim = [0, t.iloc[-1]], ylim = [ymin, ymax])
         SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
         SV_plot.set_ylabel(r'$X_{Li^+, sep}$', fontsize = fontsize)
-        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(True)
+        SV_plot.set_xlabel('Capacity [Ah/kg]', fontsize = fontsize).set_visible(True)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                        frameon = False).set_visible(showlegend)
         SV_plot.tick_params(axis='both', labelsize = 18)
@@ -229,25 +244,52 @@ def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
     dt_dch = t_dch - t_dch[0]
     
     # Plot charge-discharge curve
-    Capacity_charge = -dt_ch*i_ext/3600         # A-h/m^2
-    Capacity_discharge = -dt_dch*i_ext/3600   # A-h/m^2
+    if Inputs.cap_method == 'areal':
+        Capacity_charge = -dt_ch*i_ext/3600         # A-h/m^2
+        Capacity_discharge = -dt_dch*i_ext/3600   # A-h/m^2
+    elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cathode':
+        Capacity_charge = -dt_ch*i_ext/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+        Capacity_discharge = -dt_dch*i_ext/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+    elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cell':
+        Capacity_charge = -dt_ch*i_ext/3600/battery.rho/battery.H/battery.eps
+        Capacity_discharge = -dt_dch*i_ext/3600/battery.rho/battery.H/battery.eps
+    
+    SV_ch = SV_ch_df.copy()
+    if Inputs.grav_cap_method == 'cathode':
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+    elif Inputs.grav_cap_method == 'cell':
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
+    SV_dch = SV_dch_df.copy()
+    if Inputs.grav_cap_method == 'cathode':
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+    elif Inputs.grav_cap_method == 'cell':
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
     
     if flag_plot:
         plt.figure(4, figsize = (8, 6))
         plt.plot(Capacity_charge, V_ch, 'g-')
         plt.plot(Capacity_discharge, V_dch, 'g--')
         plt.title('Potential vs. Capacity', fontsize = fontsize)
-        plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
+        if Inputs.cap_method == 'areal':
+            plt.xlabel('$Capacity [Ah/m^2]$', fontsize = fontsize)
+        elif Inputs.cap_method == 'grav':
+            plt.xlabel('$Capacity [Ah/kg]$', fontsize = fontsize)
         plt.ylabel('Voltage [V]', fontsize = fontsize)
         plt.legend(('Charge', 'Discharge'), loc = 3, fontsize = 14)
         plt.show()
     
-    Cap_recovered = round(Capacity_discharge[-1], 2)
-    Cap_stored = round(Capacity_charge[-1], 2)
+    Capacity_ch_areal = -dt_ch*i_ext/3600         # A-h/m^2
+    Capacity_dch_areal = -dt_dch*i_ext/3600   # A-h/m^2
+    Cap_recovered = round(Capacity_dch_areal[-1], 2)
+    Cap_stored = round(Capacity_ch_areal[-1], 2)
     Eta_c = round(100*Cap_recovered/Cap_stored, 1)
     
-    print('Capacity stored:', Cap_stored, 'A-h/m^2')
-    print('Capacity recovered:', Cap_recovered, 'A-h/m^2')
+    print('Gravimetric capacity calculated for', Inputs.grav_cap_method, 'mass')
+    print('Gravimetric capacity stored:', np.round(SV_ch.iloc[-1,-1], 2), 'A-h/kg')
+    print('Gravimetric capacity recovered:', np.round(SV_dch.iloc[-1,-1], 2), 'A-h/kg', '\n')
+    
+    print('Areal Capacity stored:', Cap_stored, 'A-h/m^2')
+    print('Areal Capacity recovered:', Cap_recovered, 'A-h/m^2')
     print('Coulombic Efficiency:', Eta_c, '\n')
     
 # Calculate battery energy storage/recovery and calculate round-trip
