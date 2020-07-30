@@ -54,7 +54,7 @@ class Inputs():
     # Method of calculating gravimetric capacity. Either 'cathode' to normalize
     #   by just the solid cathode material mass or 'cell' to normalize by
     #   the total cell mass
-    grav_cap_method = 'cathode'
+    grav_cap_method = 'cell'
     
     # Method of calculating capacity. Either 'areal' or 'grav'
     cap_method = 'grav'
