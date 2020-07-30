@@ -203,6 +203,11 @@ def main():
             SV_dot_req = SV_dot_ch
             
             SV_req_df = SV_req
+        
+        for i in np.arange(0, len(cat.ptr_vec['X_ed'])):
+            ptr = cat.ptr_vec['X_ed'][i]
+            if (SV_req[-1, ptr] - Inputs.Li_cat_min) < Inputs.Li_cat_min/10:
+                SV_req[-1, ptr] += Inputs.Li_cat_min/10
     
         """------------Discharging-------------"""
     

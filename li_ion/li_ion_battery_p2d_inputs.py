@@ -23,7 +23,7 @@ class Inputs():
     npoints_elyte = 3*flag_sep
     
     # Flag to allow re-equilibration between charge/discharge
-    flag_re_equil = 1
+    flag_re_equil = 0
     
     # These flags specify whether to plot various data
     plot_profiles_flag = 1
@@ -42,7 +42,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 3
+    C_rate = 20
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -54,7 +54,7 @@ class Inputs():
     # Method of calculating gravimetric capacity. Either 'cathode' to normalize
     #   by just the solid cathode material mass or 'cell' to normalize by
     #   the total cell mass
-    grav_cap_method = 'cell'
+    grav_cap_method = 'cathode'
     
     # Method of calculating capacity. Either 'areal' or 'grav'
     cap_method = 'grav'
