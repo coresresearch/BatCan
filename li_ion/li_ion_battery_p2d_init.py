@@ -115,7 +115,7 @@ class anode():
     # Lithium/electrolyte reaction interface area per planar electrode area.
     #   Default value is 1 and it will be adjusted based on surface roughness
     #   to scale the reaction interface area [m^2_rxn_int/m^2_electrode]
-    A_surf = (1 + 4*Inputs.anode_roughness*(Inputs.anode_n_peaks - 1))
+    A_surf = 1.#(1 + 4*Inputs.anode_roughness*(Inputs.anode_n_peaks - 1))
 
     # Set up solution vector
     nSV = npoints*nVars
@@ -131,7 +131,7 @@ class anode():
     D_Li_ed = Inputs.D_Li_an
     
     if Inputs.anode_SEI_flag:
-        R_SEI = 0.032 # SEI resistance in [Ohms]
+        R_SEI = 0.032 # SEI resistance in [Ohm-m2]
 
     # Geometric parameters:
     eps_ed = Inputs.eps_solid_an
