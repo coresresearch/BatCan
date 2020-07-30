@@ -9,6 +9,7 @@ import numpy as np
 #import cantera as ct
 
 class Inputs():
+    save_tag = '_40um_no_rest'
     # These flags specify whether to include each element (anode, separator,
     #   cathode) in the simulation:
     flag_anode = 1
@@ -24,7 +25,7 @@ class Inputs():
     
     # Flag to allow re-equilibration between charge/discharge
     flag_re_equil = 1
-    equil_time = 1e-3
+    equil_time = 1e-2
     
     # These flags specify whether to plot various data
     plot_profiles_flag = 1
@@ -60,11 +61,11 @@ class Inputs():
     # Method of calculating capacity. Either 'areal' or 'grav'
     cap_method = 'grav'
     
-    # String to set the kinetics method used for the electrodes interface. Options
-    #   are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use the
-    #   Marcus-Hush-Chidley theory
-    anode_kinetics = 'Marcus'
-    cathode_kinetics = 'BV'
+    # String to set the kinetics method used for the electrodes interface. 
+    #    Options are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use 
+    #    the Marcus-Hush-Chidley theory
+    anode_kinetics = 'MHC'
+    cathode_kinetics = 'MHC'
     
     # Flag to turn on or off having an equivalent circuit SEI resistance
     anode_SEI_flag = True
@@ -75,7 +76,7 @@ class Inputs():
     anode_roughness = 1
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
-    #   concentrated solution theory ('cst').
+    #   concentrated solution theory ('cst')
     elyte_flux_model = 'cst'
     
     # Simulation temperature (or initial temperature)
@@ -112,7 +113,7 @@ class Inputs():
 
     # Cutoff Values for lithiation and delithiation of anode:
     Li_an_min = 0.005; Li_an_max = 1 - Li_an_min
-    Li_cat_min = 0.0001; Li_cat_max = 1 - Li_cat_min
+    Li_cat_min = 0.0005; Li_cat_max = 1 - Li_cat_min
 
     "Anode geometry and transport"
     # Microstructure
@@ -155,9 +156,9 @@ class Inputs():
     eps_solid_ca = 0.5   # LiCoO2 volume fraction [-]
     tau_ca = 1.6         # Tortuosity - assume equal values for LiCoO2 and elyte [-]
     r_p_ca = 5e-6        # Average pore radius [m]
-    d_part_ca = 4e-6     # Average particle diameter for LiFePO4 [m]**
-    overlap_ca = 0.4     # Percentage of anode particle overlapping with other
-                         #   anode particles.  Reduces total anode/elyte
+    d_part_ca = 0.5e-6     # Average particle diameter for LiFePO4 [m]**
+    overlap_ca = 0.4     # Percentage of cathode particle overlapping with other
+                         #   cathode particles.  Reduces total cathode/elyte
                          #   surface area.
     H_ca = 40e-6         # Cathode thickness [m]
 
@@ -166,11 +167,12 @@ class Inputs():
     sigma_LFP = 2.2e-7  # Electrical conductivity of LiFePO4 [S/m]*
     C_dl_ca = 1.5e-2    # Double-layer capacitance [F/m^2]
 #    sigma_ca = 7.50     # Bulk cathode electrical conductivity [S/m]
-    D_Li_ca = 4.23e-16  # Bulk diffusion coefficient for Li in LFP [m^2/s]**
+    D_Li_ca = 4.23e-17
+    #4.23e-16  # Bulk diffusion coefficient for Li in LFP [m^2/s]**
     D_Li_cat_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
     
     # *   Improving the rate performance of LFP by Fe-site doping, Wang et al 2005
-    # **  Effect of particle size on DC cond, Ea, and D of LFP in LIBs, Satyavani et al 2016
+    # **  Effect of particle size on DC cond, Ea, and D of LFP in LIBs, Satyavani et al 2016. Values tuned to match performance at 2C
     # *** https://www.thoughtco.com/table-of-electrical-resistivity-conductivity-608499
     
     "Transport inputs, polynomial fit coefficients, etc."
