@@ -9,7 +9,7 @@ import numpy as np
 #import cantera as ct
 
 class Inputs():
-    save_tag = '_40um_no_rest'
+    save_tag = '_100um_rest'
     # These flags specify whether to include each element (anode, separator,
     #   cathode) in the simulation:
     flag_anode = 1
@@ -25,7 +25,7 @@ class Inputs():
     
     # Flag to allow re-equilibration between charge/discharge
     flag_re_equil = 1
-    equil_time = 1e-2
+    equil_time = 1e2
     
     # These flags specify whether to plot various data
     plot_profiles_flag = 1
@@ -44,7 +44,7 @@ class Inputs():
 
     # The C-rate is the rate of charge/discharge - how many charges/discharges
     #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 20
+    C_rate = 15
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -64,8 +64,8 @@ class Inputs():
     # String to set the kinetics method used for the electrodes interface. 
     #    Options are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use 
     #    the Marcus-Hush-Chidley theory
-    anode_kinetics = 'MHC'
-    cathode_kinetics = 'MHC'
+    anode_kinetics = 'BV'
+    cathode_kinetics = 'BV'
     
     # Flag to turn on or off having an equivalent circuit SEI resistance
     anode_SEI_flag = True
@@ -160,7 +160,7 @@ class Inputs():
     overlap_ca = 0.4     # Percentage of cathode particle overlapping with other
                          #   cathode particles.  Reduces total cathode/elyte
                          #   surface area.
-    H_ca = 40e-6         # Cathode thickness [m]
+    H_ca = 100e-6         # Cathode thickness [m]
 
     # Other parameters:
     sigma_carbon = (2.5e5 + 3.3e2)*0.5  # Average conductivity of carbon [S/m]***
