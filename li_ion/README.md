@@ -2,9 +2,9 @@
 Pseudo-2D Newman-type model of a Li ion battery
 
 # Table of contents
-1. [Building required version of Cantera](#1.-installation-requirements)
-2. [Code structure](#2.-code-structure)
-3. [Code parameters](#3.-code-parameters)
+1. [Building required version of Cantera](#1-installation-requirements)
+2. [Code structure](#2-code-structure)
+3. [Code parameters](#3-code-parameters)
 
 # 1. Installation requirements
 The version of Cantera required in this branch is not on the main Cantera Github repository; therefore, it will be necessary to create a new remote and build the source code from there to run the MHC branch of BatCan
