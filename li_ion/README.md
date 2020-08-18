@@ -2,21 +2,21 @@
 Pseudo-2D Newman-type model of a Li ion battery
 
 # Table of contents
-1. Building required version of Cantera
-2. Code structure
-3. Code parameters
+1. [Building required version of Cantera](#1.-Installation-requirements)
+2. [Code structure](#2.-Code-structure)
+3. [Code parameters](#3.-Code-parameters)
 
 # 1. Installation requirements
 The version of Cantera required in this branch is not on the main Cantera Github repository; therefore, it will be necessary to create a new remote and build the source code from there to run the MHC branch of BatCan
 
-The modified Cantera source code can be found at https://github.com/decaluwe/cantera/tree/charge-transfer. Once this repository is added as a remote, create a new local branch and checkout the `charge-transfer` branch. Then, build Cantera from source as outlined in the ReadMe for the BatCan repository. All other dependencies remain the same.
+The modified Cantera source code can be found [here](https://github.com/decaluwe/cantera/tree/charge-transfer). Once this repository is added as a remote, create a new local branch and checkout the `charge-transfer` branch. Then, build Cantera from source as outlined in the ReadMe for the BatCan repository. All other dependencies remain the same.
 
 # 2. Code structure
 
-The code structure for `li_ion` in `BatCan` is composed of several modules that handle various tasks for implementing the model. There are five modules used to handle: user inputs, model initialization, model running, offloaded functions, and post processing. 
+The code structure for `li_ion` in `BatCan` is composed of several modules that handle various tasks for implementing the model. There are five separate modules, which handle: user inputs, model initialization, model running, model functions (transport calculations, interfacing with Cantera, and plotting), and post processing. 
 
 ## 2.1 Model inputs - li_ion_battery_p2d_inputs.py
-This module takes user inputs for a variety of parameters that go into the model. This includes
+This module takes user inputs for a variety of parameters that go into the model. These include:
 - discretization of cell components
 - desired C-rate
 - kinetics method for each electrode interface
@@ -26,7 +26,7 @@ This module takes user inputs for a variety of parameters that go into the model
 - geometric and transport parameters for all phases
 
 ## 2.2 Model initialization - li_ion_battery_p2d_init.py
-For standard runs of the model, this module should not need to be modified typically. The module imports the `Inputs` class from that module and creates the Cantera objects required, creates class objects for the cell components, and creates the initial condition of the solution vector to pass to the solver later. 
+The user does not typically need to modify this module. The module imports the `Inputs` class from that module and creates the required Cantera objects, class objects for the cell components, and the initial solution vector to pass to the solver. 
 
 Additionally, this module calculates cell level parameters such as the total cell thickness, the total cell porosity, and total cell density based on the parameters for each component. 
 
@@ -38,21 +38,22 @@ This module contains the solver initialization and running functionality, as wel
 - The dataframes for each stage of the model are post-processed using Pandas and assigned column headers
 - The data is exported to `.csv` files for further processing if desired
 
-Below `main()` the residual for the solver is defined within the class `li_ion(Implicit_Problem)` which is an extension of a builtin problem type for the solver. Within this class is the function `res_fun()` where the full residual is defined for the model.
+Below `main()` the residual for the solver (Assimulo) is defined within the class `li_ion(Implicit_Problem)` which is an extension of a builtin problem type for Assimulo. Within this class is the function `res_fun()` where the full residual is defined for the model.
 
-The general process in each node (with exceptions such as in the separator or for a solid lithium anode) goes as follows.
+The general process in each node `i` (with exceptions such as in the separator or for a solid lithium anode) goes as follows.
 
-1. The boundary conditions are set for fluxes and currents from face `i-1`
-2. The state of the next node `i+1` is set
-3. The Faradaic current of node `i` is calculated
-4. The boundary conditions are set for fluxes and currents from face `i+1`
-5. The `i_dl` is calculated
-6. The residual is calculated for all relevant governing equations at node `i`
+1. The boundary conditions are set for fluxes and currents from the interface with node `i-1`
+2. The states of the nodes `i` and `i+1` are read from the solution vector.
+3. Chemical production rates are read from Cantera for all interfaces
+4. The Faradaic current of node `i` is calculated
+5. The boundary conditions are set for fluxes and currents from the interface with node `i+1`
+6. The double-layer charging current within the node, `i_dl`, is calculated
+7. The residual is calculated for all relevant governing equations at node `i`
 
 The general governing equations are (but not all of which are used in every phase/component):
 
-- Conservation of species in solid phase
-- Conservation of species in electrolyte phase
+- Conservation of elements in solid phase (species molar density [kmol/m^3])
+- Conservation of elements in electrolyte phase (species molar density [kmol/m^3])
 - Conservation of charge in electrode or electrolyte phase (double layer potential)
 - Conservation of charge (algebraic constraint)
 
@@ -61,8 +62,8 @@ The parameters used in these governing equations as well as in the transport cal
 ## 2.4 Model functions - li_ion_battery_p2d_functions.py
 This module contains off-loaded functions that are used within the residual function for the model. These functions are:
 
-- `set_state()` which sets concentrations and electric potentials of the various phases in an electrode
-- `set_state_sep()` which sets the concentrations and electric potentials in the separator
+- `set_state()` which sets concentrations and electric potentials of the Cantera objects representing the various phases in a given electrode and returns a dictionary of concentrations, electric potentials, and chemical production rates
+- `set_state_sep()` which sets the concentrations and electric potentials of the Cantera object representing the electrolyte in the separator and returns a dictionary of concentrations and electric potentials
 - `dilute_flux()` which calculates species flux and ionic current based on whichever transport model is chosen (using effective diffusion coefficients)
 - `solid_flux()` which calculates diffusion of species within an electrode using an intercalation model
 - `setup_plots()` which sets up the built-in plots used when running the model
@@ -85,8 +86,6 @@ The input parameters for geometry and transport are given in the table below
 | Code name | Description | Default value | Source |
 |-----------|-------------|---------------|--------|
 | eps_solid_an | Volume fraction of solid phase in anode | 0.8 [-] | Assumed |
-| anode_roughness | Average roughness of lithium metal | 130e-9 [units] | [ref] |
-| anode_n_peaks | number of 'peaks' used in effective reaction area calculation | 1e6 [-] | Assumed |
 | H_an | Anode thickness | 25e-6 [m] | Assumed |
 | C_dl_an | Double-layer capacitance of anode | 1.5e-2 [F/m^3] | Assumed |
 | eps_elyte_sep | Volume fraction of electrolyte in separator | 0.5 [-] | Assumed |
