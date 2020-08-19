@@ -39,13 +39,19 @@ importlib.reload(li_ion_battery_p2d_init)
 from li_ion_battery_p2d_init import anode as an
 from li_ion_battery_p2d_init import cathode as cat
 from li_ion_battery_p2d_init import separator as sep
-from li_ion_battery_p2d_init import solver_inputs, current
+from li_ion_battery_p2d_init import solver_inputs, current, battery
 
 import li_ion_battery_p2d_post_process
 importlib.reload(li_ion_battery_p2d_post_process)
 from li_ion_battery_p2d_post_process import Label_Columns, tag_strings
 from li_ion_battery_p2d_post_process import plot_potential, plot_electrode, plot_elyte
 from li_ion_battery_p2d_post_process import plot_cap
+
+import sys
+sys.path.append('../functions')
+
+import diffusion_coeffs
+transport = getattr(diffusion_coeffs, Inputs.elyte_flux_model)
 
 def main():
     
@@ -56,8 +62,8 @@ def main():
     # Close any open pyplot objects:
     plt.close('all')
     
-    atol = np.ones_like(SV_0)*1e-9
-    rtol = 1e-4    
+    atol = np.ones_like(SV_0)*1e-8
+    rtol = 1e-7  
 
     # Start a timer:
     t_count = time.time()
@@ -70,8 +76,9 @@ def main():
     rate_tag = str(Inputs.C_rate)+"C"
     
     """----------Figures----------"""
-
-    fig1, axes1, fig2, axes2, fig3, axes3 = setup_plots(plt, rate_tag)
+    
+    if Inputs.plot_profiles_flag:
+        fig1, axes1, fig2, axes2, fig3, axes3 = setup_plots(plt, rate_tag)
         
     for cycle in np.arange(0, Inputs.n_cycles):
         """----------Equilibration----------"""
@@ -101,6 +108,7 @@ def main():
     
         # Obtain tag strings for dataframe columns
         tags = tag_strings(SV_eq_df)
+        print(SV_eq_df.iloc[-1, 74])
     
         print('Done equilibrating\n')
     
@@ -137,8 +145,7 @@ def main():
                       'Charging', 0, fig1, axes1)
             
         if Inputs.plot_electrode_profiles == 1:
-            plot_electrode(tags['X_an'], tags['X_cat'], SV_ch_df, 
-                           'Charging', 0, fig2, axes2)
+            plot_electrode(tags['X_cat'], SV_ch_df, 'Charging', 0, fig2, axes2)
         
         if Inputs.plot_elyte_profiles == 1:
             plot_elyte(tags['X_el_an'], tags['X_el_cat'], tags['X_el_sep'], SV_ch_df,
@@ -173,7 +180,7 @@ def main():
             sim_req.verbosity = 50
             sim_req.make_consistent('IDA_YA_YDP_INIT')
         
-            t_req, SV_req, SV_dot_req = sim_req.simulate(t_f)
+            t_req, SV_req, SV_dot_req = sim_req.simulate(Inputs.equil_time*t_f)
         
             SV_req_df = Label_Columns(t_req, SV_req, an.npoints, sep.npoints, 
                                  cat.npoints)
@@ -183,7 +190,7 @@ def main():
                                'Re-equilibrating', 1, None, fig1, axes1)
             
             if Inputs.plot_electrode_profiles == 1:
-                plot_electrode(tags['X_an'], tags['X_cat'], SV_req_df, 
+                plot_electrode(tags['X_cat'], SV_req_df, 
                                'Re-equilibrating', 1, fig2, axes2)
                 
             if Inputs.plot_elyte_profiles == 1:
@@ -196,6 +203,11 @@ def main():
             SV_dot_req = SV_dot_ch
             
             SV_req_df = SV_req
+        
+        for i in np.arange(0, len(cat.ptr_vec['X_ed'])):
+            ptr = cat.ptr_vec['X_ed'][i]
+            if (SV_req[-1, ptr] - Inputs.Li_cat_min) < Inputs.Li_cat_min/10:
+                SV_req[-1, ptr] += Inputs.Li_cat_min/10
     
         """------------Discharging-------------"""
     
@@ -227,7 +239,7 @@ def main():
                       'Discharging', 1+(Inputs.flag_re_equil*Inputs.phi_time), fig1, axes1)
             
         if Inputs.plot_electrode_profiles == 1:
-            plot_electrode(tags['X_an'], tags['X_cat'], SV_dch_df, 
+            plot_electrode(tags['X_cat'], SV_dch_df, 
                            'Discharging', 1+Inputs.flag_re_equil, fig2, axes2)
             
         if Inputs.plot_elyte_profiles == 1:
@@ -247,6 +259,36 @@ def main():
         
         plot_cap(SV_ch_df, SV_dch_df, rate_tag, current.i_ext_set,
                  Inputs.plot_cap_flag, tags)
+        
+    # %% Convert time to capacity and export
+    if Inputs.cap_method == 'areal':
+        file_name_dch = 'dch'+str(int(Inputs.C_rate))+"C"+"_A"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+Inputs.save_tag+'.csv'
+        file_name_ch = 'ch'+str(int(Inputs.C_rate))+"C"+"_A"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+Inputs.save_tag+'.csv'
+        SV_dch = SV_dch_df.copy()
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600
+        SV_ch = SV_ch_df.copy()
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600
+        SV_dch.to_csv(file_name_dch, index=False, header=True)
+        SV_ch.to_csv(file_name_ch, index=False, header=True)
+    elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cathode':
+        file_name_dch = 'dch'+str(int(Inputs.C_rate))+"C"+"_Gcat"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+Inputs.save_tag+'.csv'
+        file_name_ch = 'ch'+str(int(Inputs.C_rate))+"C"+"_Gcat"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+Inputs.save_tag+'.csv'
+        SV_dch = SV_dch_df.copy()
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cat.rho_ed/cat.H/cat.eps_ed
+        SV_ch = SV_ch_df.copy()
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cat.rho_ed/cat.H/cat.eps_ed
+        SV_dch.to_csv(file_name_dch, index=False, header=True)
+        SV_ch.to_csv(file_name_ch, index=False, header=True)
+    elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cell':
+        file_name_dch = 'dch'+str(int(Inputs.C_rate))+"C"+"_Gcell"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+Inputs.save_tag+'.csv'
+        file_name_ch = 'ch'+str(int(Inputs.C_rate))+"C"+"_Gcell"+"_"+Inputs.anode_kinetics+"_"+Inputs.cathode_kinetics+Inputs.save_tag+'.csv'
+        SV_dch = SV_dch_df.copy()
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
+        SV_ch = SV_ch_df.copy()
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
+        SV_dch.to_csv(file_name_dch, index=False, header=True)
+        SV_ch.to_csv(file_name_ch, index=False, header=True)
+
 
     elapsed = time.time() - t_count
     print('t_cpu=', elapsed, '\n')
@@ -260,6 +302,7 @@ def main():
 
 import li_ion_battery_p2d_init
 importlib.reload(li_ion_battery_p2d_init)
+from li_ion_battery_p2d_init import battery as bat
 from li_ion_battery_p2d_init import anode_obj as anode
 from li_ion_battery_p2d_init import anode_surf_obj as anode_s
 from li_ion_battery_p2d_init import elyte_obj as elyte
@@ -278,11 +321,13 @@ class li_ion(Implicit_Problem):
     def res_fun(t, SV, SV_dot):
         """================================================================="""
         """==========================INITIALIZE============================="""
-        offsets = an.offsets; F = ct.faraday
+        offsets = an.offsets; F = ct.faraday; #params = bat.cst_params
         
         nSV = len(SV)
         res = np.zeros([nSV])
         i_ext = current.get_i_ext()
+        
+#        elyte_model = solver_inputs.elyte_model
 
 # %%
         """================================================================="""
@@ -298,58 +343,21 @@ class li_ion(Implicit_Problem):
         s2 = set_state(offset, SV, anode, anode_s, elyte, conductor, ptr)
         
         # Diffusive flux scaling factors
-        k = np.arange(0, an.nshells+1)/an.nshells
+        transport.ptr_el = bat.ptr_el
+        transport.z_k = Inputs.z_k_elyte
+        transport.Dk_el_0 = an.D_el_eff
+        transport.params = bat.cst_params
+        transport.T = Inputs.T
+        transport.T_0 = Inputs.T
                         
+
 # %%
         """============================ANODE================================"""
-        """INTERIOR NODES"""
-        for j in np.arange(1, an.npoints):
-            # Save previous node outlet conditions as new inlet conditions
-            N_io_m = N_io_p
-            i_io_m = i_io_p
-            i_el_m = i_el_p
-            s1 = s2
-
-            # Shift forward to NEXT node
-            offset = int(offsets[j])
-
-            s2 = set_state(offset, SV, anode, anode_s, elyte, conductor, ptr)
-
-            # Shift back to THIS node, set THIS node outlet conditions
-            offset = int(offsets[j - 1])
-
-            i_el_p = an.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*an.dyInv
-            
-            N_io_p, i_io_p = elyte_flux(s1, s2, an.dyInv, an)
-
-            i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
-
-            DiffFlux = solid_flux(SV, offset, ptr, s1, an)
-
-            """Calculate the change in X_LiC6 in the particle interior."""
-            res[offset + an.ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
-            - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
-            * an.A_surf/an.eps_ed/an.V_shell))
-
-            """Change in electrolyte_composition"""
-            res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
-            - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf)
-            /s1['rho_el']/an.eps_elyte))
-
-            """Double-layer voltage"""
-            res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
-            - (-i_Far_1 + i_io_m - i_io_p)*an.dyInv/an.C_dl/an.A_surf)
-
-            """Algebraic equation for ANODE electric potential boundary condition"""
-            res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
-            
-# %%
-        """============================ANODE================================"""
-        """Separator boundary"""
+        """Current collector boundary"""
         # Save previous node outlet conditions as new inlet conditions
-        N_io_m = N_io_p
-        i_io_m = i_io_p
-        i_el_m = i_el_p
+        N_io_m = 0
+        i_io_m = 0
+        i_el_m = i_ext
         s1 = s2
      
         # Shift forward to NEXT node, first separator node (j=0)
@@ -363,30 +371,32 @@ class li_ion(Implicit_Problem):
         # Set j to final ANODE node
         j = an.npoints-1; offset = int(an.offsets[j])
 
-        i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf/an.dyInv
-        
-        dyInv_boundary = 1/(0.5*(1/an.dyInv + 1/sep.dyInv))
+        i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf
+#        print(i_Far_1)
+        dyInv_boundary = 1/(0.5*(1/an.dyInv_el + 1/sep.dyInv))
+        w1 = sep.dy/(an.dy_el + sep.dy); w2 = an.dy_el/(an.dy_el + sep.dy)
+        transport.C_k = (s2['X_k_el']*s2['rho_el']*w2 
+                           + s1['X_k_el']*s1['rho_el']*w1)
+        transport.rho_bar = (s2['rho_el']*w2 + s1['rho_el']*w1)
+        D_k, D_k_migr = transport.coeffs()
             
-        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an)
-        
-        DiffFlux = solid_flux(SV, offset, ptr, s1, an)
-    
-        """Calculate the change in X_LiC6 in the particle interior."""
-        res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
-        - ((DiffFlux[1:]*k[1:]**2 - DiffFlux[0:-1]*k[0:-1]**2)
-        * an.A_surf/an.eps_ed/an.V_shell))
+        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, an, D_k, D_k_migr)
+
+        i_dl = -i_Far_1 - i_el_m + i_el_p
+        R_dl = np.array((0, 0, -i_dl/an.dy/F, 0))
 
         """Change in electrolyte_composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
-        - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf)
+        - (((N_io_m - N_io_p)*an.dyInv + s1['sdot']*an.A_surf*an.dyInv + R_dl)
         /s1['rho_el']/an.eps_elyte))
 
         """Double-layer voltage"""
         res[offset + ptr['Phi_dl']] = (SV_dot[offset + ptr['Phi_dl']]
-        - (-i_Far_1 + i_io_m - i_io_p)*an.dyInv/an.C_dl/an.A_surf)
+        - (i_dl)/an.C_dl/an.A_surf)
 
         """Algebraic equation for ANODE electric potential boundary condition"""
-        res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
+        res[offset + ptr['Phi_ed']] = i_el_m - i_el_p + i_io_m - i_io_p
+
         
 # %%
         """================================================================="""
@@ -407,7 +417,12 @@ class li_ion(Implicit_Problem):
             # Shift back to THIS node
             offset = int(sep.offsets[j-1])
             
-            N_io_p, i_io_p = elyte_flux(s1, s2, sep.dyInv, sep)
+            transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+            transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+            D_k, D_k_migr = transport.coeffs()
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, sep.dyInv, sep, D_k, D_k_migr)
         
             """Change in electrolyte composition"""
             res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -434,8 +449,13 @@ class li_ion(Implicit_Problem):
         i_el_p = 0
         
         dyInv_boundary = 1/(0.5*(1/cat.dyInv + 1/sep.dyInv))
+        
+        transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+        transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+        D_k, D_k_migr = transport.coeffs()
 
-        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, sep)
+        N_io_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, sep, D_k, D_k_migr)
                 
         """Change in electrolyte composition"""
         res[offset + ptr['X_k_elyte']] = (SV_dot[offset + ptr['X_k_elyte']]
@@ -471,11 +491,20 @@ class li_ion(Implicit_Problem):
             
             i_el_p = cat.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*cat.dyInv
             
-            N_io_p, i_io_p = elyte_flux(s1, s2, cat.dyInv, cat)
+            transport.C_k = (s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])/2.
+            transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+            D_k, D_k_migr = transport.coeffs()
+            
+            N_io_p, i_io_p = elyte_flux(s1, s2, cat.dyInv, cat, D_k, D_k_migr)
             
             i_Far_1 = -s1['sdot'][ptr['iFar']]*F*cat.A_surf/cat.dyInv
             
-            DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+#            DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+            X_Li = SV[offset + ptr['X_ed']]
+            DiffFlux = np.zeros([cat.nshells+1])
+            DiffFlux[1:-1] = cat.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/cat.dr
+            DiffFlux[-1] = -s1['sdot'][cat.ptr['iFar']]/s1['rho_ed']
 
             """Calculate the change in X_LiCoO2 in the particle interior"""
             res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
@@ -511,7 +540,11 @@ class li_ion(Implicit_Problem):
         
         i_Far_1 = -s1['sdot'][ptr['iFar']]*F*cat.A_surf/cat.dyInv
         
-        DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+#        DiffFlux = solid_flux(SV, offset, ptr, s1, cat)
+        X_Li = SV[offset + ptr['X_ed']]
+        DiffFlux = np.zeros([cat.nshells+1])
+        DiffFlux[1:-1] = cat.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/cat.dr
+        DiffFlux[-1] = -s1['sdot'][cat.ptr['iFar']]/s1['rho_ed']
                         
         """Calculate the change in X_LiCoO2 in the particle interior"""
         res[offset + ptr['X_ed']] = (SV_dot[offset + ptr['X_ed']]
@@ -528,7 +561,11 @@ class li_ion(Implicit_Problem):
         - (-i_Far_1 + i_io_m - i_io_p)*cat.dyInv/cat.C_dl/cat.A_surf)
         
         """Algebraic equation for CATHODE electric potential"""
-        res[offset + ptr['Phi_ed']] = (i_el_m - i_el_p + i_io_m - i_io_p)
+        res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
+#        SV[an.ptr['Phi_ed']]
+#        (i_el_m - i_el_p + i_io_m - i_io_p)
+        
+#        print(SV, t)
                         
         return res
 
@@ -542,13 +579,13 @@ class li_ion(Implicit_Problem):
         # Anode events
         event1 = np.zeros([an.npoints])
         event2 = np.zeros([an.npoints])
-        event3 = np.zeros([an.npoints*an.nshells])
-        event4 = np.zeros([an.npoints*an.nshells])
+#        event3 = np.zeros([an.npoints*an.nshells])
+#        event4 = np.zeros([an.npoints*an.nshells])
         
         event1 = y[an.ptr_vec['Phi_dl']]
         event2 = 5 - y[an.ptr_vec['Phi_dl']]
-        event3 = an.X_Li_max - y[an.ptr_vec['X_ed']]
-        event4 = y[an.ptr_vec['X_ed']] - an.X_Li_min
+#        event3 = an.X_Li_max - y[an.ptr_vec['X_ed']]
+#        event4 = y[an.ptr_vec['X_ed']] - an.X_Li_min
             
         # Cathode events
         event5 = np.zeros([cat.npoints])
@@ -557,7 +594,7 @@ class li_ion(Implicit_Problem):
         event8 = np.zeros([cat.npoints*cat.nshells])
         
         event5 = y[cat.ptr_vec['Phi_dl']]
-        event6 = 5 - y[cat.ptr_vec['Phi_ed']]
+        event6 = 6. - y[cat.ptr_vec['Phi_ed']]
         event7 = cat.X_Li_max - y[cat.ptr_vec['X_ed']]
         event8 = y[cat.ptr_vec['X_ed']] - cat.X_Li_min
                
@@ -566,16 +603,16 @@ class li_ion(Implicit_Problem):
         event10 = np.zeros([an.npoints*elyte.n_species])
         event11 = np.zeros([cat.npoints*elyte.n_species])
         event12 = np.zeros([cat.npoints*elyte.n_species])
-        
         event9  = 1 - y[an.ptr_vec['X_k_elyte']]
         event10 = y[an.ptr_vec['X_k_elyte']]
         event11 = 1 - y[cat.ptr_vec['X_k_elyte']]
         event12 = y[cat.ptr_vec['X_k_elyte']]
 
         # Concatenate events into one array
-        events = np.concatenate((event1, event2, event3, event4, 
-                                 event5, event6, event7, event8, 
-                                 event9, event10, event11, event12))
+        holder = np.array([event1, event2])
+        events = np.concatenate((holder, event5, event6, 
+                                 event7, event8, event9, event10, 
+                                 event11, event12))
 
         return events
 
@@ -587,10 +624,8 @@ class li_ion(Implicit_Problem):
         event_ptr = {}
         event_ptr['An_phi1'] = an.npoints
         event_ptr['An_phi2'] = event_ptr['An_phi1'] + an.npoints
-        event_ptr['An_Xed1'] = event_ptr['An_phi2'] + an.npoints*an.nshells
-        event_ptr['An_Xed2'] = event_ptr['An_Xed1'] + an.npoints*an.nshells
         
-        event_ptr['Cat_phi1'] = event_ptr['An_Xed2'] + cat.npoints
+        event_ptr['Cat_phi1'] = event_ptr['An_phi2'] + cat.npoints
         event_ptr['Cat_phi2'] = event_ptr['Cat_phi1'] + cat.npoints
         event_ptr['Cat_Xed1'] = event_ptr['Cat_phi2'] + cat.npoints*cat.nshells
         event_ptr['Cat_Xed2'] = event_ptr['Cat_Xed1'] + cat.npoints*cat.nshells
@@ -606,13 +641,7 @@ class li_ion(Implicit_Problem):
         elif any(state_info[event_ptr['An_phi1']:event_ptr['An_phi2']]):
             print('Cutoff: anode double-layer blew up')
             raise TerminateSimulation
-        elif any(state_info[event_ptr['An_phi2']:event_ptr['An_Xed1']]):
-            print('Cutoff: Anode shell fully lithiated')
-            raise TerminateSimulation
-        elif any(state_info[event_ptr['An_Xed1']:event_ptr['An_Xed2']]):
-            print('Cutoff: Anode shell fully de-lithiated')
-            raise TerminateSimulation
-        elif any(state_info[event_ptr['An_Xed2']:event_ptr['Cat_phi1']]):
+        elif any(state_info[event_ptr['An_phi2']:event_ptr['Cat_phi1']]):
             print('Cutoff: Cathode double layer flipped sign')
             raise TerminateSimulation
         elif any(state_info[event_ptr['Cat_phi1']:event_ptr['Cat_phi2']]):
