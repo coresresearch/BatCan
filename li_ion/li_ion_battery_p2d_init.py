@@ -8,6 +8,7 @@ Created on Thu Nov  1 14:27:54 2018
 import numpy as np
 import cantera as ct
 import importlib
+import csv
 
 import li_ion_battery_p2d_inputs
 importlib.reload(li_ion_battery_p2d_inputs)
@@ -423,6 +424,12 @@ class solver_inputs():
         SV_0[offsets[j] + ptr['Phi_dl']] = \
             Inputs.Phi_elyte_init - (Inputs.Phi_anode_init + Inputs.Delta_Phi_init)
         algvar[offsets[j] + ptr['Phi_dl']] = 1
-        
+   
+params = {'bat_rho': battery.rho, 'bat_H': battery.H, 'bat_eps': battery.eps,
+          'cat_rho': cathode.rho_ed, 'cat_H': cathode.H, 'cat_eps': cathode.eps_ed}
+with open('test.csv', 'w') as f:
+    w = csv.writer(f)
+    w.writerow(params.keys())
+    w.writerow(params.values())
     
 print("Initalize check")
