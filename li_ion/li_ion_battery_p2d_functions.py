@@ -67,7 +67,7 @@ def set_state_sep(offset, SV, el, ptr):
 
 """====================================================================="""
 
-def dilute_flux(s1, s2, dyInv, ed, D_k, D_migr_k):
+def elyte_flux(s1, s2, dyInv, ed, D_k, D_migr_k):
     F = ct.faraday; R = ct.gas_constant; T = Inputs.T
     z_k = Inputs.z_k_elyte
     # Calculate ionic flux in electrolyte

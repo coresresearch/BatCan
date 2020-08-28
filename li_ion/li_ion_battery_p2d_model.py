@@ -314,7 +314,7 @@ import li_ion_battery_p2d_functions
 importlib.reload(li_ion_battery_p2d_functions)
 from li_ion_battery_p2d_functions import set_state
 from li_ion_battery_p2d_functions import set_state_sep
-from li_ion_battery_p2d_functions import dilute_flux as elyte_flux
+from li_ion_battery_p2d_functions import elyte_flux
 from li_ion_battery_p2d_functions import solid_flux
 
 class li_ion(Implicit_Problem):
