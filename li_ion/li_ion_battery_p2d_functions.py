@@ -11,7 +11,8 @@ Created on Thu Dec  6 11:37:06 2018
 import cantera as ct
 import numpy as np
 from li_ion_battery_p2d_inputs import Inputs
-from li_ion_battery_p2d_init import anode as an
+from li_ion_battery_p2d_init import initialize as init
+an, cat, sep, solver_inputs, current, battery, anode, anode_s, elyte, cathode, cathode_s, conductor = init()
 
 def set_state(offset, SV, ed, surf, el, conductor, ptr):
     
@@ -75,8 +76,8 @@ def dilute_flux(s1, s2, dyInv, ed, D_k, D_migr_k):
     # Total molar concentration in electrolyte
     C_0 = (s2['rho_el'] + s1['rho_el'])/2.
     
-    N_io_p = (- D_k*(s2['rho_el']*s2['X_k_el'] - s1['rho_el']*s1['X_k_el'])*dyInv 
-              - D_migr_k*(z_k*F/R/T)*(s2['phi_el'] - s1['phi_el'])*dyInv)
+    N_io_p = (- D_k*(s2['rho_el']*s2['X_k_el'] - s1['rho_el']*s1['X_k_el'])
+              - D_migr_k*(z_k*F/R/T)*(s2['phi_el'] - s1['phi_el']))*dyInv
     
 #    N_io_p = (-ed.u_Li_elyte*(R*T*C_0*(s2['X_k_el'] - s1['X_k_el'])
 #    + Inputs.z_k_elyte*F*C_k*(s2['phi_el'] - s1['phi_el']))*dyInv)

@@ -6,22 +6,25 @@ Created on Wed Sep 26 13:59:27 2018
 """
 
 import importlib
-import li_ion_battery_p2d_init
-importlib.reload(li_ion_battery_p2d_init)
-from li_ion_battery_p2d_init import anode, cathode, battery
-from li_ion_battery_p2d_init import separator as sep
-from li_ion_battery_p2d_init import anode_obj, cathode_obj, elyte_obj
-from li_ion_battery_p2d_init import current
+# import li_ion_battery_p2d_init
+# importlib.reload(li_ion_battery_p2d_init)
+# from li_ion_battery_p2d_init import anode, cathode, battery
+# from li_ion_battery_p2d_init import separator as sep
+# from li_ion_battery_p2d_init import anode_obj, cathode_obj, elyte_obj
+# from li_ion_battery_p2d_init import current
 
 import li_ion_battery_p2d_inputs
 importlib.reload(li_ion_battery_p2d_inputs)
 from li_ion_battery_p2d_inputs import Inputs
 
+from li_ion_battery_p2d_init import initialize as init
+an, ca, sep, solver_inputs, current, battery, anode, anode_s, elyte_obj, cathode, cathode_s, conductor = init()
+
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
-def plot_potential(V_an, V_cat, SV, stage, yax, fig, axes):
+def plot_potential(V_an, V_ca, SV, stage, yax, fig, axes):
     
     if stage == 'Discharging':
         showlegend = 1
@@ -31,23 +34,23 @@ def plot_potential(V_an, V_cat, SV, stage, yax, fig, axes):
     
     SV_df = SV.copy()
     if Inputs.grav_cap_method == 'cathode':
-        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/ca.rho_ed/ca.H/ca.eps_ed
     elif Inputs.grav_cap_method == 'cell':
         SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
     t = SV_df['Time']
     
     if Inputs.flag_cathode:
         index = []
-        for i in np.arange(0, cathode.npoints):
+        for i in np.arange(0, ca.npoints):
             index_add = [2*i]
             index = np.append(index, index_add)
             
-        V = [V_cat[i] for i in index.astype(int)]
-#        SOC = SV_df.filter(like="X_cat").sum(1)/(cathode.npoints*cathode.nshells)
+        V = [V_ca[i] for i in index.astype(int)]
+#        SOC = SV_df.filter(like="X_ca").sum(1)/(ca.npoints*ca.nshells)
         
     elif not Inputs.flag_cathode:
         index = []
-        for i in np.arange(0, anode.npoints):
+        for i in np.arange(0, an.npoints):
             index_add = [1 + 2*i]
             index = np.append(index, index_add)
             
@@ -64,15 +67,15 @@ def plot_potential(V_an, V_cat, SV, stage, yax, fig, axes):
                    frameon=False).set_visible(showlegend)
     SV_plot.tick_params(axis='both', labelsize=18)
     SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-    SV_plot.set_ylim((0,4.5))
+    SV_plot.set_ylim((0,5.))
 
 """========================================================================="""
 
-def plot_electrode(X_cat, SV, stage, yax, fig, axes):
+def plot_electrode(X_ca, SV, stage, yax, fig, axes):
     
     SV_df = SV.copy()
     if Inputs.grav_cap_method == 'cathode':
-        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/ca.rho_ed/ca.H/ca.eps_ed
     elif Inputs.grav_cap_method == 'cell':
         SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
     t = SV_df['Time']
@@ -85,11 +88,11 @@ def plot_electrode(X_cat, SV, stage, yax, fig, axes):
     
     if Inputs.flag_anode and Inputs.flag_cathode:
 #        axes_an = axes[0, yax]
-        axes_cat = axes[yax]
+        axes_ca = axes[yax]
     elif Inputs.flag_anode and not Inputs.flag_cathode:
         axes_an = axes[yax]
     elif Inputs.flag_cathode and not Inputs.flag_anode:
-        axes_cat = axes[yax]
+        axes_ca = axes[yax]
     
 #    if Inputs.flag_anode:
 #        index = []
@@ -113,15 +116,15 @@ def plot_electrode(X_cat, SV, stage, yax, fig, axes):
     
     if Inputs.flag_cathode:
         index = []
-        for i in np.arange(0, cathode.npoints):
-            offset = i*cathode.nshells
-            index_add = [0+offset, cathode.nshells-1+offset]
+        for i in np.arange(0, ca.npoints):
+            offset = i*ca.nshells
+            index_add = [0+offset, ca.nshells-1+offset]
             index = np.append(index, index_add)
         
-        X_cat_1 = [X_cat[i] for i in index.astype(int)]
+        X_ca_1 = [X_ca[i] for i in index.astype(int)]
     
         # Plot cathode composition
-        SV_plot = SV_df.plot(x = 'Time', y = X_cat_1, ax = axes_cat, xlim = [0, t.iloc[-1]],
+        SV_plot = SV_df.plot(x = 'Time', y = X_ca_1, ax = axes_ca, xlim = [0, t.iloc[-1]],
                              ylim = [-0.1, 1.1])
         SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
         SV_plot.set_ylabel('$X_{LiCoO2}$', fontsize = fontsize)
@@ -135,11 +138,11 @@ def plot_electrode(X_cat, SV, stage, yax, fig, axes):
 
 """========================================================================="""
 
-def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV, stage, yax, fig, axes):
+def plot_elyte(rho_k_an, rho_k_ca, rho_k_sep, SV, stage, yax, fig, axes):
     
     SV_df = SV.copy()
     if Inputs.grav_cap_method == 'cathode':
-        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+        SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/ca.rho_ed/ca.H/ca.eps_ed
     elif Inputs.grav_cap_method == 'cell':
         SV_df.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
     t = SV_df['Time']
@@ -152,11 +155,11 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV, stage, yax, fig, axes):
         
     axes_an = axes[0, yax]
     axes_sep = axes[Inputs.flag_sep, yax]
-    axes_cat = axes[Inputs.flag_sep+Inputs.flag_cathode, yax]
+    axes_ca = axes[Inputs.flag_sep+Inputs.flag_cathode, yax]
     
     if Inputs.flag_anode:
         index = []
-        for i in np.arange(0, anode.npoints):
+        for i in np.arange(0, an.npoints):
             offset = i*elyte_obj.n_species
             index_add = [2+offset]
             index = np.append(index, index_add)
@@ -165,12 +168,12 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV, stage, yax, fig, axes):
     
     if Inputs.flag_cathode:
         index = []
-        for i in np.arange(0, cathode.npoints):
+        for i in np.arange(0, ca.npoints):
             offset = i*elyte_obj.n_species
             index_add = [2+offset]
             index = np.append(index, index_add)
             
-        rho_Li_cat = [rho_k_cat[i] for i in index.astype(int)]
+        rho_Li_ca = [rho_k_ca[i] for i in index.astype(int)]
         
     if Inputs.flag_sep:
         index = []
@@ -182,9 +185,9 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV, stage, yax, fig, axes):
         rho_Li_sep = [rho_k_sep[i] for i in index.astype(int)]
     
     if Inputs.flag_anode and Inputs.flag_cathode:
-        max_val = max(max(SV_df[rho_Li_an].max()), max(SV_df[rho_Li_cat].max()))
+        max_val = max(max(SV_df[rho_Li_an].max()), max(SV_df[rho_Li_ca].max()))
         ymax = max_val + max_val/10
-        min_val = min(min(SV_df[rho_Li_an].min()), min(SV_df[rho_Li_cat].min()))
+        min_val = min(min(SV_df[rho_Li_an].min()), min(SV_df[rho_Li_ca].min()))
         ymin = min_val - min_val/10
         
         if yax > 0:
@@ -208,10 +211,10 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV, stage, yax, fig, axes):
     
     if Inputs.flag_cathode:
         # Plot elyte composition in cathode
-        SV_plot = SV_df.plot(x = 'Time', y = rho_Li_cat, ax = axes_cat, 
+        SV_plot = SV_df.plot(x = 'Time', y = rho_Li_ca, ax = axes_ca, 
                              xlim = [0, t.iloc[-1]], ylim = [ymin, ymax])
         SV_plot.set_title(stage, fontsize = fontsize).set_visible(False)
-        SV_plot.set_ylabel(r'$X_{Li^+, cat}$', fontsize = fontsize)
+        SV_plot.set_ylabel(r'$X_{Li^+, ca}$', fontsize = fontsize)
         SV_plot.set_xlabel('Capacity [Ah/kg]', fontsize = fontsize).set_visible(False)
         SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, borderaxespad = 0,
                        frameon = False).set_visible(showlegend)
@@ -237,8 +240,8 @@ def plot_elyte(rho_k_an, rho_k_cat, rho_k_sep, SV, stage, yax, fig, axes):
 def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
     fontsize = 18
     
-    V_ch = np.array(SV_ch_df[tags['Phi_cat'][-2]])
-    V_dch = np.array(SV_dch_df[tags['Phi_cat'][-2]])
+    V_ch = np.array(SV_ch_df[tags['Phi_ca'][-2]])
+    V_dch = np.array(SV_dch_df[tags['Phi_ca'][-2]])
     t_ch = np.array(SV_ch_df['Time'])
     t_dch = np.array(SV_dch_df['Time'])
     dt_ch = t_ch - t_ch[0]
@@ -249,22 +252,22 @@ def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
         Capacity_charge = -dt_ch*i_ext/3600         # A-h/m^2
         Capacity_discharge = -dt_dch*i_ext/3600   # A-h/m^2
     elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cathode':
-        Capacity_charge = -dt_ch*i_ext/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
-        Capacity_discharge = -dt_dch*i_ext/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+        Capacity_charge = -dt_ch*i_ext/3600/ca.rho_ed/ca.H/ca.eps_ed
+        Capacity_discharge = -dt_dch*i_ext/3600/ca.rho_ed/ca.H/ca.eps_ed
     elif Inputs.cap_method == 'grav' and Inputs.grav_cap_method == 'cell':
-        Capacity_charge = -dt_ch*i_ext/3600/battery.rho/battery.H/battery.eps
-        Capacity_discharge = -dt_dch*i_ext/3600/battery.rho/battery.H/battery.eps
+        Capacity_charge = -dt_ch*i_ext/3600/battery.mass#battery.rho/battery.H/battery.eps
+        Capacity_discharge = -dt_dch*i_ext/3600/battery.mass#battery.rho/battery.H/battery.eps
     
     SV_ch = SV_ch_df.copy()
     if Inputs.grav_cap_method == 'cathode':
-        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/ca.rho_ed/ca.H/ca.eps_ed
     elif Inputs.grav_cap_method == 'cell':
-        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
+        SV_ch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.mass#rho/battery.H/battery.eps
     SV_dch = SV_dch_df.copy()
     if Inputs.grav_cap_method == 'cathode':
-        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/cathode.rho_ed/cathode.H/cathode.eps_ed
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/ca.mass#rho_ed/ca.H/ca.eps_ed
     elif Inputs.grav_cap_method == 'cell':
-        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.rho/battery.H/battery.eps
+        SV_dch.loc[:, 'Time'] *= -current.i_ext_amp/3600/battery.mass#rho/battery.H/battery.eps
     
     if flag_plot:
         plt.figure(4, figsize = (8, 6))
@@ -278,6 +281,8 @@ def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
         plt.ylabel('Voltage [V]', fontsize = fontsize)
         plt.legend(('Charge', 'Discharge'), loc = 3, fontsize = 14)
         plt.ylim((0,4.5))
+        plt.savefig(Inputs.save_path+Inputs.save_name+'Charge_Discharge.png',
+            dpi=350)
         plt.show()
     
     Capacity_ch_areal = -dt_ch*i_ext/3600         # A-h/m^2
@@ -326,33 +331,33 @@ def tag_strings(SV):
     SV_eq_labels = SV.columns.values.tolist()
 
     X_an = []
-    X_cat = []
+    X_ca = []
     rho_el_an = []
-    rho_el_cat = []
+    rho_el_ca = []
     V_an = []
-    V_cat = []
+    V_ca = []
     V_sep = np.array([])
     X_el_sep = []
     
-    ptr = anode.ptr
-    for j in np.arange(0, anode.npoints):
-        offset = int(anode.offsets[j])
+    ptr = an.ptr
+    for j in np.arange(0, an.npoints):
+        offset = int(an.offsets[j])
         V_an[0+offset:1+offset] = \
             SV_eq_labels[ptr['Phi_ed']+offset:ptr['Phi_dl']+offset+1]
             
         rho_el_an[0+offset:elyte_obj.n_species+offset] = \
             SV_eq_labels[ptr['X_k_elyte'][0]+offset:ptr['X_k_elyte'][-1]+offset+1]
                 
-    ptr = cathode.ptr
-    for j in np.arange(0, cathode.npoints):
-        offset = int(cathode.offsets[j])
-        V_cat[0+offset:1+offset] = \
+    ptr = ca.ptr
+    for j in np.arange(0, ca.npoints):
+        offset = int(ca.offsets[j])
+        V_ca[0+offset:1+offset] = \
             SV_eq_labels[ptr['Phi_ed']+offset:ptr['Phi_dl']+offset+1]
         
-        X_cat[0+offset:cathode.nshells+offset] = \
-            SV_eq_labels[0+offset:cathode.nshells+offset]
+        X_ca[0+offset:ca.nshells+offset] = \
+            SV_eq_labels[0+offset:ca.nshells+offset]
         
-        rho_el_cat[0+offset:elyte_obj.n_species+offset] = \
+        rho_el_ca[0+offset:elyte_obj.n_species+offset] = \
             SV_eq_labels[ptr['X_k_elyte'][0]+offset:ptr['X_k_elyte'][-1]+offset+1]
             
     ptr = sep.ptr
@@ -364,15 +369,15 @@ def tag_strings(SV):
     
     V_sep = V_sep.tolist()
     tags = {}
-    tags['Phi_an'] = V_an; tags['Phi_cat'] = V_cat; tags['X_cat'] = X_cat
-    tags['X_el_an'] = rho_el_an; tags['X_el_cat'] = rho_el_cat; tags['X_el_sep'] = X_el_sep
+    tags['Phi_an'] = V_an; tags['Phi_ca'] = V_ca; tags['X_ca'] = X_ca
+    tags['X_el_an'] = rho_el_an; tags['X_el_ca'] = rho_el_ca; tags['X_el_sep'] = X_el_sep
     tags['Phi_sep'] = V_sep
 
     return tags
 
 """========================================================================="""
 
-def Label_Columns(t, SV, anode_np, sep_np, cat_np):
+def Label_Columns(t, SV, anode_np, sep_np, ca_np):
     
     # Convert t and SV into pandas data frames
     t_df = pd.DataFrame(t)
@@ -388,7 +393,7 @@ def Label_Columns(t, SV, anode_np, sep_np, cat_np):
     """Label anode points"""
     newcols = {}
     for j in np.arange(0, anode_np):
-        offset = anode.offsets[j]  # Set node offset value for loop
+        offset = an.offsets[j]  # Set node offset value for loop
             
         # Loop over number of species in electrolyte
         for k in np.arange(0, elyte_obj.n_species):
@@ -422,23 +427,23 @@ def Label_Columns(t, SV, anode_np, sep_np, cat_np):
     
     """Label cathode points"""
     newcols = {}
-    for j in np.arange(0, cat_np):
-        offset = cathode.offsets[j]  # Set node offset value for loop
+    for j in np.arange(0, ca_np):
+        offset = ca.offsets[j]  # Set node offset value for loop
         
         # Loop over number of shells in anode
-        for k in np.arange(0, cathode.nshells):
-            newcols_cat = {k + offset: 'X_cat'+str(j+1)+str(k+1)}
-            newcols.update(newcols_cat)
+        for k in np.arange(0, ca.nshells):
+            newcols_ca = {k + offset: 'X_ca'+str(j+1)+str(k+1)}
+            newcols.update(newcols_ca)
             
         # Loop over number of species in electrolyte
         for k in np.arange(0, elyte_obj.n_species):
             species = elyte_obj.species_names[k]
-            newcols_el = {k + cathode.nshells + offset: 'X_'+species+'_cat'+str(j+1)}
+            newcols_el = {k + ca.nshells + offset: 'X_'+species+'_ca'+str(j+1)}
             newcols.update(newcols_el)
             
         # Add tags for electrode and double layer potentials
-        newcols_phi = {0+cathode.nshells+elyte_obj.n_species+offset: 'Phi_cat'+str(j+1),
-                       1+cathode.nshells+elyte_obj.n_species+offset: 'Phi_cat_dl'+str(j+1)}
+        newcols_phi = {0+ca.nshells+elyte_obj.n_species+offset:'Phi_ca'+str(j+1),
+                       1+ca.nshells+elyte_obj.n_species+offset: 'Phi_ca_dl'+str(j+1)}
         newcols.update(newcols_phi)
         
         SV_df.rename(columns=newcols, inplace=True)

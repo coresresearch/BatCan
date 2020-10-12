@@ -64,14 +64,24 @@ phases:
   elements: [Li, Fe, P, O]
   species: ['Li(cathode)', 'V(cathode)']
   standard-concentration-basis: unity
+  state:
+    T: 300.0 K
+    P: 1 atm
+    X: {'Li(cathode)': 0.5, 'V(cathode)': 0.5}
 
 - name: electrolyte
   thermo: ideal-condensed
   elements: [Li, P, F, C, H, O, E]
   species: ['C3H4O3(e)', 'C4H6O3(e)', 'Li+(e)', 'PF6-(e)']
   state:
-    X: {'C3H4O3(e)': 0.47901, 'C4H6O3(e)': 0.37563, 'Li+(e)': 0.07268,
-      'PF6-(e)': 0.07268}
+    T: 300.0 K
+    P: 1 atm
+    # RUN AT:
+    X: {'C3H4O3(e)': 0.44839, 'C4H6O3(e)': 0.35161, 'Li+(e)': 0.1,
+    'PF6-(e)': 0.1}
+    # VALIDATED AT:
+    # X: {'C3H4O3(e)': 0.47901, 'C4H6O3(e)': 0.37563, 'Li+(e)': 0.07268,
+    #   'PF6-(e)': 0.07268}
   standard-concentration-basis: unity
 
 - name: electron
@@ -161,9 +171,9 @@ species:
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 197.2 cm^3/mol
+    molar-volume: 45.33 cm^3/mol
   note: |-
-    Lithium cobalt oxide, MW: 97.8730 g/mol.
+    Lithium Iron oxide, MW: 97.8730 g/mol.
     Note this species includes the cobalt oxide host matrix.
     Molar enthalpy and entropy are set to 0 because the values given in the
     BinarySolidSolutionTabulatedThermo class are used.
@@ -178,7 +188,7 @@ species:
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 188.5 cm^3/mol
+    molar-volume: 45.33 cm^3/mol
   note: |-
     Vacancy in the cobalt oxide, MW: 90.9320 g/mol.
     Note this species includes the cobalt oxide host matrix.
@@ -279,18 +289,18 @@ marcus-reactions:
     beta: 0.5
     lambda: 3.2801e7 # Molecular reorganization energy to form the transition state (J per kmol of elementary charge transferred.)
   state-dependence:
-    reference-state: {Li+(e): 0.17} # Species refernce concentrations. Units must match activity concentration for that phase.
+    reference-state: {Li+(e): 0.0727} # Species refernce concentrations. Units must match activity concentration for that phase.
 
 marcus-hush-chidsey-reactions:
 - equation: Li(s) <=> Li+(e) + electron
   type: marcus-hush-chidsey
-  id: anode_reaction
-  rate-constant: {A: 0.02867, b: 0.0, Ea: 0.0}
+  id: anode_reaction`
+  rate-constant: {A: 0.029337, b: 0.0, Ea: 0.0}
   transfer-coefficients:
-    lambda: 2.1030e7 # Molecular reorganization energy to form the transition
+    lambda: 2.1230e7 # Molecular reorganization energy to form the transition
     # state (J per kmol of elementary charge transferred.)
   state-dependence:
-    reference-state: {Li+(e): 0.17} #Species refernce concentrations. Units must match activity concentration for that phase
+    reference-state: {Li+(e): 0.0727} #Species refernce concentrations. Units must match activity concentration for that phase
 
 butlervolmer-reactions:
 - equation: Li(s) <=> Li+(e) + electron
@@ -300,35 +310,35 @@ butlervolmer-reactions:
   transfer-coefficients:
     beta: 0.5
   state-dependence:
-    reference-state: {Li+(e): 0.17} #Species refernce concentrations. Units must match activity concentration for that phase
+    reference-state: {Li+(e): 0.0727, Li(s): 1.0} #Species reference concentrations. Units must match activity concentration for that phase
 
 cathode-marcus-reactions:
 - equation: Li+(e) + V(cathode) + electron <=> Li(cathode)
   type: marcus
   id: cathode_reaction
-  rate-constant: {A: 0.81e+0, b: 0.0, Ea: 0 kJ/mol}
+  rate-constant: {A: 0.405e-4, b: 0.0, Ea: 0 kJ/mol}
   transfer-coefficients:
     beta: 0.5
     lambda: 1.2472e7
   state-dependence:
-    reference-state: {Li+(e): 0.17, V(cathode): 0.5, Li(cathode): 0.5}
+    reference-state: {Li+(e): 0.0727, V(cathode): 0.5, Li(cathode): 0.5}
 
 cathode-mhc-reactions:
 - equation: Li+(e) + V(cathode) + electron <=> Li(cathode)
   type: marcus-hush-chidsey
   id: cathode_reaction
-  rate-constant: {A: 0.81e-4, b: 0.0, Ea: 0 kJ/mol}
+  rate-constant: {A: 0.656e-4, b: 0.0, Ea: 0 kJ/mol}
   transfer-coefficients:
     lambda: 1.2472e7
   state-dependence:
-    reference-state: {Li+(e): 0.17, V(cathode): 0.5, Li(cathode): 0.5}
+    reference-state: {Li+(e): 0.0727, V(cathode): 0.5, Li(cathode): 0.5}
 
 cathode-butler-volmer-reactions:
 - equation: Li+(e) + V(cathode) + electron <=> Li(cathode)
   type: butler-volmer
   id: cathode_reaction
-  rate-constant: {A: 0.81e+0, b: 0.0, Ea: 0 kJ/mol}
+  rate-constant: {A: 0.405e-4, b: 0.0, Ea: 0 kJ/mol}
   transfer-coefficients:
     beta: 0.5
   state-dependence:
-    reference-state: {Li+(e): 0.17, V(cathode): 0.5, Li(cathode): 0.5}
+    reference-state: {Li+(e): 0.0727, V(cathode): 0.5, Li(cathode): 0.5}

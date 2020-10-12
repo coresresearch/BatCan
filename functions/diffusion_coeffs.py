@@ -9,6 +9,7 @@ Outputs: chemical diffusion coefficient (D_k_elyte), and migration term (D_k_mig
 """
 # Load needed modules
 import cantera as ct
+import numpy as np
 
 class dst:
     

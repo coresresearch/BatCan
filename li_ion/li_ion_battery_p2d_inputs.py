@@ -6,10 +6,34 @@ Created on Thu Nov  1 14:27:54 2018
 """
 
 import numpy as np
-#import cantera as ct
+import os
 
 class Inputs():
-    save_tag = '_100um_rest'
+    save_folder = 'Debugging/rename_cat'
+
+    """ The galvanostatic boundary condition is provided either as
+    - The C-rate (C_rate), or 
+    - The external current (i_ext)"""
+    # The C-rate is the rate of charge/discharge - how many charges/discharges
+    #   can be carried out in 1 hour? This sets the current density:
+    # C_rate = 17.5
+    # External current, A/m2 (divide by ten to get mA/cm2)
+    i_ext = 10 
+
+    # Separator thickness [m]
+    H_elyte = 20e-6
+
+    H_ca = 100e-6         # Cathode thickness [m]
+
+    d_part_ca = 0.4e-6   # Average particle diameter for LiFePO4 [m]*****
+
+    eps_solid_ca = 0.7   # Cathode combined solids volume fraction [-]
+   
+    # String to set the kinetics method used for the electrodes interface. 
+    #    Options are: MH, BV, and MHC. MH is Marcus-Hush, BV is Butler-Volmer 
+    #    and MHC will use Marcus-Hush-Chidsey theory
+    kinetics = 'MHC'
+
     # These flags specify whether to include each element (anode, separator,
     #   cathode) in the simulation:
     flag_anode = 1
@@ -20,8 +44,8 @@ class Inputs():
     
     # Number of discretized volumes in the y-direction:
     npoints_anode = 1*flag_anode
-    npoints_cathode = 5*flag_cathode
-    npoints_elyte = 3*flag_sep
+    npoints_cathode = 15*flag_cathode
+    npoints_elyte = 4*flag_sep
     
     # Flag to allow re-equilibration between charge/discharge
     flag_re_equil = 1
@@ -41,10 +65,6 @@ class Inputs():
     #   including the re-equilibration step (assuming re-equilibration is
     #   turned on).
     phi_time = 0*plot_potential_profiles
-
-    # The C-rate is the rate of charge/discharge - how many charges/discharges
-    #   can be carried out in 1 hour? This sets the current density:
-    C_rate = 15
     
     # Set number of charge/discharge cycles to run
     n_cycles = 1
@@ -56,28 +76,22 @@ class Inputs():
     # Method of calculating gravimetric capacity. Either 'cathode' to normalize
     #   by just the solid cathode material mass or 'cell' to normalize by
     #   the total cell mass
-    grav_cap_method = 'cell'
+    grav_cap_method = 'cathode'
     
     # Method of calculating capacity. Either 'areal' or 'grav'
-    cap_method = 'grav'
-    
-    # String to set the kinetics method used for the electrodes interface. 
-    #    Options are: Marcus, BV, and MHC. BV is Butler-Volmer and MHC will use 
-    #    the Marcus-Hush-Chidley theory
-    anode_kinetics = 'BV'
-    cathode_kinetics = 'BV'
-    
+    cap_method = 'areal'
+        
     # Flag to turn on or off having an equivalent circuit SEI resistance
     anode_SEI_flag = True
     SEI_tol = 5 # Number of decimals to verify the currents are equal
     
     # Set the average roughness for the dense lithium anode. This will affect
     #   the effective surface area of the lithium anode.
-    anode_roughness = 1
+    anode_roughness = 1.
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
     #   concentrated solution theory ('cst')
-    elyte_flux_model = 'cst'
+    elyte_flux_model = 'dst'
     
     # Simulation temperature (or initial temperature)
     T = 300  # [K]
@@ -85,15 +99,13 @@ class Inputs():
     # Set initial SOC to generalize both electrode initial lithiation
     # Fully charged = anode fully lithiated, cathode fully de-lithiated.
     # Range of value is from 0 to 1.
-    SOC_0 = 0.01
+    SOC_0 = 0.001
 
     # Number of "shells" in cathode particle:
     n_shells_cathode = 5
 
-    "Cantera and CTI file info:"
-#    ctifile = 'lithium_ion_battery_mod.yml'
-#    ctifile = 'lithium_ion_battery.yaml'
-    ctifile = 'lithium_ion_battery_ideal.yml'
+    "Cantera and YAML file info:"
+    canterafile = 'lithium_ion_battery_ideal.yml'
     anode_phase = 'anode'
     cathode_phase = 'cathode'
     metal_phase = 'electron'
@@ -109,23 +121,24 @@ class Inputs():
 
     Phi_anode_init = 0.0
     Phi_elyte_init = 2.5
-    Delta_Phi_init = 4.0
+    Delta_Phi_init = 3.4
 
     # Cutoff Values for lithiation and delithiation of anode:
     Li_an_min = 0.005; Li_an_max = 1 - Li_an_min
-    Li_cat_min = 0.0005; Li_cat_max = 1 - Li_cat_min
+    Li_ca_min = 0.005; Li_ca_max = 1 - Li_ca_min
 
     "Anode geometry and transport"
     # Microstructure
-    eps_solid_an = 0.8  # Graphite volume fraction [-]
-    tau_an = 1.6        # Tortuosity - assume equal values for carbon and elyte [-]
+    eps_solid_an = 0.45  # Graphite volume fraction [-]
+    tau_an = 1.        # Tortuosity [-]
     r_p_an = 5e-6       # Average pore radius [m]
     d_part_an = 5e-6    # Average particle diameter for graphite [m]
     overlap_an = 0.4    # Percentage of anode particle overlapping with other
                         #   anode particles.  Reduces total anode/elyte
                         #   surface area.
-    H_an = 25e-6        # Anode thickness [m]
     H_Li = 20e-6        # Lithium foil thickness
+    H_an = 22e-6        # Anode thickness [m] - includes Li foil plus a small 
+                        #   volume of elyte
 
     # Other Parameters
     C_dl_an = 1.5e-2    # Double-layer capacitance [F/m^2]
@@ -135,15 +148,13 @@ class Inputs():
     D_Li_an_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
 
     "Electrolyte geometry and transport"
-    # Separator thickness [m]
-    H_elyte = 25e-6
     rho_sep = 970 # Density of separator material assuming HDPE [kg/m^3]
     # Elyte species bulk diffusion coefficients [m^2/s]
-    D_Li_elyte = np.array([1e-12, 1e-12, 1e-10, 3e-11])
+    D_Li_elyte = np.array([1e-12, 1e-12, 1.517e-10, 1.517e-10])# 3e-12])
     z_k_elyte = np.array([0., 0., 1., -1.])
 
-    eps_elyte_sep = 0.5 # Separator electrolyte volume fraction
-    tau_sep = 1.6       # Tortuosity of separator
+    eps_elyte_sep = 0.55 # Separator electrolyte volume fraction
+    tau_sep = 1.1       # Tortuosity of separator
     sigma_sep = 50.0    # Bulk ionic conductivity of separator [S/m]
 
     "Cathode geometry and transport"
@@ -153,27 +164,26 @@ class Inputs():
     wt_pct_bind = 0.05   # Weight percent of binder (assumed dead material) [-]
     conductor_rho = 2150 # Density of conductor, assumed carbon [kg/m^3]
     binder_rho = 1780    # Density of binder, assumed PVDF [kg/m^3]
-    eps_solid_ca = 0.5   # LiCoO2 volume fraction [-]
-    tau_ca = 1.6         # Tortuosity - assume equal values for LiCoO2 and elyte [-]
+    tau_ca = 1.2         # Tortuosity - assume equal values for LFP & elyte [-]
     r_p_ca = 5e-6        # Average pore radius [m]
-    d_part_ca = 0.5e-6     # Average particle diameter for LiFePO4 [m]**
     overlap_ca = 0.4     # Percentage of cathode particle overlapping with other
                          #   cathode particles.  Reduces total cathode/elyte
                          #   surface area.
-    H_ca = 100e-6         # Cathode thickness [m]
 
     # Other parameters:
     sigma_carbon = (2.5e5 + 3.3e2)*0.5  # Average conductivity of carbon [S/m]***
     sigma_LFP = 2.2e-7  # Electrical conductivity of LiFePO4 [S/m]*
     C_dl_ca = 1.5e-2    # Double-layer capacitance [F/m^2]
 #    sigma_ca = 7.50     # Bulk cathode electrical conductivity [S/m]
-    D_Li_ca = 4.23e-17
+    D_Li_ca = 4.23e-17   # Bulk diffusion coefficient for Li in LFP [m^2/s]****
     #4.23e-16  # Bulk diffusion coefficient for Li in LFP [m^2/s]**
-    D_Li_cat_el = np.array([1e-12, 1e-12, 1e-10, 3e-11])
+    D_Li_ca_el = np.array([1e-12, 1e-12, 1.517e-10, 1.517e-10])
     
     # *   Improving the rate performance of LFP by Fe-site doping, Wang et al 2005
     # **  Effect of particle size on DC cond, Ea, and D of LFP in LIBs, Satyavani et al 2016. Values tuned to match performance at 2C
     # *** https://www.thoughtco.com/table-of-electrical-resistivity-conductivity-608499
+    #****  http://link.springer.com/10.1007/s10853-014-8395-9 Chang, et al., J Mat Sci, "Effects of particle size and carbon coating on electrochemical properties of LiFePO4/C prepared by hydrothermal method"
+    #***** Bai & Bazant, Nature Communications, 2014
     
     "Transport inputs, polynomial fit coefficients, etc."
     params = {}
@@ -214,8 +224,22 @@ class Inputs():
     params['t_elyte_b'] = -4.717  # e-4
     params['t_elyte_c'] = 0.4106  # 4.106e-7
     params['t_elyte_d'] = -0.1287 # -1.287e-10
+
+    # Create path for saving outputs:
+    if 'C_rate' in locals():
+        save_name = str(int(C_rate))+"C"
+    elif 'i_ext' in locals():
+        save_name = str(int(i_ext/10.))+"_mAcm2"
+        # Initialize C_rate.  It will be calculated later:
+        C_rate = 0
+    else:
+        raise Exception("Please specify  either i_ext or C_rate.")
+
+    save_path = 'Outputs/' + save_folder + '/' + kinetics + '/'
     
-print("Runner check")
+    directory = os.path.dirname(save_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 #if __name__ == "__main__":
 #    exec(open("li_ion_battery_p2d_init.py").read())
