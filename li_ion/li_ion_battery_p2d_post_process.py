@@ -6,12 +6,6 @@ Created on Wed Sep 26 13:59:27 2018
 """
 
 import importlib
-# import li_ion_battery_p2d_init
-# importlib.reload(li_ion_battery_p2d_init)
-# from li_ion_battery_p2d_init import anode, cathode, battery
-# from li_ion_battery_p2d_init import separator as sep
-# from li_ion_battery_p2d_init import anode_obj, cathode_obj, elyte_obj
-# from li_ion_battery_p2d_init import current
 
 import li_ion_battery_p2d_inputs
 importlib.reload(li_ion_battery_p2d_inputs)
@@ -87,32 +81,11 @@ def plot_electrode(X_ca, SV, stage, yax, fig, axes):
         showlegend = 0
     
     if Inputs.flag_anode and Inputs.flag_cathode:
-#        axes_an = axes[0, yax]
         axes_ca = axes[yax]
     elif Inputs.flag_anode and not Inputs.flag_cathode:
         axes_an = axes[yax]
     elif Inputs.flag_cathode and not Inputs.flag_anode:
         axes_ca = axes[yax]
-    
-#    if Inputs.flag_anode:
-#        index = []
-#        for i in np.arange(0, anode.npoints):
-#            offset = i*anode.nshells
-#            index_add = [0+offset, anode.nshells-1+offset]
-#            index = np.append(index, index_add)
-#            
-#        X_an = [X_an[i] for i in index.astype(int)]
-        
-        # Plot anode composition
-#        SV_plot = SV_df.plot(x = 'Time', y = X_an, ax = axes_an,
-#                             xlim = [0, t.iloc[-1]], ylim = [-0.1, 1.1])
-#        SV_plot.set_title(stage, fontsize = fontsize)
-#        SV_plot.set_ylabel('$X_{LiC_6}$', fontsize = fontsize)
-#        SV_plot.set_xlabel('Time [s]', fontsize = fontsize).set_visible(False)
-#        SV_plot.legend(loc = 2, bbox_to_anchor = (1, 1), ncol = 1, 
-#                       borderaxespad = 0, frameon = False).set_visible(False)
-#        SV_plot.tick_params(axis='both', labelsize = 18)
-#        SV_plot.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     
     if Inputs.flag_cathode:
         index = []
@@ -328,9 +301,9 @@ def plot_cap(SV_ch_df, SV_dch_df, rate_tag, i_ext, flag_plot, tags):
 """========================================================================="""
 
 def tag_strings(SV):
+    # Define labels (aka 'tags') for plotting.
     SV_eq_labels = SV.columns.values.tolist()
 
-    X_an = []
     X_ca = []
     rho_el_an = []
     rho_el_ca = []
@@ -378,7 +351,8 @@ def tag_strings(SV):
 """========================================================================="""
 
 def Label_Columns(t, SV, anode_np, sep_np, ca_np):
-    
+    # Label the pandas dataframe columns.
+
     # Convert t and SV into pandas data frames
     t_df = pd.DataFrame(t)
     SV_df = pd.DataFrame(SV)

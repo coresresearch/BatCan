@@ -405,7 +405,9 @@ class li_ion(Implicit_Problem):
 
         i_Far_1 = -s1['sdot'][ptr['iFar']]*F*an.A_surf
         
+        # Distance between node centers:
         dyInv_boundary = 1/(0.5*(1/an.dyInv_el + 1/sep.dyInv))
+
         # Weighting factors for average interface properties:
         w1 = sep.dy/(an.dy_el + sep.dy); w2 = an.dy_el/(an.dy_el + sep.dy)
         # Average species concentrations at the interface:
@@ -445,7 +447,7 @@ class li_ion(Implicit_Problem):
         
 # %%
         """================================================================="""
-        """==========================SEPARATOR=============================="""
+        """======================SEPARATOR INTERIOR========================="""
         offsets = sep.offsets; ptr = sep.ptr
         
         for j in np.arange(1, sep.npoints):
@@ -462,11 +464,17 @@ class li_ion(Implicit_Problem):
             # Shift back to THIS node
             offset = int(sep.offsets[j-1])
             
-            transport.C_k = (s2['X_k_el']*s2['rho_el'] 
-                           + s1['X_k_el']*s1['rho_el'])/2.
-            transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+            # Average species and overall molar concentration at the volume 
+            #   interface:
+            transport.C_k = 0.5*(s2['X_k_el']*s2['rho_el'] 
+                           + s1['X_k_el']*s1['rho_el'])
+            transport.rho_bar = 0.5*(s2['rho_el'] + s1['rho_el'])
+
+            # Diffusion and migration coefficients:
             D_k, D_k_migr = transport.coeffs()
             
+            # Electrolyte species molar fluxes and associated ionic current 
+            #   density:
             N_elyte_p, i_io_p = elyte_flux(s1, s2, sep.dyInv, sep, D_k, D_k_migr)
         
             """Change in electrolyte composition"""
@@ -476,30 +484,34 @@ class li_ion(Implicit_Problem):
             """Algebraic equation for electrolyte potential"""
             res[offset + ptr['Phi']] = i_io_m - i_io_p
             
-        """==========================SEPARATOR=============================="""
-        """Cathode boundary"""
+        """=================SEPARATOR-CATHODE BOUNDARY======================="""
         
         i_io_m = i_io_p
         N_elyte_m = N_elyte_p
         s1 = s2
         
-        # Shift forward to NEXT node, first cathode node (j=0)
+        # Read properties from the NEXT node, (i.e. the first cathode node, j=0)
         j = 0; offset = int(ca.offsets[j])
-
         s2 = set_state(offset, SV, cathode, cathode_s, elyte, conductor, ca.ptr)
         
-        # Shift to final separator node
+        # Shift back to THIS node, the final separator node:
         j = sep.npoints-1; offset = int(offsets[j])
         
+        # No electronic current:
         i_el_p = 0
         
+        # Distance between node centers:
         dyInv_boundary = 1/(0.5*(1/ca.dyInv + 1/sep.dyInv))
         
+        # Set conditions at the interface between nodes:
         transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
         transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+        
+        # Diffusion and migration coefficients:
         D_k, D_k_migr = transport.coeffs()
 
+        # Electrolyte species molar fluxes and associated ionic current density:
         N_elyte_p, i_io_p = elyte_flux(s1, s2, dyInv_boundary, sep, D_k, D_k_migr)
                 
         """Change in electrolyte composition"""
@@ -514,6 +526,8 @@ class li_ion(Implicit_Problem):
         """===========================CATHODE==============================="""
         offsets = ca.offsets; ptr = ca.ptr
         
+        # Array of cathode "shell" radii, relative to the overall particle 
+        #   radius.  This is used to scale the intercalation diffusion fluxes:
         k = np.arange(0, ca.nshells+1)/ca.nshells
                 
         """=========================CATHODE============================="""
@@ -526,32 +540,49 @@ class li_ion(Implicit_Problem):
             i_el_m = i_el_p
             s1 = s2
             
-            # Shift forward to NEXT node
+            # Read properties from NEXT node:
             offset = int(offsets[j])
-            
             s2 = set_state(offset, SV, cathode, cathode_s, elyte, conductor, ptr)
             
-            # Shift back to THIS node, set THIS node outlet conditions
+            # Shift back to THIS node, set THIS node outlet fluxes:
             offset = int(offsets[j-1])
-            
+
+            # Electronic current from Ohm's law:
             i_el_p = ca.sigma_eff_ed*(s1['phi_ed'] - s2['phi_ed'])*ca.dyInv
             
+            # Set average species and overall molar concentrations at interface 
+            #   between volumes:
             transport.C_k = (s2['X_k_el']*s2['rho_el'] 
                            + s1['X_k_el']*s1['rho_el'])/2.
             transport.rho_bar = (s2['rho_el'] + s1['rho_el'])/2.
+
+            # Diffusion and migration coefficients:
             D_k, D_k_migr = transport.coeffs()
             
+            # Electrolyte species molar fluxes and associated ionic current 
+            #   density:
             N_elyte_p, i_io_p = elyte_flux(s1, s2, ca.dyInv, ca, D_k, D_k_migr)
             
+            # Faradaic current density:s
             i_Far_1 = -s1['sdot'][ptr['iFar']]*F*ca.A_surf/ca.dyInv
 
+            # Double layer current:
             i_dl = -i_Far_1 - i_el_m + i_el_p
+
+            # Convert the double layer current to an equivalent species 
+            #   production rate per unit volume:
             R_dl = np.array((0, 0, -i_dl*ca.dyInv/F, 0))
             
-#            DiffFlux = solid_flux(SV, offset, ptr, s1, ca)
+            # Array of Li mole fractions as a function of particle radius:
             X_Li = SV[offset + ptr['X_ed']]
+
+            # Initialize array of Li intercalation diffusion flux:
             DiffFlux = np.zeros([ca.nshells+1])
+
+            # Calculate Fickian diffusion flux:
             DiffFlux[1:-1] = ca.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/ca.dr
+            # Flux at the surface is equal to the species production rate from 
+            #   the faradaic charge transfer reaction:
             DiffFlux[-1] = -s1['sdot'][ca.ptr['iFar']]/s1['rho_ed']
 
             """Calculate the change in X_LiCoO2 in the particle interior"""
@@ -582,19 +613,26 @@ class li_ion(Implicit_Problem):
         # FINAL node
         j = ca.npoints-1; offset = int(offsets[j])
         
+        # Boundary conditions:
         i_io_p = 0
         N_elyte_p = 0
         i_el_p = i_ext
         
+        # Faradaic current density (per unit geometric area)
         i_Far_1 = -s1['sdot'][ptr['iFar']]*F*ca.A_surf/ca.dyInv
 
+        # Double-layer current and associated reaction term:
         i_dl = -i_Far_1 - i_el_m + i_el_p
         R_dl = np.array((0, 0, -i_dl*ca.dyInv/F, 0))
         
-#        DiffFlux = solid_flux(SV, offset, ptr, s1, ca)
+        # Array of lithium mole fractions, as a function of cathode particle 
+        #   radial position:
         X_Li = SV[offset + ptr['X_ed']]
-        DiffFlux = np.zeros([ca.nshells+1])
+
+        # Fickian intercalation diffusion:
         DiffFlux[1:-1] = ca.D_Li_ed*(X_Li[1:] - X_Li[0:-1])/ca.dr
+        # Flux at the particle surface equals the produciton rate due to the 
+        #   Faradaic charge transfer reaction:
         DiffFlux[-1] = -s1['sdot'][ca.ptr['iFar']]/s1['rho_ed']
                         
         """Calculate the change in X_LiCoO2 in the particle interior"""
@@ -612,11 +650,9 @@ class li_ion(Implicit_Problem):
         - (-i_Far_1 + i_io_m - i_io_p)*ca.dyInv/ca.C_dl/ca.A_surf)
         
         """Algebraic equation for CATHODE electric potential"""
+        # This is used to set the final electric potential, which is that the 
+        #   anode current collector is set to the reference value of 0.0 V:
         res[offset + ptr['Phi_ed']] = SV[an.ptr['Phi_ed']]
-#        SV[an.ptr['Phi_ed']]
-#        (i_el_m - i_el_p + i_io_m - i_io_p)
-        
-#        print(SV, t)
                         
         return res
 
@@ -625,43 +661,50 @@ class li_ion(Implicit_Problem):
     """==========================Solver Functions==========================="""
     """====================================================================="""
 
+    # These set termination events for the simulation
     def state_events(self, t, y, yd, sw):
         
-        # Anode events
+        # Initialize anode events
         event1 = np.zeros([an.npoints])
         event2 = np.zeros([an.npoints])
-#        event3 = np.zeros([an.npoints*an.nshells])
-#        event4 = np.zeros([an.npoints*an.nshells])
         
+        # Terminate if anode double layer potential leaves the bounds (0,5):
         event1 = y[an.ptr_vec['Phi_dl']]
         event2 = 5 - y[an.ptr_vec['Phi_dl']]
-#        event3 = an.X_Li_max - y[an.ptr_vec['X_ed']]
-#        event4 = y[an.ptr_vec['X_ed']] - an.X_Li_min
             
-        # Cathode events
+        # Initialize cathode events
         event5 = np.zeros([ca.npoints])
         event6 = np.zeros([ca.npoints])
         event7 = np.zeros([ca.npoints*ca.nshells])
         event8 = np.zeros([ca.npoints*ca.nshells])
         
+        # Terminate if cathode double layer potential is < 0 V:
         event5 = y[ca.ptr_vec['Phi_dl']]
+
+        # Terminate if cathode potential is > 6 V:
         event6 = 6. - y[ca.ptr_vec['Phi_ed']]
+
+        # Terminate if cathode lithium potential leaves the user-supplied 
+        #   bounds (X_Li_min, X_Li_max):
         event7 = ca.X_Li_max - y[ca.ptr_vec['X_ed']]
         event8 = y[ca.ptr_vec['X_ed']] - ca.X_Li_min
                
-        # Electrolyte events
+        # Initialize electrolyte events:
         event9  = np.zeros([an.npoints*elyte.n_species])
         event10 = np.zeros([an.npoints*elyte.n_species])
         event11 = np.zeros([ca.npoints*elyte.n_species])
         event12 = np.zeros([ca.npoints*elyte.n_species])
+
+        # Terminate the simulation if any electrolyte species concentrations 
+        #   leave the bounds (0,1):
         event9  = 1 - y[an.ptr_vec['X_k_elyte']]
         event10 = y[an.ptr_vec['X_k_elyte']]
         event11 = 1 - y[ca.ptr_vec['X_k_elyte']]
         event12 = y[ca.ptr_vec['X_k_elyte']]
 
         # Concatenate events into one array
-        holder = np.array([event1, event2])
-        events = np.concatenate((holder, event5, event6, 
+        anode_events = np.array([event1, event2])
+        events = np.concatenate((anode_events, event5, event6, 
                                  event7, event8, event9, event10, 
                                  event11, event12))
 
@@ -670,8 +713,9 @@ class li_ion(Implicit_Problem):
     """====================================================================="""
 
     def handle_event(self, solver, event_info):
-        
+        """ This function tells the simulation what to do when an 'event' is encountered (in all cases, terminate the simulation and raise an exception), and provides the appropriate exception message, in each case."""
         state_info = event_info[0] #We are only interested in state events info
+
         event_ptr = {}
         event_ptr['An_phi1'] = an.npoints
         event_ptr['An_phi2'] = event_ptr['An_phi1'] + an.npoints
