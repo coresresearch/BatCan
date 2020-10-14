@@ -9,7 +9,9 @@ import numpy as np
 import os
 
 class Inputs():
-    save_folder = 'Debugging/rename_cat'
+
+    # Name a folder (or nested folder) where you want to save the output:
+    save_folder = 'Debugging/debug'
 
     """ The galvanostatic boundary condition is provided either as
     - The C-rate (C_rate), or 
@@ -23,11 +25,14 @@ class Inputs():
     # Separator thickness [m]
     H_elyte = 20e-6
 
-    H_ca = 100e-6         # Cathode thickness [m]
+    # Cathode thickness [m]
+    H_ca = 100e-6
 
-    d_part_ca = 0.4e-6   # Average particle diameter for LiFePO4 [m]*****
+    # Average particle diameter for LiFePO4 [m]*****
+    d_part_ca = 0.4e-6
 
-    eps_solid_ca = 0.7   # Cathode combined solids volume fraction [-]
+    # Cathode combined solids volume fraction [-]
+    eps_solid_ca = 0.7
    
     # String to set the kinetics method used for the electrodes interface. 
     #    Options are: MH, BV, and MHC. MH is Marcus-Hush, BV is Butler-Volmer 
@@ -51,15 +56,19 @@ class Inputs():
     flag_re_equil = 1
     equil_time = 1e2
     
-    # These flags specify whether to plot various data
-    plot_profiles_flag = 1
-    plot_potential_profiles = 1*plot_profiles_flag  # Plots potential profiles
-    plot_electrode_profiles = 1*plot_profiles_flag  # Plots solid phase mole fraction profiles
-    plot_elyte_profiles = 1*plot_profiles_flag      # Plots concentration of Li+ in elyte phase
-    plot_cap_flag = 1       # Plots dis/charge capacity curves
+    """These flags specify whether to plot various data types"""
+    # You can turn all profiles on/off with this switch.
+    plot_profiles_flag = 1 
+    # Plots potential profiles
+    plot_potential_profiles = 1*plot_profiles_flag
+    # Plots solid phase mole fraction profiles
+    plot_electrode_profiles = 1*plot_profiles_flag
+    # Plots concentration of Li+ in elyte phase
+    plot_elyte_profiles = 1*plot_profiles_flag
+    # Plots dis/charge capacity curves
+    plot_cap_flag = 1
     
-    # Options for plots
-    
+    """Options for plots"""
     # phi_time sets the options for the potential plot. 0 will plot a charge/
     #   discharge profile on a single axes. 1 will plot potential over time
     #   including the re-equilibration step (assuming re-equilibration is
@@ -78,15 +87,18 @@ class Inputs():
     #   the total cell mass
     grav_cap_method = 'cathode'
     
-    # Method of calculating capacity. Either 'areal' or 'grav'
+    # Method of calculating capacity. Either 'areal' (geometric area basis) or 
+    #   'grav' (gravimetric basis)
     cap_method = 'areal'
         
-    # Flag to turn on or off having an equivalent circuit SEI resistance
+    # Flag to turn on or off having a constant SEI resistance
     anode_SEI_flag = True
     SEI_tol = 5 # Number of decimals to verify the currents are equal
+    R_SEI = 0.0032 # SEI ionic resistance in [Ohm-m2]
     
-    # Set the average roughness for the dense lithium anode. This will affect
-    #   the effective surface area of the lithium anode.
+    # Set the average roughness (actual surface area, divided by geometric area)
+    #   for the dense lithium anode. This will affect the effective surface 
+    #   area of the lithium anode.
     anode_roughness = 1.
     
     # Set electrolyte transport model to eithe dilute solution ('dst') or
@@ -129,13 +141,6 @@ class Inputs():
 
     "Anode geometry and transport"
     # Microstructure
-    eps_solid_an = 0.45  # Graphite volume fraction [-]
-    tau_an = 1.        # Tortuosity [-]
-    r_p_an = 5e-6       # Average pore radius [m]
-    d_part_an = 5e-6    # Average particle diameter for graphite [m]
-    overlap_an = 0.4    # Percentage of anode particle overlapping with other
-                        #   anode particles.  Reduces total anode/elyte
-                        #   surface area.
     H_Li = 20e-6        # Lithium foil thickness
     H_an = 22e-6        # Anode thickness [m] - includes Li foil plus a small 
                         #   volume of elyte
@@ -150,7 +155,9 @@ class Inputs():
     "Electrolyte geometry and transport"
     rho_sep = 970 # Density of separator material assuming HDPE [kg/m^3]
     # Elyte species bulk diffusion coefficients [m^2/s]
+    #TODO #13
     D_Li_elyte = np.array([1e-12, 1e-12, 1.517e-10, 1.517e-10])# 3e-12])
+    #TODO #14
     z_k_elyte = np.array([0., 0., 1., -1.])
 
     eps_elyte_sep = 0.55 # Separator electrolyte volume fraction

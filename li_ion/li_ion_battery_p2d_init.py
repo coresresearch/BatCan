@@ -102,14 +102,15 @@ def initialize():
             ptr_vec['Phi_dl'] = np.append(ptr_vec['Phi_dl'], ptr['Phi_dl'] + i*nVars)
 
         # Lithium/electrolyte reaction interface area per planar electrode area.
-        #   Default value is 1 and it will be adjusted based on surface roughness
-        #   to scale the reaction interface area [m^2_rxn_int/m^2_electrode]
-        A_surf = Inputs.anode_roughness#(1 + 4*Inputs.anode_roughness*(Inputs.anode_n_peaks - 1))
-        # print("A_surf = {:.4f}".format(A_surf))
-        # Set up solution vector
+        #   Default value is 1 and it will be adjusted based on surface 
+        #   roughness to scale the reaction interface area [m^2_rxn_int/
+        #   m^2_electrode]
+        A_surf = Inputs.anode_roughness
+
+        # Size of solution vector
         nSV = npoints*nVars
 
-        # Array of offsets to point to each node's variable:
+        # Array of offsets to point to each node's variables:
         offsets = np.arange(0,int(nSV),int(nVars))
 
         # Store parameters as class object attributes:
@@ -120,31 +121,25 @@ def initialize():
         D_Li_ed = Inputs.D_Li_an
         
         if Inputs.anode_SEI_flag:
-            R_SEI = 0.0032 # SEI resistance in [Ohm-m2]
+            R_SEI = Inputs.R_SEI
 
         # Geometric parameters:
-        eps_ed = Inputs.eps_solid_an
-        eps_elyte = 1 - Inputs.eps_solid_an
-        tau_ed = Inputs.tau_an
-        r_pore = Inputs.r_p_an
-        d_part = Inputs.d_part_an
+        eps_elyte = Inputs.eps_elyte_sep
+        tau_elyte = Inputs.tau_sep
         dyInv = npoints/Inputs.H_an
         dy_el = Inputs.H_an - Inputs.H_Li
         dyInv_el = 1/dy_el
-        dy = Inputs.H_an/npoints # This is actually the dy of the elyte volume in
-                                #  the anode, NOT the entire anode
 
         # Calculate the current density [A/m^2] corresponding to a C_rate of 1:
-        oneC = eps_ed*anode_obj.density_mole*Inputs.H_an*ct.faraday/3600
+        oneC = anode_obj.density_mole*Inputs.H_an*ct.faraday/3600
 
         # Electronic conductivity of the electrode phase:
-        sigma_eff_ed = Inputs.sigma_an*eps_ed/tau_ed**2
-        # Species mobilities of the electrolyte phase.  Converted from user input
-        #   diffusion coefficients:
+        sigma_eff_ed = Inputs.sigma_an*eps_elyte/tau_elyte**2
+        # Species mobilities and diffusion coefficients:
         u_Li_elyte = (Inputs.D_Li_an_el*eps_elyte/ct.gas_constant
-            /Inputs.T/tau_ed**2)
+            /Inputs.T/tau_elyte**2)
         
-        D_el_eff = Inputs.D_Li_an_el*eps_elyte/tau_ed**2
+        D_el_eff = Inputs.D_Li_an_el*eps_elyte/tau_elyte**2
 
         def get_tflag():
             return anode.t_flag
@@ -178,9 +173,9 @@ def initialize():
         dy = H/npoints
         tau_sep = tau_sep
         
+        # Species mobilities and diffusion coefficients:
         u_Li_elyte = (Inputs.D_Li_elyte*eps_elyte/ct.gas_constant
                     /Inputs.T/tau_sep**2)
-        
         D_el_eff = Inputs.D_Li_elyte*eps_elyte/tau_sep**2
 
         ptr = {}
@@ -195,7 +190,7 @@ def initialize():
             ptr_vec['X_k_elyte'] = np.append(ptr_vec['X_k_elyte'], anode.nSV + ptr['X_k_elyte'] + i*nVars)
             ptr_vec['Phi'] = np.append(ptr_vec['Phi'], anode.nSV + ptr['Phi'] + i*nVars)
 
-        # Set up the solution vector
+        # Size of the solution vector
         nSV = npoints*nVars
 
         # Array of offsets to point to each node's variable:
@@ -282,19 +277,19 @@ def initialize():
         # Calculate the current density [A/m^2] corresponding to a C_rate of 1:
         oneC = eps_ed*cathode_obj.density_mole*Inputs.H_ca*ct.faraday/3600
 
-        # Calculate the percent volume of a single graphite particle that exists in
+        # Calculate the percent volume of a single particle that exists in
         #   each 'shell'. I.e. for shell j, what is the volume of that shell,
         #   relative to the total particle volume? The radius of the volume is
         #   currently discretized evenly (i.e. 'dr' the differential radius is
         #   constant). Certainly other discretizations (such as constant
         #   differential volume) are possible (and perhaps better).
         #
-        #   Because the volume is 4/3 pi*r^3, the volume of the shell relative to
-        #   the total volume is (r_shell/r_particle)^3, and the differential volume
-        #   relative to the total, for shell 'j' is:
+        #   Because the volume is 4/3 pi*r^3, the volume of the shell relative 
+        #   to the total volume is (r_shell/r_particle)^3, and the differential 
+        #   volume relative to the total, for shell 'j' is:
         #       (r_shell(j+1)^3 - r_shell(j)^3)/r_particle^3
-        #   Because the radius is discretized evenly, the radius of shell j, r_j,
-        #   relative to the total radius r_particle, is:
+        #   Because the radius is discretized evenly, the radius of shell j, 
+        #      r_j, relative to the total radius r_particle, is:
         #       r_j/r_particle = j/nshells
 
         V_shell = np.zeros([nshells])
@@ -333,19 +328,17 @@ def initialize():
         ptr_el['PF6'] = elyte_obj.n_species - 1
         
         cst_params = Inputs.params.copy()
-    #    for i, name in enumerate(elyte_obj.species_names):
-    #        ptr_el[str(name)] = i
         
         H = Inputs.H_an + Inputs.H_ca + Inputs.H_elyte
         
-        eps = (anode.eps_ed*Inputs.H_an+cathode.eps_ed*Inputs.H_ca+ \
+        eps = (Inputs.H_an+cathode.eps_ed*Inputs.H_ca+ \
             separator.eps*Inputs.H_elyte)/H
             
-        rho = (anode_obj.density_mass*anode.eps_ed*Inputs.H_an + \
+        rho = (anode_obj.density_mass*Inputs.H_an + \
             Inputs.rho_sep*separator.eps*Inputs.H_elyte + \
             cathode.rho_ed*cathode.eps_ed*cathode.H)/H
         
-        mass = (Inputs.H_an*anode.eps_ed*anode_obj.density_mass + 
+        mass = (Inputs.H_an*anode_obj.density_mass + 
                 Inputs.H_ca*cathode.eps_ed*cathode_obj.density_mass +
                 Inputs.H_elyte*separator.eps*Inputs.rho_sep)
         
@@ -367,25 +360,19 @@ def initialize():
             i_ext_set = -Inputs.i_ext 
             i_ext_amp = -Inputs.i_ext
         else:
-            if Inputs.flag_cathode == 1:
-                i_ext_set = -Inputs.C_rate*min(anode.oneC, cathode.oneC)  
-                i_ext_amp = -Inputs.C_rate*min(anode.oneC, cathode.oneC)
-            elif Inputs.flag_cathode == 0:
-                i_ext_set = -Inputs.C_rate*anode.oneC  
-                i_ext_amp = -Inputs.C_rate*min(anode.oneC, cathode.oneC)
-
+            i_ext_set = -Inputs.C_rate*min(anode.oneC, cathode.oneC)  
+            i_ext_amp = -Inputs.C_rate*min(anode.oneC, cathode.oneC)
     class solver_inputs():     
         
-    #    if Inputs.elyte_flux_model == 'dst':
-    #        elyte_model = elyte_diffusion.dst
-    #    elif Inputs.elyte_flux_model == 'cst':
-    #        elyte_model = elyte_diffusion.cst
         dG_anode = anode_surf_obj.delta_gibbs[0]
         dG_cathode = cathode_surf_obj.delta_gibbs[0]
 
+        # Note that this assumes a single-electron transfer reaction, and that 
+        #   there is but a single reaction:
         phi_dl_an = -dG_anode/ct.faraday
         phi_dl_ca = -dG_cathode/ct.faraday
 
+        # Initialize the solution vector:
         SV_0 = np.zeros([anode.nSV+separator.nSV+cathode.nSV])
         
         # Set up algebraic variable vector:
@@ -393,44 +380,62 @@ def initialize():
         
         offsets = anode.offsets
         ptr = anode.ptr
-        for j in range(anode.npoints):    
+        for j in range(anode.npoints):   
+            # Electrolyte species mole fraction in the anode: 
             SV_0[offsets[j] + ptr['X_k_elyte']] = elyte_obj.X
+            # This is a differential variable:
             algvar[offsets[j] + ptr['X_k_elyte']] = 1
         
+            # Electrode phase electric potential (an algebraic variable):
             SV_0[offsets[j] + ptr['Phi_ed']] = Inputs.Phi_anode_init
-        
+            # Anode/electrolyte double layer potential:
             SV_0[offsets[j] + ptr['Phi_dl']] = \
                 Inputs.Phi_elyte_init - Inputs.Phi_anode_init
+            # This is a differential variable:
             algvar[offsets[j] + ptr['Phi_dl']] = 1
         
         
         offsets = separator.offsets
         ptr = separator.ptr
         for j in np.arange(0, separator.npoints):
+            # Electrolyte species mole fraction in the separator:
             SV_0[offsets[j] + ptr['X_k_elyte']] = elyte_obj.X
+            # This is a differential variable:
             algvar[offsets[j] + ptr['X_k_elyte']] = 1
         
+            # Electrolyte electrice potential (an algebraic variable):
             SV_0[offsets[j] + ptr['Phi']] = Inputs.Phi_elyte_init
         
         offsets = cathode.offsets
         ptr = cathode.ptr
         for j in range(cathode.npoints):
+            # Cathode phase lithium mole fraction:
             SV_0[offsets[j] + ptr['X_ed']] = \
                 np.ones([cathode.nshells])*X_ca_0[0]
+            # This is a differential variable:
             algvar[offsets[j] + ptr['X_ed']] = 1
         
+            # Electrolyte species mole fractions in the cathode:
             SV_0[offsets[j] + ptr['X_k_elyte']] = elyte_obj.X
+            # This is a differential variable:
             algvar[offsets[j] + ptr['X_k_elyte']] = 1
         
+            # Cathode phase electric potential (an algebraic variable):
             SV_0[offsets[j] + ptr['Phi_ed']] = \
                 Inputs.Phi_anode_init + Inputs.Delta_Phi_init
         
+            # Cathode/electrolyte double layer potential:
             SV_0[offsets[j] + ptr['Phi_dl']] = \
                 Inputs.Phi_elyte_init - (Inputs.Phi_anode_init + Inputs.Delta_Phi_init)
+            # This is a differential variable:
             algvar[offsets[j] + ptr['Phi_dl']] = 1
     
-    params = {'bat_rho': battery.rho, 'bat_H': battery.H, 'bat_eps': battery.eps,
-            'ca_rho': cathode.rho_ed, 'ca_H': cathode.H, 'ca_eps': cathode.eps_ed}
+    # Dict of params:
+    params = {'bat_rho': battery.rho, 'bat_H': battery.H, 
+            'bat_eps': battery.eps, 'ca_rho': cathode.rho_ed, 
+            'ca_H': cathode.H, 'ca_eps': cathode.eps_ed}
+
+    # Write parameters to 'test.csv' file:
     with open('test.csv', 'w') as f:
         w = csv.writer(f)
         w.writerow(params.keys())
