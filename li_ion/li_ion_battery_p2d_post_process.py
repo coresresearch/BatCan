@@ -2,8 +2,12 @@
 """
 Created on Wed Sep 26 13:59:27 2018
 
-@author: dkorff
+These functions add content to the plots set up in 
+li_ion_battery_p2d_functions.py
+
 """
+
+
 
 import importlib
 
@@ -18,6 +22,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
+# Plot charge and discharge curves in a single plot:
 def plot_potential(V_an, V_ca, SV, stage, yax, fig, axes):
     
     if stage == 'Discharging':
@@ -40,7 +45,6 @@ def plot_potential(V_an, V_ca, SV, stage, yax, fig, axes):
             index = np.append(index, index_add)
             
         V = [V_ca[i] for i in index.astype(int)]
-#        SOC = SV_df.filter(like="X_ca").sum(1)/(ca.npoints*ca.nshells)
         
     elif not Inputs.flag_cathode:
         index = []
@@ -49,8 +53,6 @@ def plot_potential(V_an, V_ca, SV, stage, yax, fig, axes):
             index = np.append(index, index_add)
             
         V = [V_an[i] for i in index.astype(int)]
-            
-    #    line_style = ['v-', 'o-', '^-', 's-', 'h-', '+-']
         
     # Plot cathode and double-layer potential
     SV_plot = SV_df.plot(x='Time', y=V, ax=axes[yax], xlim=[0,t.iloc[-1]])
@@ -64,7 +66,7 @@ def plot_potential(V_an, V_ca, SV, stage, yax, fig, axes):
     SV_plot.set_ylim((0,5.))
 
 """========================================================================="""
-
+# Plot cathode lithiation fraction:
 def plot_electrode(X_ca, SV, stage, yax, fig, axes):
     
     SV_df = SV.copy()
@@ -110,7 +112,8 @@ def plot_electrode(X_ca, SV, stage, yax, fig, axes):
     return
 
 """========================================================================="""
-
+# Plot the Li+ concentration in the electrolyte phase at the anode interface, 
+#   throughout the seaprator, and throughout the cathode thickness.
 def plot_elyte(rho_k_an, rho_k_ca, rho_k_sep, SV, stage, yax, fig, axes):
     
     SV_df = SV.copy()
@@ -416,12 +419,11 @@ def Label_Columns(t, SV, anode_np, sep_np, ca_np):
             newcols.update(newcols_el)
             
         # Add tags for electrode and double layer potentials
-        newcols_phi = {0+ca.nshells+elyte_obj.n_species+offset:'Phi_ca'+str(j+1),
+        newcols_phi = {ca.nshells+elyte_obj.n_species+offset:'Phi_ca'+str(j+1),
                        1+ca.nshells+elyte_obj.n_species+offset: 'Phi_ca_dl'+str(j+1)}
         newcols.update(newcols_phi)
         
         SV_df.rename(columns=newcols, inplace=True)
-    
     
     newcols_time = {SV_df.shape[1]-1: 'Time'}
     SV_df.rename(columns=newcols_time, inplace=True)

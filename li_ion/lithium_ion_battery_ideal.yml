@@ -1,51 +1,18 @@
 description: |-
-  Cantera input file for an LCO/graphite lithium-ion battery
+  Cantera input file for LFP-solid Li anode battery
 
   This file includes a full set of thermodynamic and kinetic parameters of a
   lithium-ion battery, in particular:
-  - Active materials: LiCoO2 (LCO) and LiC6 (graphite)
+  - Active materials: LiFePO4 (LFP) and Li (solid Li)
   - Organic electrolyte: EC/PC with 1M LiPF6
-  - Interfaces: LCO/electrolyte and LiC6/electrolyte
+  - Interfaces: LFP/electrolyte and Li/electrolyte
   - Charge-transfer reactions at the two interfaces
 
-  We use Butler-Volmer kinetics by setting `exchange-current-density-formulation`
-  to `true`. The preexponential factors and activation energies are converted
-  from Guo et al., J. Electrochem. Soc. 158, A122 (2011)
+  We use a range of kinetic models: Butler-Volmer, Marcus-Hush, and Marcus-Hush-Chidsey.  
+  - Li anode parameters are obtained by fitting to data from D. T. Boyle, X. Kong, A. Pei, P. E. Rudnicki, F. Shi, W. Huang, Z. Bao, J. Qin, and Y. Cui, ACS Energy Lett. 5, 701 (2020).
+  - LFP cathode parameters are adapted from Y. Zeng, R. B. Smith, P. Bai, and M. Z. Bazant, J. Elec- troanal. Chem. 735, 77 (2014).
 
-  A MATLAB example using this file for simulating a discharge curve is
-  samples/matlab/lithium_ion_battery.m
-
-  Reference:
-  M. Mayur, S. C. DeCaluwe, B. L. Kee, W. G. Bessler, “Modeling and simulation
-  of the thermodynamics of lithium-ion battery intercalation materials in the
-  open-source software Cantera,” Electrochim. Acta 323, 134797 (2019),
-  https://doi.org/10.1016/j.electacta.2019.134797
-
-  Bulk phases
-  ===========
-
-  Graphite (anode)
-  Thermodynamic data based on half-cell measurements by K. Kumaresan et al.,
-  J. Electrochem. Soc. 155, A164-A171 (2008)
-
-  Lithium cobalt oxide (cathode)
-  Thermodynamic data based on half-cell measurements by K. Kumaresan et al.,
-  J. Electrochem. Soc. 155, A164-A171 (2008)
-
-  Carbonate based electrolyte (electrolyte)
-  Solvent: Ethylene carbonate:Propylene carbonate (1:1 v/v)
-  Salt: 1M LiPF6
-
-  Interface phases
-  ================
-
-  Graphite/electrolyte interface (edge_anode_electrolyte)
-  Species and site density are dummy entries (as we do not consider surface-
-  adsorbed species)
-
-  LCO/electrolyte interface (edge_cathode_electrolyte)
-  Species and site density are dummy entries (as we do not consider surface-
-  adsorbed species)
+  Thermodynamics are tuned to match the experimentally-measured OCP value.
 
 units: {length: cm}
 
@@ -76,12 +43,8 @@ phases:
   state:
     T: 300.0 K
     P: 1 atm
-    # RUN AT:
-    X: {'C3H4O3(e)': 0.44839, 'C4H6O3(e)': 0.35161, 'Li+(e)': 0.1,
-    'PF6-(e)': 0.1}
-    # VALIDATED AT:
-    # X: {'C3H4O3(e)': 0.47901, 'C4H6O3(e)': 0.37563, 'Li+(e)': 0.07268,
-    #   'PF6-(e)': 0.07268}
+    X: {'C3H4O3(e)': 0.47901, 'C4H6O3(e)': 0.37563, 'Li+(e)': 0.07268,
+      'PF6-(e)': 0.07268}
   standard-concentration-basis: unity
 
 - name: electron
@@ -173,12 +136,9 @@ species:
     model: constant-volume
     molar-volume: 45.33 cm^3/mol
   note: |-
-    Lithium Iron oxide, MW: 97.8730 g/mol.
-    Note this species includes the cobalt oxide host matrix.
-    Molar enthalpy and entropy are set to 0 because the values given in the
-    BinarySolidSolutionTabulatedThermo class are used.
-    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
-    2017) (used to calculate species molar volume as molecular weight/density).
+    Lithium Iron oxide, MW: 157.757 g/mol.
+    Note this species includes the iron phosphate host matrix.
+    Density of LFP: 3.48 g/cm3 https://cdn.intechopen.com/pdfs/18671/InTech-Lifepo4_cathode_material.pdf (used to calculate species molar volume as molecular weight/density).
 
 - name: V(cathode)
   composition: {Fe: 1, P: 1, O: 4}
@@ -190,12 +150,9 @@ species:
     model: constant-volume
     molar-volume: 45.33 cm^3/mol
   note: |-
-    Vacancy in the cobalt oxide, MW: 90.9320 g/mol.
-    Note this species includes the cobalt oxide host matrix.
-    Molar enthalpy and entropy are set to 0 because this is the reference species
-    for this phase.
-    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
-    2017) (used to calculate species molar volume as molecular weight/density).
+    Vacancy in the LFP, MW: 90.9320 g/mol.
+    Molar enthalpy and entropy are set to 0 because this is the reference species for this phase.
+    Molar volume assumed constant: no expansion or contraction, upon lithiation/delithiation.
 
 - name: C3H4O3(e)
   composition: {C: 3, H: 4, O: 3}
@@ -269,8 +226,7 @@ species:
     s0: 0.0 J/mol/K
   note: |-
     Electron, MW: 0.000545 g/mol
-    Molar enthalpy and entropy set to zero (dummy entries because chemical
-    potential is set to zero for a "metal" phase)
+    Molar enthalpy and entropy set to zero (chemical potential is set to zero for a "metal" phase)
 
 - name: (surf)
   composition: {}
