@@ -25,11 +25,14 @@ def initialize(input_file=None):
     from ruamel.yaml import YAML
     from pathlib import Path
     import cantera as ct
+    import numpy as np
+    import importlib
 
-
-    #===========================================================================
-    #   READ IN INPUTS
-    #===========================================================================
+    """
+    =========================================================================
+       READ IN INPUTS
+    =========================================================================
+    """
     path = Path(input_file)
     yaml = YAML(typ='safe')
     inputs = yaml.load(path)
@@ -38,26 +41,35 @@ def initialize(input_file=None):
     #   LOAD ANODE / WORKING ELECTRODE
     #===========================================================================
     if 'anode' in inputs['cell-description']:
-            anode = inputs['cell-description']['anode']
-        else:
-            raise ValueError('Please specify an anode type.')
+        anode_inputs = inputs['cell-description']['anode']
+    else:
+        raise ValueError('Please specify an anode type.')
     
     #===========================================================================
     #   LOAD SEPARATOR
     #===========================================================================
     if 'separator' in inputs['cell-description']:
-            sep = inputs['cell-description']['separator']
-        else:
-            # Generic separator:
-            sep = 'separator'
+        sep_inputs = inputs['cell-description']['separator']
+    else:
+        # Generic separator:
+        sep_inputs = 'separator'
     
     #===========================================================================
     #   LOAD CATHODE / COUNTER ELECTRODE
     #===========================================================================
     if 'cathode' in inputs['cell-description']:
-            cathode = inputs['cell-description']['cathode']
-        else:
-            raise ValueError('Please specify a cathode type.')
+        cathode_inputs = inputs['cell-description']['cathode']
+    else:
+        raise ValueError('Please specify a cathode type.')
 
+    #===========================================================================
+    #   LOAD SIMULATION PARAMETERS
+    #===========================================================================
+    if 'parameters' in inputs:
+        parameters = inputs['parameters']
+    else:
+        raise ValueError('Please specify simulation parameters.')
 
-
+    return anode_inputs, sep_inputs, cathode_inputs, parameters
+    
+    
