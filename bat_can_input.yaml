@@ -34,11 +34,22 @@ cell-description:
     eps_solid: 0.65 # Solid phase volume fraction, -
     X_0: 'Li[cathode]:0.001, V[cathode]:0.999'
 
+# Simulation parameters:
 parameters:
   T: 60
   P: 101325
+  # Describe simulation type, parameters, etc.
+  simulation:
+    type: 'CC_cycle' # Constant current cycling
+    i_ext: (0.01, 'A/cm2') # input current density tuple, format (XX, 'units')
+    C_rate: None # input C-rate
+    n_cycles: 1 # Number of cycles
+    first-step: 'charge'  # Start with charge or discharge?
+    phi-cutoff-lower: 2.2 # Simulation cuts off if E_Cell <= this value
+    phi-cutoff-upper: 4.5 # Simulation cuts off if E_Cell >= this value
+    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
 
-# BEGIN CANTERA INPUTS
+# Cantera inputs:
 description: |-
   Cantera input file for an LCO/graphite lithium-ion battery
 

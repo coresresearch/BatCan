@@ -9,7 +9,6 @@
 import importlib # allows us to import from user input string.
 from bat_can_init import initialize as init
 import numpy as np
-from scikits.odes.odeint import odeint
 
 def bat_can(input = None):
     if input is None:
@@ -19,36 +18,44 @@ def bat_can(input = None):
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
-    an_inputs, sep_inputs, ca_inputs, params = init(input)
+    an_inputs, sep_inputs, ca_inputs, parameters = init(input)
 
     #===========================================================================
-    #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR
+    #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
-    anode_module = importlib.import_module(an_inputs['class'])
-    SV_an_0, anode =  anode_module.initialize(input, an_inputs, 'anode', 
-        sep_inputs['phi_0'], params)
+    an_module = importlib.import_module(an_inputs['class'])
+    SV_an_0, anode =  an_module.initialize(input, an_inputs, 'anode', 
+        sep_inputs['phi_0'], parameters)
 
-    separator_module = importlib.import_module(sep_inputs['class'])
-    SV_sep_0, separator = separator_module.initialize(input, sep_inputs, params)
+    sep_module = importlib.import_module(sep_inputs['class'])
+    SV_sep_0, separator = sep_module.initialize(input, sep_inputs, parameters)
 
-    cathode_module = importlib.import_module(ca_inputs['class'])
-    SV_ca_0, cathode = cathode_module.initialize(input, ca_inputs, 'cathode', 
-        sep_inputs['phi_0'], params)
+    ca_module = importlib.import_module(ca_inputs['class'])
+    SV_ca_0, cathode = ca_module.initialize(input, ca_inputs, 'cathode', 
+        sep_inputs['phi_0'], parameters)
 
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
 
+    #===========================================================================
+    #   RUN THE MODEL
+    #===========================================================================
+    model = importlib.import_module(parameters['simulation']['type'])
+
+    solution = model.run(SV_0, anode, separator, cathode, parameters)
 
     """TEST"""
-    # Integrate:
-    t_out = np.linspace(0,1)
-    def residual(t,SV, SVdot):
-        resid = np.zeros_like(SV)
-        SVdot = resid
-
-    output = odeint(residual, t_out, SV_0)
     # Should be zero:
-    print(max(output.values.y[-1,:]-SV_0))
-# Run from command line:
+    print('Max difference = ', max(solution.values.y[-1,:]-SV_0))
+
+    #===========================================================================
+    #   CREATE FIGURES AND SAVE ALL OUTPUTS
+    #===========================================================================
+    model.output(solution)
+
+
+#===========================================================================
+#   FUNCTIONALITY TO RUN FROM THE COMMAND LINE
+#===========================================================================
 if __name__ == '__main__':
     import argparse
 
