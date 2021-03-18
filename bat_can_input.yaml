@@ -41,9 +41,10 @@ parameters:
   # Describe simulation type, parameters, etc.
   simulation:
     type: 'CC_cycle' # Constant current cycling
-    i_ext: (0.01, 'A/cm2') # input current density tuple, format (XX, 'units')
-    C_rate: None # input C-rate
-    n_cycles: 1 # Number of cycles
+    # Specify only one of i_ext or C-rate. The other should be null:
+    i_ext: 0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+    C-rate: null # input C-rate
+    n_cycles: 1 # Number of cycles. Currently must be 0.5 or an int.
     first-step: 'charge'  # Start with charge or discharge?
     phi-cutoff-lower: 2.2 # Simulation cuts off if E_Cell <= this value
     phi-cutoff-upper: 4.5 # Simulation cuts off if E_Cell >= this value

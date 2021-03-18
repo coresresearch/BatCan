@@ -23,6 +23,11 @@ def bat_can(input = None):
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
+    # For each element (anode 'an', separator 'sep', cathode 'ca') the 'class' 
+    # variable from the inputs tells what kind of anode, separator, or cathode 
+    # it is, and points to a '.py' file in this directory.  We import that 
+    # module, and then run its 'initialize' routine to create an intial 
+    # solution vector and an object that stores needed parameters.
     an_module = importlib.import_module(an_inputs['class'])
     SV_an_0, anode =  an_module.initialize(input, an_inputs, 'anode', 
         sep_inputs['phi_0'], parameters)
@@ -34,22 +39,25 @@ def bat_can(input = None):
     SV_ca_0, cathode = ca_module.initialize(input, ca_inputs, 'cathode', 
         sep_inputs['phi_0'], parameters)
 
+    # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
 
     #===========================================================================
     #   RUN THE MODEL
     #===========================================================================
+    # The inputs tell us what type of experiment we will simulate.  Load the 
+    # module, then call its 'run' function:
     model = importlib.import_module(parameters['simulation']['type'])
 
-    solution = model.run(SV_0, anode, separator, cathode, parameters)
-
+    t, solution = model.run(SV_0, anode, separator, cathode, parameters)
     """TEST"""
     # Should be zero:
-    print('Max difference = ', max(solution.values.y[-1,:]-SV_0))
+    print('Max difference = ', max(solution[-1,:]-SV_0))
 
     #===========================================================================
     #   CREATE FIGURES AND SAVE ALL OUTPUTS
     #===========================================================================
+    # Call any output routines related to the simulation type:
     model.output(solution)
 
 
