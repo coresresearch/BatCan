@@ -136,9 +136,11 @@ def residual(t,SV, SVdot, inputs):
     # 'SVdot':
     an, sep, ca, params = inputs
 
-    # Call anode residual function:
+    # Call residual functions for anode, separator, and cathode:
     SVdot[an.SVptr['residual']] = an.residual(SV, an, params)
-    # Call cathode residual function:
+
+    SVdot[sep.SVptr['residual']] = sep.residual(SV, sep, params)
+    
     SVdot[ca.SVptr['residual']] = ca.residual(SV, ca, params)
 
 def output(solution, an, sep, ca, params):

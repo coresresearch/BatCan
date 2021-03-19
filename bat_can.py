@@ -67,6 +67,8 @@ def bat_can(input = None):
 if __name__ == '__main__':
     import argparse
 
+    # Currently, the only command line keyword enabled is --input, to specify 
+    # the input file location:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
     args = parser.parse_args()

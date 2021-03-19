@@ -15,6 +15,8 @@ def initialize(input_file, inputs, params, offset):
         # State variables: electrolyte potential, electrolyte composition (nsp)
         nVars = 1 + elyte_obj.n_species
 
+        from .residual import residual
+
     # Set Cantera object state:
     if 'X_0' in inputs:
         separator.elyte_obj.TPX = params['T'], params['P'], inputs['X_0']
