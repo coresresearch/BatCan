@@ -39,7 +39,6 @@ def bat_can(input = None):
 
     ca_module = importlib.import_module('.initialize', 
             package=ca_inputs['class'])
-    #ca_module = importlib.import_module(ca_inputs['class'])
     SV_ca_0, ca = ca_module.initialize(input, ca_inputs, 'cathode', 
             sep_inputs['phi_0'], parameters, an.nVars+sep.nVars)
 
