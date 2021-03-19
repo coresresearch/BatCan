@@ -17,6 +17,11 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params):
             [bulk_obj, elyte_obj, conductor_obj])
         name = electrode_name
 
+        params = {}
+        params['A_surf_ratio'] = (3*inputs['eps_solid']*inputs['thickness']/
+                inputs['r_p'])
+        params['C_dl_Inv'] = 1/inputs['C_dl']
+
     # Set Cantera object state:
     if 'X_0' in inputs:
         electrode.bulk_obj.TPX = params['T'], params['P'], inputs['X_0']
@@ -31,18 +36,18 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params):
     SV = np.zeros([nVars])
 
     # Set up pointers:
-    SVptr = {}
-    SVptr['phi_ed'] = 0
-    SVptr['phi_dl'] = 1
-    SVptr['C_k_ed'] = np.arange(2, 2 + electrode.bulk_obj.n_species)
-    SVptr['C_k_elyte'] = np.arange(2 + electrode.bulk_obj.n_species, 
+    electrode.SVptr = {}
+    electrode.SVptr['phi_ed'] = 0
+    electrode.SVptr['phi_dl'] = 1
+    electrode.SVptr['C_k_ed'] = np.arange(2, 2 + electrode.bulk_obj.n_species)
+    electrode.SVptr['C_k_elyte'] = np.arange(2 + electrode.bulk_obj.n_species, 
         2 + electrode.bulk_obj.n_species + electrode.elyte_obj.n_species)
 
     # Load intial state variables:
-    SV[SVptr['phi_ed']] = inputs['phi_0']
-    SV[SVptr['phi_dl']] = phi_elyte_0 - inputs['phi_0']
-    SV[SVptr['C_k_ed']] = electrode.bulk_obj.concentrations
-    SV[SVptr['C_k_elyte']] = electrode.elyte_obj.concentrations
+    SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
+    SV[electrode.SVptr['phi_dl']] = phi_elyte_0 - inputs['phi_0']
+    SV[electrode.SVptr['C_k_ed']] = electrode.bulk_obj.concentrations
+    SV[electrode.SVptr['C_k_elyte']] = electrode.elyte_obj.concentrations
 
     return SV, electrode
 

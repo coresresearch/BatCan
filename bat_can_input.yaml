@@ -16,11 +16,12 @@ cell-description:
     phi_0: 0. # Initial electric potential, V
     eps_solid: 0.55 # Solid phase volume fraction, -
     X_0: 'Li[anode]:0.999, V[anode]:0.001'
+    C_dl: 1e-2 #F/m2
   separator:
     class: 'porous_separator'
     thickness: 20e-6 # separator thickness, m
     electrolyte-phase: 'electrolyte' # Cantera phase name
-    phi_0: 1.6 # Initial electric potential, V
+    phi_0: 3.2 # Initial electric potential, V
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
   cathode:
     class: 'single_particle_electrode'
@@ -33,6 +34,7 @@ cell-description:
     phi_0: 4.2 # Initial electric potential, V
     eps_solid: 0.65 # Solid phase volume fraction, -
     X_0: 'Li[cathode]:0.001, V[cathode]:0.999'
+    C_dl: 1e-2 #F/m2
 
 # Simulation parameters:
 parameters:

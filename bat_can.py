@@ -49,10 +49,10 @@ def bat_can(input = None):
     # module, then call its 'run' function:
     model = importlib.import_module(parameters['simulation']['type'])
 
-    t, solution = model.run(SV_0, anode, separator, cathode, parameters)
+    solution = model.run(SV_0, anode, separator, cathode, parameters)
     """TEST"""
     # Should be zero:
-    print('Max difference = ', max(solution[-1,:]-SV_0))
+    print('Max difference = ', max(solution[2:,-1]-SV_0))
 
     #===========================================================================
     #   CREATE FIGURES AND SAVE ALL OUTPUTS
