@@ -67,6 +67,7 @@ def initialize(input_file=None):
     #===========================================================================
     if 'parameters' in inputs:
         parameters = inputs['parameters']
+        parameters['T'] += 273.15
     else:
         raise ValueError('Please specify simulation parameters.')
 

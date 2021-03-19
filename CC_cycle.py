@@ -27,7 +27,7 @@ def run(SV_0, an, sep, ca, params):
     steps, currents = setup_cycles(params['simulation'], current)
 
     # Set up the solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-10}
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-8}
     solver = ode('cvode', residual, **options)
 
     for i, step in enumerate(steps):
@@ -40,7 +40,7 @@ def run(SV_0, an, sep, ca, params):
         t_out = np.linspace(0,1) # TEMPORARY
     
         # This runs the integrator. The 'residual' function is defined below.
-        solution = solver.solve(t_out, SV_0)#odeint(residual, t_out, SV_0, args=(an, sep, ca, params))
+        solution = solver.solve(t_out, SV_0)
 
         # Create an array of currents, one for each time step:
         i_data = currents[i]*np.ones_like(solution.values.t)
@@ -53,18 +53,18 @@ def run(SV_0, an, sep, ca, params):
             SV = np.vstack((solution.values.t+data_out[0,-1], i_data, solution.
                 values.y.T))
             data_out = np.hstack((data_out, SV))
+
+            # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
         else:
             # Stack the times, the current at each time step, and the solution 
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t, i_data, solution.values.y.T))
             data_out = SV
+
+            # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
 
-   
-    import matplotlib.pyplot as plt
-    plt.plot(data_out[0,:], data_out[2+an.SVptr['phi_dl'],:])
-    plt.show()
     return data_out
 
 def calc_current(params, an, ca):
@@ -130,22 +130,32 @@ def setup_cycles(params, current):
     return steps, currents
 
 def residual(t,SV, SVdot, inputs):
-    # Implement the governing equations to calculate the residual at any given 
-    # time step. Nothing is returned by this function. It merely needs to set 
-    # the value of 'SVdot':
+    # Call the individual component residual functions, which implement 
+    # governing equations to solve for the state at any given time step. 
+    # Nothing is returned by this function. It merely needs to set the value of 
+    # 'SVdot':
     an, sep, ca, params = inputs
 
-    phi_elyte_an = SV[an.SVptr['phi_dl']]
-    an.elyte_obj.electric_potential = phi_elyte_an
-    " Anode "
-    sdot_electron = an.surf_obj.get_net_production_rates(an.conductor_obj)
-    i_Far_an = -ct.faraday*sdot_electron
-    i_dl_an = params['i_ext']/an.params['A_surf_ratio'] - i_Far_an
-    # print(i_dl_an)
-    SVdot[an.SVptr['phi_dl']] = i_dl_an*an.params['C_dl_Inv']
+    # Call anode residual function:
+    SVdot[an.SVptr['residual']] = an.residual(SV, an, params)
+    # Call cathode residual function:
+    SVdot[ca.SVptr['residual']] = ca.residual(SV, ca, params)
 
-def output(solution):
+def output(solution, an, sep, ca, params):
     # Prepare and save any output data to the correct location. Prepare, 
     # create, and save any figures relevant to constant-current cycling.
     #TODO #17
-    pass
+    import matplotlib.pyplot as plt 
+
+    # Calculate cell potential:   
+    V_cell = (solution[2+an.SVptr['phi_dl'],:] 
+            - solution[2+ca.SV_offset+ca.SVptr['phi_dl'],:])
+
+    # Create figure:
+    fig, axs = plt.subplots(2,1, sharex=True)
+    axs[0].plot(solution[0,:],1000*solution[1,:]/10000)
+    axs[0].set(ylabel='Current Density (mA/cm$^2$)')
+    axs[1].plot(solution[0,:],V_cell)
+    axs[1].set(ylabel='Cell Potential (V)', xlabel='Time (s)')
+    fig.tight_layout
+    plt.show()
