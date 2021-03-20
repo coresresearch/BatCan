@@ -19,7 +19,7 @@ from scikits.odes.ode import ode
 
 def run(SV_0, an, sep, ca, params):
     # Determine the current to run at. 'calc_current' is defined below.
-    current = calc_current(params['simulation'], an, ca)
+    current, t_final = calc_current(params['simulation'], an, ca)
     
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
@@ -37,7 +37,7 @@ def run(SV_0, an, sep, ca, params):
         params['i_ext'] = currents[i]
         print('     Current = ', round(currents[i],3),'\n')
         
-        t_out = np.linspace(0,1) # TEMPORARY
+        t_out = np.linspace(0,t_final) # TEMPORARY
     
         # This runs the integrator. The 'residual' function is defined below.
         solution = solver.solve(t_out, SV_0)
@@ -71,6 +71,11 @@ def calc_current(params, an, ca):
     # Calculates the external current from the user inputs.  If a C-rate is 
     # given, calculate the battery capacity and convert this to a current.  If 
     # i_ext is given, convert the units to A/m2.
+
+    # Battery capacity is the lesser of the anode and cathode capacities. It is 
+    # required for determining the simulation time.
+    print(an.capacity)
+    cap = min(an.capacity, ca.capacity)
     if params['i_ext'] is not None:
         # User cannot set both i_ext and C-rate. Throw an error, if they have:
         if params['C-rate'] is not None:
@@ -96,13 +101,16 @@ def calc_current(params, an, ca):
     elif params['C-rate'] is not None:
         # To be implemented.
         #TODO #15
-        pass
+        i_ext = cap*params['C-rate']
+
     else:
         # If neither i_ext or C_rate is provided, throw an error:
         raise ValueError("Please specify either the external current (i_ext) "
             "or the C-rate (C-rate).")
-        
-    return i_ext
+    
+    t_final = cap*3600/i_ext
+
+    return i_ext, t_final
 
 def setup_cycles(params, current):
     # Setup a tuple representing steps in the requested charge-discharge cycles.
@@ -155,9 +163,9 @@ def output(solution, an, sep, ca, params):
 
     # Create figure:
     fig, axs = plt.subplots(2,1, sharex=True)
-    axs[0].plot(solution[0,:],1000*solution[1,:]/10000)
+    axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
     axs[0].set(ylabel='Current Density (mA/cm$^2$)')
-    axs[1].plot(solution[0,:],V_cell)
-    axs[1].set(ylabel='Cell Potential (V)', xlabel='Time (s)')
+    axs[1].plot(solution[0,:]/3600, V_cell)
+    axs[1].set(ylabel='Cell Potential (V)', xlabel='Time (h)')
     fig.tight_layout
     plt.show()

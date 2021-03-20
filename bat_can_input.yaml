@@ -11,6 +11,9 @@ cell-description:
     surf-phase: 'anode_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
     conductor-phase: 'electron' # Cantera phase name
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li[anode]
+      charge: 1
     thickness: 50e-6 # anode thickness, m
     r_p: 4e-6 # Particle radius, m
     phi_0: 0. # Initial electric potential, V
@@ -29,6 +32,9 @@ cell-description:
     surf-phase: 'cathode_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
     conductor-phase: 'electron' # Cantera phase name
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li[cathode]
+      charge: 1
     thickness: 50e-6 # anode thickness, m
     r_p: 6e-6 # Particle radius, m
     phi_0: 4.125 # Initial electric potential, V
@@ -44,7 +50,7 @@ parameters:
   simulation:
     type: 'CC_cycle' # Constant current cycling
     # Specify only one of i_ext or C-rate. The other should be null:
-    i_ext: 0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+    i_ext: 0.001 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
     C-rate: null # input C-rate
     n_cycles: 10 # Number of cycles. Currently must be 0.5 or an int.
     first-step: 'discharge'  # Start with charge or discharge?
