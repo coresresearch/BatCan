@@ -10,6 +10,8 @@ def residual(SV, self, params):
     self.bulk_obj.electric_potential = phi_ed
     self.conductor_obj.electric_potential = phi_ed
     self.elyte_obj.electric_potential = phi_elyte
+
+    #TODO #18
     
     # Faradaic current density is positive when electrons are consumed 
     # (Li transferred to the anode)

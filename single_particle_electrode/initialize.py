@@ -27,6 +27,15 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params, offset):
         C_dl_Inv = 1/inputs['C_dl']
 
         SV_offset = offset
+
+        # Determine Capacity (Ah/m2)
+        X_o = bulk_obj.X # save initial X
+        bulk_obj.X = inputs['stored-ion']['name']+':1.0'
+        C = bulk_obj[inputs['stored-ion']['name']].concentrations[0]
+        
+        capacity = (C*inputs['stored-ion']['charge']*ct.faraday
+                *inputs['eps_solid'])*inputs['thickness']/3600
+        bulk_obj.X = X_o
             
         # State variables: electrode potential, electrolyte potential, 
         # electrode composition (nsp), electrolyte composition (nsp)
