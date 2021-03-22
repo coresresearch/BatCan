@@ -68,6 +68,12 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params, offset):
 
     electrode.SVptr['residual'] = np.arange(offset, offset+electrode.nVars)
 
+    # Save the indices of any algebraic variables:
+    if electrode_name=='anode':
+        electrode.algvars = [offset + electrode.SVptr['phi_ed']]
+    elif electrode_name=='cathode':
+        electrode.algvars = [offset + electrode.SVptr['phi_ed']]#[]
+
     # Load intial state variables:
     SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
     SV[electrode.SVptr['phi_dl']] = phi_elyte_0 - inputs['phi_0']

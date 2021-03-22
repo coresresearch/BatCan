@@ -35,6 +35,9 @@ def initialize(input_file, inputs, params, offset):
         1 + separator.elyte_obj.n_species)
     separator.SVptr['residual'] = np.arange(offset, offset+separator.nVars)
 
+    # Save indices for any algebraic variables.
+    separator.algvars = []#[offset + separator.SVptr['phi']]
+
     # Load intial state variables:
     SV[separator.SVptr['phi']] = inputs['phi_0']
     SV[separator.SVptr['C_k_elyte']] = separator.elyte_obj.concentrations

@@ -7,7 +7,7 @@
 import cantera as ct
 import numpy as np
 
-def residual(SV, self, params):
-    SV_dot = np.zeros((self.nVars,))
+def residual(SV, SVdot, self, params):
+    resid = SVdot[self.SVptr['residual']]#np.zeros((self.nVars,))
 
-    return SV_dot
+    return resid

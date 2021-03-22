@@ -44,15 +44,17 @@ def bat_can(input = None):
 
     # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
+    algvars = np.hstack([an.algvars, sep.algvars, ca.algvars])
 
     #===========================================================================
     #   RUN THE MODEL
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:
-    model = importlib.import_module(parameters['simulation']['type'])
+    model = importlib.import_module('.'+parameters['simulation']['type'], 
+            package='simulations')
 
-    solution = model.run(SV_0, an, sep, ca, parameters)
+    solution = model.run(SV_0, an, sep, ca, algvars, parameters)
 
     #===========================================================================
     #   CREATE FIGURES AND SAVE ALL OUTPUTS
