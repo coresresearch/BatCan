@@ -17,15 +17,26 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params, offset):
             [bulk_obj, elyte_obj, conductor_obj])
         name = electrode_name
         if name=='anode':
-            i_ext_flag = 1
-        elif name=='cathode':
             i_ext_flag = -1
+        elif name=='cathode':
+            i_ext_flag = 1
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
-        A_surf_ratio = (3*inputs['eps_solid']*inputs['thickness']/inputs['r_p'])
+        index_Li = elyte_obj.species_index(inputs['mobile-ion'])
+
+        dy = inputs['thickness']
+        dyInv = 1/dy
+        eps_solid = inputs['eps_solid']
+        eps_elyte = 1 - eps_solid
+
+        A_surf_ratio = (3*eps_solid*dy/inputs['r_p'])
         C_dl_Inv = 1/inputs['C_dl']
 
+        # Microstructure-based transport scaling factor, based on Bruggeman 
+        # coefficient of -0.5:
+        elyte_microstructure = eps_elyte**1.5
+        
         SV_offset = offset
 
         # Determine Capacity (Ah/m2)
@@ -42,7 +53,7 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params, offset):
         nVars = 2 + bulk_obj.n_species + elyte_obj.n_species
 
         # Load the residual model and store it as a method of this class:
-        from .residual import residual
+        from .functions import residual, make_alg_consistent
 
 
     # Set Cantera object state:

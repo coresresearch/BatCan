@@ -1,4 +1,4 @@
-def residual(SV, SVdot, self, counter, params):
+def residual(SV, SVdot, self, sep, counter, params):
     import numpy as np
     import cantera as ct
     
@@ -17,8 +17,6 @@ def residual(SV, SVdot, self, counter, params):
     self.bulk_obj.electric_potential = phi_ed
     self.conductor_obj.electric_potential = phi_ed
     self.elyte_obj.electric_potential = phi_elyte
-
-    #TODO #18
     
     # Faradaic current density is positive when electrons are consumed 
     # (Li transferred to the anode)
@@ -33,12 +31,18 @@ def residual(SV, SVdot, self, counter, params):
     elif self.name=='cathode':
         # TEMPORARY: phi_elyte in cathode matches that in the anode.
         # TODO #21
-        phi_elyte_an = SV[counter.SVptr['residual'][counter.SVptr['phi_dl']]]
-        resid[SVptr['phi_ed']] = phi_elyte - phi_elyte_an 
+        N_k_sep = sep.cathode_boundary(SV, self, sep)
+        i_io = np.dot(N_k_sep, self.elyte_obj.charges)*ct.faraday
+                
+        resid[SVptr['phi_ed']] = i_io - params['i_ext']
 
     resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv)
 
+    # Set time derivatives to zero (temporary)
     resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']]
     resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']]
 
     return resid
+
+def make_alg_consistent(SV, an, sep, ca, params):
+    return SV

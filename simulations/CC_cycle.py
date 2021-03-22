@@ -36,9 +36,12 @@ def run(SV_0, an, sep, ca, algvars, params):
 
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
-        print('     Current = ', round(currents[i],3),'\n')
+        print('    Current = ', round(currents[i],3),'\n')
         
-        t_out = np.linspace(0,t_final) # TEMPORARY
+        t_out = np.linspace(0,t_final)
+        # Make the initial solution consistent with the algebraic constraints:
+        SV_0 = an.make_alg_consistent(SV_0, an, sep, ca, params)
+        SV_0 = sep.make_alg_consistent(SV_0, an, sep, ca, params)
     
         # This runs the integrator. The 'residual' function is defined below.
         SVdot_0 = np.zeros_like(SV_0)
@@ -101,8 +104,7 @@ def calc_current(params, an, ca):
             if A_units=="cm2":
                 i_ext *= 10000
     elif params['C-rate'] is not None:
-        # To be implemented.
-        #TODO #15
+
         i_ext = cap*params['C-rate']
 
     else:
@@ -147,11 +149,11 @@ def residual(t, SV, SVdot, resid, inputs):
     an, sep, ca, params = inputs
 
     # Call residual functions for anode, separator, and cathode:
-    resid[an.SVptr['residual']] = an.residual(SV, SVdot, an, ca, params)
+    resid[an.SVptr['residual']] = an.residual(SV, SVdot, an, sep, ca, params)
 
-    resid[sep.SVptr['residual']] = sep.residual(SV, SVdot, sep, params)
+    resid[sep.SVptr['residual']] = sep.residual(SV, SVdot, an, sep, ca, params)
     
-    resid[ca.SVptr['residual']] = ca.residual(SV, SVdot, ca, an, params)
+    resid[ca.SVptr['residual']] = ca.residual(SV, SVdot, ca, sep, an, params)
 
 def output(solution, an, sep, ca, params):
     # Prepare and save any output data to the correct location. Prepare, 
