@@ -3,11 +3,17 @@ def residual(SV, SVdot, self, counter, params):
     import cantera as ct
     
     resid = np.zeros((self.nVars,))
-    
+
+    # Save local copies of the solution vectors, pointers for this electrode:
+    SVptr = self.SVptr
+    SV_loc = SV[SVptr['residual']]
+    SVdot_loc = SVdot[SVptr['residual']]
+
     # Read and set electrolyte electric potential:
-    phi_ed = SV[self.SV_offset + self.SVptr['phi_ed']]
-    phi_dl= SV[self.SV_offset + self.SVptr['phi_dl']]
-    phi_elyte = phi_ed + SV[self.SV_offset + self.SVptr['phi_dl']]
+    phi_ed = SV_loc[SVptr['phi_ed']]
+    phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
+
+    # Set electric potentials for Cantera objects:
     self.bulk_obj.electric_potential = phi_ed
     self.conductor_obj.electric_potential = phi_ed
     self.elyte_obj.electric_potential = phi_elyte
@@ -23,16 +29,16 @@ def residual(SV, SVdot, self, counter, params):
     i_dl = self.i_ext_flag*params['i_ext']/self.A_surf_ratio - i_Far
     
     if self.name=='anode':
-        resid[self.SVptr['phi_ed']] = SV[self.SVptr['phi_ed']]
+        resid[SVptr['residual'][SVptr['phi_ed']]] = SV_loc[SVptr['phi_ed']]
     elif self.name=='cathode':
         # TEMPORARY: phi_elyte in cathode matches that in the anode.
         # TODO #21
-        phi_elyte_an = SV[counter.SVptr['phi_dl']]
-        resid[self.SVptr['phi_ed']] = phi_elyte - phi_elyte_an 
+        phi_elyte_an = SV[counter.SVptr['residual'][counter.SVptr['phi_dl']]]
+        resid[SVptr['phi_ed']] = phi_elyte - phi_elyte_an 
 
-    resid[self.SVptr['phi_dl']] = (SVdot[self.SVptr['residual'][self.SVptr['phi_dl']]] - i_dl*self.C_dl_Inv)
+    resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv)
 
-    resid[self.SVptr['C_k_ed']] = SVdot[self.SVptr['residual'][self.SVptr['C_k_ed']]]
-    resid[self.SVptr['C_k_elyte']] = SVdot[self.SVptr['residual'][self.SVptr['C_k_elyte']]]
+    resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']]
+    resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']]
 
     return resid
