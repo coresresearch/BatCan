@@ -49,9 +49,9 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         # State variables: electrode potential, electrolyte potential, 
         # thickness, electrolyte composition (nsp)
         nVars = 3 + elyte_obj.n_species
-
+        
         # Load the residual model and store it as a method of this class:
-        from .functions import residual, make_alg_consistent
+        from .functions import residual, make_alg_consistent, voltage_lim
 
 
     # Set Cantera object state:

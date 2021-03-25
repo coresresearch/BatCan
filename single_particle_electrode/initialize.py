@@ -8,7 +8,8 @@ import cantera as ct
 import numpy as np
 
 # Initialize the model.
-def initialize(input_file, inputs, electrode_name, phi_elyte_0, params, offset):
+def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name, 
+        params, offset):
     class electrode:
         bulk_obj = ct.Solution(input_file, inputs['bulk-phase'])
         elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
@@ -47,18 +48,17 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params, offset):
         capacity = (C*inputs['stored-ion']['charge']*ct.faraday
                 *inputs['eps_solid'])*inputs['thickness']/3600
         bulk_obj.X = X_o
-            
+        
         # State variables: electrode potential, electrolyte potential, 
         # electrode composition (nsp), electrolyte composition (nsp)
         nVars = 2 + bulk_obj.n_species + elyte_obj.n_species
 
         # Load the residual model and store it as a method of this class:
-        from .functions import residual, make_alg_consistent
-
+        from .functions import residual, make_alg_consistent, voltage_lim
 
     # Set Cantera object state:
     if 'X_0' in inputs:
-        electrode.bulk_obj.TPX = params['T'], params['P'], inputs['X_0']
+        electrode.bulk_obj.TPX = (params['T'], params['P'], inputs['X_0'])
     else:
         electrode.bulk_obj.TP = params['T'], params['P']
 
@@ -83,11 +83,11 @@ def initialize(input_file, inputs, electrode_name, phi_elyte_0, params, offset):
     if electrode_name=='anode':
         electrode.algvars = [offset + electrode.SVptr['phi_ed']]
     elif electrode_name=='cathode':
-        electrode.algvars = [offset + electrode.SVptr['phi_ed']]#[]
+        electrode.algvars = [offset + electrode.SVptr['phi_ed']]
 
     # Load intial state variables:
     SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
-    SV[electrode.SVptr['phi_dl']] = phi_elyte_0 - inputs['phi_0']
+    SV[electrode.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
     SV[electrode.SVptr['C_k_ed']] = electrode.bulk_obj.concentrations
     SV[electrode.SVptr['C_k_elyte']] = electrode.elyte_obj.concentrations
 

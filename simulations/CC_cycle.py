@@ -26,9 +26,16 @@ def run(SV_0, an, sep, ca, algvars, params):
     # current for each step.
     steps, currents = setup_cycles(params['simulation'], current)
 
+    def root_fn(t, SV, SVdot, return_root, inputs):
+        return_root[0] = ca.voltage_lim(SV, ca, params['simulation']
+                ['phi-cutoff-lower'])
+        return_root[1] = ca.voltage_lim(SV, ca, params['simulation']
+                ['phi-cutoff-upper'])
+
     # Set up the solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-8, 
-            'algebraic_vars_idx':algvars, 'first_step_size':1e-18}
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-8, 'atol':1e-11, 
+            'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
+            'rootfn':root_fn, 'nr_rootfns':2}
     solver = dae('ida', residual, **options)
 
     for i, step in enumerate(steps):
@@ -37,13 +44,13 @@ def run(SV_0, an, sep, ca, algvars, params):
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'\n')
-        
-        t_out = np.linspace(0,t_final)
+        t_out = np.linspace(0,t_final,10000)
+
         # Make the initial solution consistent with the algebraic constraints:
         SV_0 = an.make_alg_consistent(SV_0, an, sep, ca, params)
         SV_0 = sep.make_alg_consistent(SV_0, an, sep, ca, params)
-    
-        # This runs the integrator. The 'residual' function is defined below.
+        
+        # This runs the integrator.
         SVdot_0 = np.zeros_like(SV_0)
         solution = solver.solve(t_out, SV_0, SVdot_0)
 
@@ -79,7 +86,6 @@ def calc_current(params, an, ca):
 
     # Battery capacity is the lesser of the anode and cathode capacities. It is 
     # required for determining the simulation time.
-    print(an.capacity)
     cap = min(an.capacity, ca.capacity)
     if params['i_ext'] is not None:
         # User cannot set both i_ext and C-rate. Throw an error, if they have:
@@ -165,10 +171,20 @@ def output(solution, an, sep, ca, params):
     V_cell = solution[2+ca.SV_offset+ca.SVptr['phi_ed'],:]
 
     # Create figure:
-    fig, axs = plt.subplots(2,1, sharex=True)
+    lp = 30 #labelpad
+    fig, axs = plt.subplots(3,1, sharex=True, 
+            gridspec_kw = {'wspace':0, 'hspace':0})
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
-    axs[0].set(ylabel='Current Density (mA/cm$^2$)')
+    axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp-25)
     axs[1].plot(solution[0,:]/3600, V_cell)
-    axs[1].set(ylabel='Cell Potential (V)', xlabel='Time (h)')
-    fig.tight_layout
+    axs[1].set_ylabel('Cell Potential \n(V)',labelpad=lp)
+    axs[2].plot(solution[0,:]/3600, 1e6*solution[2+an.SVptr['thickness']])
+    axs[2].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-10)
+    axs[2].set(xlabel='Time (h)')
+    # plt.figure(2)
+    # plt.plot(solution[0,:]/3600, solution[2+an.SVptr['phi_dl']])
+    for i in range(3):
+        axs[i].tick_params(axis="x",direction="in")
+        axs[i].tick_params(axis="y",direction="in")
+    fig.tight_layout()
     plt.show()

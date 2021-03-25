@@ -46,3 +46,11 @@ def residual(SV, SVdot, self, sep, counter, params):
 
 def make_alg_consistent(SV, an, sep, ca, params):
     return SV
+
+def voltage_lim(SV, self, val):
+    SVptr = self.SVptr
+    SV_loc = SV[SVptr['residual']]
+    
+    voltage_eval = SV_loc[SVptr['phi_ed']] - val
+    
+    return voltage_eval

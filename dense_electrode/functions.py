@@ -19,9 +19,19 @@ def residual(SV, SVdot, self, sep, counter, params):
     self.conductor_obj.electric_potential = phi_ed
     self.elyte_obj.electric_potential = phi_elyte
     
+    # Multiplier on the electrode removal reation. Quickly goes to zero, for 
+    # thicknesses below a user-specified minimum:
+    mult = tanh(SV_loc[SVptr['thickness']]/self.min_thickness)
+
     # Faradaic current density is positive when electrons are consumed 
     # (Li transferred to the anode)
-    sdot_electron = self.surf_obj.get_net_production_rates(self.conductor_obj)
+    sdot_electron = (mult*self.surf_obj.get_creation_rates(self.conductor_obj)
+            - self.surf_obj.get_destruction_rates(self.conductor_obj))
+
+    # Production rate of electrode species (kmol/m2/s)
+    sdot_electrode = (self.surf_obj.get_creation_rates(self.bulk_obj)
+            - mult*self.surf_obj.get_destruction_rates(self.bulk_obj))
+    
     i_Far = -ct.faraday*sdot_electron
     
     # Double layer current has the same sign as i_Far:
@@ -39,11 +49,6 @@ def residual(SV, SVdot, self, sep, counter, params):
 
     resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv)
     
-    # Production rate of electrode species (kmol/m2/s)
-    mult = tanh(SV_loc[SVptr['thickness']]/self.min_thickness)
-    sdot_electrode = (self.surf_obj.get_creation_rates(self.bulk_obj)
-            - mult*self.surf_obj.get_destruction_rates(self.bulk_obj))
-    
     # Change in thickness per time:
     dH_dt = np.dot(sdot_electrode,self.bulk_obj.partial_molar_volumes)
     resid[SVptr['thickness']] = SVdot_loc[SVptr['thickness']] - dH_dt
@@ -55,3 +60,11 @@ def residual(SV, SVdot, self, sep, counter, params):
 
 def make_alg_consistent(SV, an, sep, ca, params):
     return SV
+
+def voltage_lim(SV, self, val):
+    SVptr = self.SVptr
+    SV_loc = SV[SVptr['residual']]
+    
+    voltage_eval = SV_loc[SVptr['phi_ed']] - val
+
+    return voltage_eval
