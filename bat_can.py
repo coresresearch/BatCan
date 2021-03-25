@@ -13,7 +13,10 @@ import numpy as np
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
-        input = 'bat_can_input.yaml'
+        input = 'inputs/input_template.yaml'
+    else:
+        input = 'inputs/'+input+'.yaml'
+
 
     #===========================================================================
     #   READ IN USER INPUTS

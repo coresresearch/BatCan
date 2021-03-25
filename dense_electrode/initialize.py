@@ -49,7 +49,7 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         # State variables: electrode potential, electrolyte potential, 
         # thickness, electrolyte composition (nsp)
         nVars = 3 + elyte_obj.n_species
-        
+
         # Load the residual model and store it as a method of this class:
         from .functions import residual, make_alg_consistent, voltage_lim
 
@@ -78,11 +78,8 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     electrode.SVptr['residual'] = np.arange(offset, offset+electrode.nVars)
 
     # Save the indices of any algebraic variables:
-    if electrode_name=='anode':
-        electrode.algvars = [offset + electrode.SVptr['phi_ed']]
-    elif electrode_name=='cathode':
-        electrode.algvars = [offset + electrode.SVptr['phi_ed']]
-
+    electrode.algvars = [offset + electrode.SVptr['phi_ed']]
+    
     # Load intial state variables:
     SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
     SV[electrode.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']

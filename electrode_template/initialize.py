@@ -24,16 +24,6 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
-        index_Li = elyte_obj.species_index(inputs['mobile-ion'])
-
-        dy = inputs['thickness']
-        dyInv = 1/dy
-        eps_solid = inputs['eps_solid']
-        eps_elyte = 1 - eps_solid
-
-        A_surf_ratio = (3*eps_solid*dy/inputs['r_p'])
-        C_dl_Inv = 1/inputs['C_dl']
-
         # Microstructure-based transport scaling factor, based on Bruggeman 
         # coefficient of -0.5:
         elyte_microstructure = eps_elyte**1.5
@@ -49,9 +39,9 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
                 *inputs['eps_solid'])*inputs['thickness']/3600
         bulk_obj.X = X_o
         
-        # State variables: electrode potential, electrolyte potential, 
-        # electrode composition (nsp), electrolyte composition (nsp)
-        nVars = 2 + bulk_obj.n_species + elyte_obj.n_species
+        # Number of state variables: electrode potential, electrolyte 
+        # potential, electrode composition (nsp), electrolyte composition (nsp)
+        nVars = 0
 
         # Load the residual model and store it as a method of this class:
         from .functions import residual, make_alg_consistent, voltage_lim
@@ -69,23 +59,19 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
 
     SV = np.zeros([electrode.nVars])
 
-    # Set up pointers:
+    # Set up pointers to variable locations in the solution vector:
     electrode.SVptr = {}
-    electrode.SVptr['phi_ed'] = 0
-    electrode.SVptr['phi_dl'] = 1
-    electrode.SVptr['C_k_ed'] = np.arange(2, 2 + electrode.bulk_obj.n_species)
-    electrode.SVptr['C_k_elyte'] = np.arange(2 + electrode.bulk_obj.n_species, 
-        2 + electrode.bulk_obj.n_species + electrode.elyte_obj.n_species)
+    # For example:
+    electrode.SVptr['phi_ed'] = 0 
 
+    # Save location of this element's varaibles in the larger solution vector:
     electrode.SVptr['residual'] = np.arange(offset, offset+electrode.nVars)
 
     # Save the indices of any algebraic variables:
     electrode.algvars = [offset + electrode.SVptr['phi_ed']]
 
     # Load intial state variables:
+    # For example:
     SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
-    SV[electrode.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
-    SV[electrode.SVptr['C_k_ed']] = electrode.bulk_obj.concentrations
-    SV[electrode.SVptr['C_k_elyte']] = electrode.elyte_obj.concentrations
 
     return SV, electrode
