@@ -30,8 +30,8 @@ def bat_can(input = None):
     # solution vector and an object that stores needed parameters.
     # import single_particle_electrode as an_module_0
     an_module = importlib.import_module(an_inputs['class'])
-    SV_an_0, an =  an_module.initialize(input, an_inputs, 'anode', 
-            sep_inputs['phi_0'], parameters, 0)
+    SV_an_0, an = an_module.initialize(input, an_inputs, sep_inputs, ca_inputs, 
+            'anode', parameters, offset=0)
 
     sep_module = importlib.import_module(sep_inputs['class'])
     SV_sep_0, sep = sep_module.initialize(input, sep_inputs, parameters, 
@@ -39,8 +39,8 @@ def bat_can(input = None):
 
     ca_module = importlib.import_module('.initialize', 
             package=ca_inputs['class'])
-    SV_ca_0, ca = ca_module.initialize(input, ca_inputs, 'cathode', 
-            sep_inputs['phi_0'], parameters, an.nVars+sep.nVars)
+    SV_ca_0, ca = ca_module.initialize(input, ca_inputs, sep_inputs, an_inputs, 
+            'cathode', parameters, an.nVars+sep.nVars)
 
     # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])

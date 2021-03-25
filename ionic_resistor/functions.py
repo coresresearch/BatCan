@@ -46,10 +46,7 @@ def anode_boundary(SV, an, sep):
     phi_dl = SV[an.SVptr['residual'][an.SVptr['phi_dl']]]
     phi_elyte_an = phi_an + phi_dl
     
-    # Elyte electric potential in separator:
-    phi_elyte_sep = SV[sep.SVptr['residual'][sep.SVptr['phi']]]
-
-    # Ionic current:
+    # Ionic resistance:
     R_io_avg = 0.5*(sep.dy/sep.elyte_microstructure 
             + an.dy/an.elyte_microstructure)
 
