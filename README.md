@@ -1,24 +1,67 @@
 # BatCan
 Battery--Cantera: Modeling fundamental physical chemistry in batteries using Cantera. 
 
+This tool allows you to run battery simulations with eaily editable and extensible thermochemistry via [Cantera](cantera.org).
+
 # Repository contents
-- `BatCan/functions` contains external functions that are used by more than one model in `BatCan`. Currently this is for concentrated solution theory transport calculations
-- `BatCan/li_ion` contains a Pseudo-2D lithium-ion battery model.
-- `BatCan/li_o2` contains a 1D lithium-O2 battery model.
+- `bat_can.py`: this is the main file that runs the code.  In general, the code is run on the command line via `python bat_can.py` (more on this [below](#Running-the-model))
+- `bat_can_init.py`: reads user inputs and initializes the model.  It is called internally by `bat_can.py`.
+- Simluation packages which define different simulation types/routines:
+    1. `CC_cycle.py`: constant current galvanostatc cycling.
+- Electrode model packages:
+    1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode.
+    2. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
 
-Check the ReadMe of relevant subdirectories for model-specific instructions.
+- Electrolyte model packages:
+    1. `ionic_resistor`: Simple ionic resistor with no chemical composition dynamics.
+    2. `porous_separator`: porous inert separator filled with electrolyte.
+- `inputs`: folder with all input files.
+- `old_model_files`: Files associated with previously-developed models, which are currently being integrated into the new model framework. 
+# Installation Instructions
 
-# General Installation Instructions
+In order to use the BatCan suite, it is necessary to download and install:
+- [Cantera](cantera.org)
+- [Numpy](numpy.org)
+- [Scikits.odes](https://pypi.org/project/scikits.odes)
+- [Ruamel.yaml](https://pypi.org/project/ruamel.yaml/)
+- [Matplotlib](matplotlib.org)
 
-In order to use the BatCan suite, it is necessary to download and install Cantera. `Batcan/li_ion` requires the development version of Cantera. Using Conda to manage installation and dependencies is highly recommended. Instructions for creating an environment with the necessary dependencies and installing Cantera can be found [here](https://cantera.org/compiling/installation-reqs.html#sec-installation-reqs). 
+These can all be installed an managed via [Anaconda](anaconda.org)
 
-__An important note when creating the environment:__ The solver used for `BatCan/li_ion` has specific package version dependencies, therefore __build an environment with `Python=3.5`__
+For example, to create a conda environment `bat_can` from which to run this tool, enter the following on a command line, terminal, or Anaconda prompt:
+```
+conda create --name bat_can --channel conda-forge cantera scikits.odes matplotlib numpy ruamel.yaml 
+```
+You can replace `bat_can` with whatever other name you would like to give this environment. After this completes, activate the environment:
+```
+conda activate bat_can
+```
+(again, replacing `bat_can`, as necessary). When you're done using the tool and want to switch back to your base software environment, run:
+```
+conda deactivate
+```
 
-Once Cantera is built and installed, there are a few more packages required in the working environment. 
+# Running the Model 
+To run the model, there are two main steps:
+1. [Choose or develop an input file](#Input)
+2. [Run the model](#Run-the-Model)
 
-For running `BatCan/li_ion`, the packages required are:
+## Input 
+The input file provides all the necessary information to `bat_can` program so that it may run your simulation.
 
-- Assimulo (run the following in Anaconda Prompt `conda install -c https://conda.binstar.org/chria assimulo`)
-- Pandas
-- If using Spyder as an IDE, the version known to work with other packages is `Spyder=3.2.8`.
-- Pywin32 might also be required
+The input file includes three primary sections:
+- A description of the battery components (anode, electrolyte separator, and cathode), including model type for each, geometry and microstructural parameters.
+- A description of the simulation to run and parameters to specify the necessary operating conditions.
+- A Cantera input section, used to create objects that represent the phases of matter present, the interfaces between then, and the thermodynamic, chemical kinetic, and transport processes involved.
+
+If you would like to create your own input, there is an `input_template.yaml` that you can save a copy of and edit. 
+
+All input files are located in the `inputs` folder.  Locate one that you would like to use, modify an existing file to suit your purposes, or copy a file, save it to a new name, and edit as necessary.
+
+At present, the input file must be saved to the `inputs` folder.
+
+## Run the Model
+The model is run from a command line or terminal by invoking python, the `bat_can.py` name, and providing the name of your input file (wihout the `.yaml` suffix) by assigning the keyword `--input`. For example, if your input file is located at `inputs/my_input.yaml`, you would run:
+```
+python bat_can.py --input=my_input
+```

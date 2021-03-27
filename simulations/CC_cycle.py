@@ -26,16 +26,16 @@ def run(SV_0, an, sep, ca, algvars, params):
     # current for each step.
     steps, currents = setup_cycles(params['simulation'], current)
 
-    def root_fn(t, SV, SVdot, return_root, inputs):
-        return_root[0] = ca.voltage_lim(SV, ca, params['simulation']
+    def terminate_check(t, SV, SVdot, return_val, inputs):
+        return_val[0] = ca.voltage_lim(SV, ca, params['simulation']
                 ['phi-cutoff-lower'])
-        return_root[1] = ca.voltage_lim(SV, ca, params['simulation']
+        return_val[1] = ca.voltage_lim(SV, ca, params['simulation']
                 ['phi-cutoff-upper'])
 
     # Set up the solver:
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-8, 'atol':1e-11, 
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
-            'rootfn':root_fn, 'nr_rootfns':2}
+            'rootfn':terminate_check, 'nr_rootfns':2}
     solver = dae('ida', residual, **options)
 
     for i, step in enumerate(steps):
