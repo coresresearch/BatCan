@@ -9,6 +9,10 @@
 import importlib # allows us to import from user input string.
 from bat_can_init import initialize as init
 import numpy as np
+import sys
+
+sys.path.append('electrode_models') 
+sys.path.append('separator_models')
 
 def bat_can(input = None):
     if input is None:
@@ -40,8 +44,7 @@ def bat_can(input = None):
     SV_sep_0, sep = sep_module.initialize(input, sep_inputs, parameters, 
             offset=an.nVars)
 
-    ca_module = importlib.import_module('.initialize', 
-            package=ca_inputs['class'])
+    ca_module = importlib.import_module(ca_inputs['class'])
     SV_ca_0, ca = ca_module.initialize(input, ca_inputs, sep_inputs, an_inputs, 
             'cathode', parameters, an.nVars+sep.nVars)
 
