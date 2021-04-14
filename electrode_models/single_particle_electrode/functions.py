@@ -54,3 +54,6 @@ def voltage_lim(SV, self, val):
     voltage_eval = SV_loc[SVptr['phi_ed']] - val
     
     return voltage_eval
+
+def adjust_separator(self, sep):
+    return sep
