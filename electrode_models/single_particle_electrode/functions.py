@@ -26,6 +26,9 @@ def residual(SV, SVdot, self, sep, counter, params):
     # Double layer current has the same sign as i_Far:
     i_dl = self.i_ext_flag*params['i_ext']/self.A_surf_ratio - i_Far
     
+    # species production
+    sdot_k = self.bulk_obj.get_net_production_rates(self.bulk_obj)
+
     if self.name=='anode':
         resid[SVptr['residual'][SVptr['phi_ed']]] = SV_loc[SVptr['phi_ed']]
     elif self.name=='cathode':
@@ -39,8 +42,10 @@ def residual(SV, SVdot, self, sep, counter, params):
     resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv)
 
     # Set time derivatives to zero (temporary)
-    resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']]
+    resid[SVptr['C_k_ed']] = A_surf_ratio * sdot_k * dyInv / eps_solid 
     resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']]
+
+    resid[SVptr['X_k_ed']]
 
     return resid
 

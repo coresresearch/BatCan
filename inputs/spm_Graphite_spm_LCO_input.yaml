@@ -16,9 +16,9 @@ cell-description:
       charge: 1
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 50e-6 # anode thickness, m
-    r_p: 4e-6 # Particle radius, m
+    r_p: [1e-6, 5e-6] # Particle radius, m
     phi_0: 0. # Initial electric potential, V
-    eps_solid: 0.55 # Solid phase volume fraction, -
+    #eps_solid: 0.55 # Solid phase volume fraction, -
     X_0: 'Li[anode]:0.999, V[anode]:0.001'
     C_dl: 1e-2 #F/m2
   separator:
