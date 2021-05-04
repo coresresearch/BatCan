@@ -3,7 +3,7 @@ Battery--Cantera: Modeling fundamental physical chemistry in batteries using Can
 
 This tool allows you to run battery simulations with eaily editable and extensible thermochemistry via [Cantera](cantera.org).
 
-1. [Repo Contents](#repository-contents)
+1. [Repository Contents](#repository-contents)
 2. [Installation](#installation-instructions)
 3. [Running the model](#running-the-model)
 4. [Sample results](#sample-results)
