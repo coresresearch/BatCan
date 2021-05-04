@@ -19,7 +19,7 @@ def residual(SV, SVdot, self, sep, counter, params):
     self.conductor_obj.electric_potential = phi_ed
     self.elyte_obj.electric_potential = phi_elyte
     
-    # Multiplier on the electrode removal reation. Quickly goes to zero, for 
+    # Multiplier on the electrode removal reaction. Quickly goes to zero, for 
     # thicknesses below a user-specified minimum:
     mult = tanh(SV_loc[SVptr['thickness']]/self.min_thickness)
 

@@ -13,6 +13,12 @@ def residual(SV, SVdot, self, sep, counter, params):
     phi_ed = SV_loc[SVptr['phi_ed']]
     phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
 
+    # Read out electrode bulk composition
+    C_k_ed = SV_loc[SVptr['C_k_ed']]
+    X_k_ed = C_k_ed/sum(C_k_ed)
+    self.bulk_obj.X = X_k_ed
+
+
     # Set electric potentials for Cantera objects:
     self.bulk_obj.electric_potential = phi_ed
     self.conductor_obj.electric_potential = phi_ed
@@ -31,7 +37,7 @@ def residual(SV, SVdot, self, sep, counter, params):
     elif self.name=='cathode':
         # TEMPORARY: phi_elyte in cathode matches that in the anode.
         # TODO #21
-        N_k_sep = sep.cathode_boundary(SV, self, sep)
+        N_k_sep = sep.electrode_boundary_flux(SV, self, sep)
         i_io = np.dot(N_k_sep, self.elyte_obj.charges)*ct.faraday
                 
         resid[SVptr['phi_ed']] = i_io - params['i_ext']
@@ -39,7 +45,10 @@ def residual(SV, SVdot, self, sep, counter, params):
     resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv)
 
     # Set time derivatives to zero (temporary)
-    resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']]
+    resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']] 
+    # -         sdot_bulk_obj*A_surf_ratio*self.eps_bulk)
+
+
     resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']]
 
     return resid

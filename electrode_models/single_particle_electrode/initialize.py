@@ -71,8 +71,8 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
 
     # Set up pointers:
     electrode.SVptr = {}
-    electrode.SVptr['phi_ed'] = 0
-    electrode.SVptr['phi_dl'] = 1
+    electrode.SVptr['phi_ed'] = np.array([0])
+    electrode.SVptr['phi_dl'] = np.array([1])
     electrode.SVptr['C_k_ed'] = np.arange(2, 2 + electrode.bulk_obj.n_species)
     electrode.SVptr['C_k_elyte'] = np.arange(2 + electrode.bulk_obj.n_species, 
         2 + electrode.bulk_obj.n_species + electrode.elyte_obj.n_species)
@@ -80,7 +80,7 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     electrode.SVptr['residual'] = np.arange(offset, offset+electrode.nVars)
 
     # Save the indices of any algebraic variables:
-    electrode.algvars = [offset + electrode.SVptr['phi_ed']]
+    electrode.algvars = offset + electrode.SVptr['phi_ed'][:]
 
     # Load intial state variables:
     SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
