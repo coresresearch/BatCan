@@ -36,7 +36,7 @@ You can replace `bat_can` with whatever other name you would like to give this e
 ```
 conda activate bat_can
 ```
-(again, replacing `bat_can`, as necessary). When you're done using the tool and want to switch back to your base software environment, run:
+(again, replacing `bat_can`, as necessary, if you've named the environment something different). When you're done using the tool and want to switch back to your base software environment, run:
 ```
 conda deactivate
 ```
@@ -65,3 +65,13 @@ The model is run from a command line or terminal by invoking python, the `bat_ca
 ```
 python bat_can.py --input=my_input
 ```
+
+## Current status of the software (as of 04 May, 2021)
+This software is currently in the development phase.  The `ionic_resistor` separator model is complete, but all other component models are in development (primarily, governing equations are being added to describe the evolution of the local chemical compositiondifferent electrode and electrolyte.  Therefore, we would currently describe the software capabilities as ''for demonstration purposes only."
+
+If you would like to help contribute to the software, please do! If you are uncertain of what to do, or have an idea and want to run it by us, maybe create an issue on the issues page, where we can discuss.  Or else, feel free to fork a copy of this repo, make changes, and make a pull request.
+
+## Sample results.
+Below is an example of the model output, for a Li metal anode, porous separator with liquid carbonate electrolyte, and single-particle model of an LCO cathode, cycled 5 times at a rate of 0.01C (Note: these parameters have not been tuned. Again--for demonstration purposes only :) ).
+
+![Sample output image](sample_output.png)
