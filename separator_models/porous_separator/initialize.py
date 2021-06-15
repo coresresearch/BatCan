@@ -27,6 +27,8 @@ def initialize(input_file, inputs, params, offset):
         # coefficient of -0.5:
         elyte_microstructure = eps_elyte**1.5
 
+        SV_offset = offset
+
         # Ionic conductivity of bulk electrolyte (S/m):
         sigma_io = inputs['sigma_io']
 

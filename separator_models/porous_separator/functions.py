@@ -32,7 +32,9 @@ def elyte_flux(SV, self, j):
 
     phi_loc = SV[self.SVptr['phi'][j]]
     phi_next = SV[self.SVptr['phi'][j+1]]
-    i_io = (phi_loc - phi_next)*self.sigma_io*self.dyInv
+    # print(phi_loc - phi_next,self.dyInv)
+    i_io = ((phi_loc - phi_next)*self.sigma_io*self.dyInv
+        *self.elyte_microstructure)
 
     return N_k_elyte, i_io
 
@@ -89,7 +91,7 @@ def make_alg_consistent(SV, an, sep, ca, params):
     for j in np.arange(sep.n_points-1):
         SV[sep.SVptr['residual'][sep.SVptr['phi'][j+1]]] = \
             (SV[sep.SVptr['residual'][sep.SVptr['phi'][j] ]]
-            - params['i_ext']*sep.dy/sep.sigma_io)
+            - params['i_ext']*sep.dy/sep.sigma_io/sep.elyte_microstructure)
 
     # We are going to cheat and use the anode function for the cathode :)
     dy_elyte_ca, phi_elyte_ca = electrode_boundary_potential(SV, ca, sep)

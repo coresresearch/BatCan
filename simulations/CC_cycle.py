@@ -20,12 +20,14 @@ from scikits.odes.dae import dae
 def run(SV_0, an, sep, ca, algvars, params):
     # Determine the current to run at. 'calc_current' is defined below.
     current, t_final = calc_current(params['simulation'], an, ca)
-    
+    params['algvars'] = algvars
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
     # current for each step.
     steps, currents = setup_cycles(params['simulation'], current)
 
+    # This function checks to see if certain limits are exceeded which will 
+    # terminate the model run:
     def terminate_check(t, SV, SVdot, return_val, inputs):
         return_val[0] = ca.voltage_lim(SV, ca, params['simulation']
                 ['phi-cutoff-lower'])
@@ -38,8 +40,9 @@ def run(SV_0, an, sep, ca, algvars, params):
             'rootfn':terminate_check, 'nr_rootfns':2}
     solver = dae('ida', residual, **options)
 
+    # Go through the current steps and run the model for each current:
     for i, step in enumerate(steps):
-        print(step,'...\n')
+        print('Step ',int(i),': ',step,'...\n')
 
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
@@ -49,8 +52,7 @@ def run(SV_0, an, sep, ca, algvars, params):
         # Make the initial solution consistent with the algebraic constraints:
         SV_0 = an.make_alg_consistent(SV_0, an, sep, ca, params)
         SV_0 = sep.make_alg_consistent(SV_0, an, sep, ca, params)
-        
-        # This runs the integrator.
+        # This creates an initial residual vector and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
         solution = solver.solve(t_out, SV_0, SVdot_0)
 
@@ -59,7 +61,7 @@ def run(SV_0, an, sep, ca, algvars, params):
 
         # Append the current data array to any preexisting data, for output.  
         # If this is the first step, create the output data array.
-        if i:
+        if i: # Not the first step. 'data_out' already exists:
             # Stack the times, the current at each time step, and the solution 
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t+data_out[0,-1], i_data, solution.
@@ -68,7 +70,7 @@ def run(SV_0, an, sep, ca, algvars, params):
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
-        else:
+        else: # First step. 'data_out' does not yet exist:
             # Stack the times, the current at each time step, and the solution 
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t, i_data, solution.values.y.T))
@@ -87,7 +89,8 @@ def calc_current(params, an, ca):
     # Battery capacity is the lesser of the anode and cathode capacities. It is 
     # required for determining the simulation time.
     cap = min(an.capacity, ca.capacity)
-    if params['i_ext'] is not None:
+
+    if params['i_ext'] is not None: # User specified a current density.
         # User cannot set both i_ext and C-rate. Throw an error, if they have:
         if params['C-rate'] is not None:
             raise ValueError("Both i_ext and C-rate are specified. "
@@ -109,8 +112,8 @@ def calc_current(params, an, ca):
                 i_ext *= 1e-6
             if A_units=="cm2":
                 i_ext *= 10000
-    elif params['C-rate'] is not None:
-
+            
+    elif params['C-rate'] is not None: # User specified a C-rate
         i_ext = cap*params['C-rate']
 
     else:
@@ -118,6 +121,7 @@ def calc_current(params, an, ca):
         raise ValueError("Please specify either the external current (i_ext) "
             "or the C-rate (C-rate).")
     
+    # Use the capacity divided by current to find the max charge/discharge time:
     t_final = cap*3600/i_ext
 
     return i_ext, t_final
@@ -154,7 +158,8 @@ def residual(t, SV, SVdot, resid, inputs):
     # 'SVdot':
     an, sep, ca, params = inputs
 
-    # Call residual functions for anode, separator, and cathode:
+    # Call residual functions for anode, separator, and cathode. Assemble them 
+    # into a single residual vector 'resid':
     resid[an.SVptr['residual']] = an.residual(SV, SVdot, an, sep, ca, params)
 
     resid[sep.SVptr['residual']] = sep.residual(SV, SVdot, an, sep, ca, params)
@@ -168,23 +173,27 @@ def output(solution, an, sep, ca, params):
     import matplotlib.pyplot as plt 
 
     # Calculate cell potential:   
-    V_cell = solution[2+ca.SV_offset+ca.SVptr['phi_ed'],:]
+    phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
+    phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi'][:]), 2)
 
     # Create figure:
     lp = 30 #labelpad
-    fig, axs = plt.subplots(3,1, sharex=True, 
+    nplots = 4
+    fig, axs = plt.subplots(nplots,1, sharex=True, 
             gridspec_kw = {'wspace':0, 'hspace':0})
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
     axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp-25)
-    axs[1].plot(solution[0,:]/3600, V_cell)
+    axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])#V_cell)
     axs[1].set_ylabel('Cell Potential \n(V)',labelpad=lp)
-    axs[2].plot(solution[0,:]/3600, 1e6*solution[2+an.SVptr['thickness']])
+    axs[2].plot(solution[0,:]/3600, 1e6*solution[2+int(an.SVptr['thickness'])])
     axs[2].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-10)
     axs[2].set(xlabel='Time (h)')
-    # plt.figure(2)
-    # plt.plot(solution[0,:]/3600, solution[2+an.SVptr['phi_dl']])
-    for i in range(3):
+
+    for j in np.arange(sep.n_points):
+        axs[3].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
+    
+    for i in range(nplots):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")
     fig.tight_layout()
-    plt.show()
+    plt.savefig('output.pdf')
