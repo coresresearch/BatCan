@@ -37,9 +37,8 @@ def residual(SV, SVdot, self, sep, counter, params):
     elif self.name=='cathode':
         # TEMPORARY: phi_elyte in cathode matches that in the anode.
         # TODO #21
-        N_k_sep = sep.electrode_boundary_flux(SV, self, sep)
-        i_io = np.dot(N_k_sep, self.elyte_obj.charges)*ct.faraday
-                
+        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, sep)
+                        
         resid[SVptr['phi_ed']] = i_io - params['i_ext']
 
     resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv)

@@ -54,7 +54,8 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         from .functions import residual, make_alg_consistent, voltage_lim
 
 
-    # Set Cantera object state:
+    # Set Cantera object state. If the user provided an initial composition, 
+    # use that, here:
     if 'X_0' in inputs:
         electrode.bulk_obj.TPX = params['T'], params['P'], inputs['X_0']
     else:
