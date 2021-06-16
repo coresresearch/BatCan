@@ -24,6 +24,10 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
+        
+        # Electrolyte volume fraction in the separator:
+        eps_elyte = sep_inputs['eps_electrolyte']
+
         # Microstructure-based transport scaling factor, based on Bruggeman 
         # coefficient of -0.5:
         elyte_microstructure = eps_elyte**1.5
