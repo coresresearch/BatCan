@@ -52,6 +52,7 @@ def run(SV_0, an, sep, ca, algvars, params):
         # Make the initial solution consistent with the algebraic constraints:
         SV_0 = an.make_alg_consistent(SV_0, an, sep, ca, params)
         SV_0 = sep.make_alg_consistent(SV_0, an, sep, ca, params)
+        
         # This creates an initial residual vector and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
         solution = solver.solve(t_out, SV_0, SVdot_0)
@@ -61,6 +62,7 @@ def run(SV_0, an, sep, ca, algvars, params):
 
         # Append the current data array to any preexisting data, for output.  
         # If this is the first step, create the output data array.
+        
         if i: # Not the first step. 'data_out' already exists:
             # Stack the times, the current at each time step, and the solution 
             # vector at each time step into a single data array.
