@@ -1,6 +1,6 @@
 def residual(SV, SVdot, self, sep, counter, params):
     """
-    Define the resdisual for the state of the dense electrode.
+    Define the residual for the state of the dense electrode.
 
     This is an array of differential and algebraic governing equations, one for each state variable in the anode (anode plus a thin layer of electrolyte + separator).
 

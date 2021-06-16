@@ -9,7 +9,7 @@ import numpy as np
 
 def residual(SV, SVdot, an, self, ca, params):
     """
-    Define the resdisual for the state of the porous separator.
+    Define the residual for the state of the porous separator.
 
     This is an array of differential and algebraic governing equations, one for each state variable in the separator.
 
