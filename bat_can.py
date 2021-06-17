@@ -56,7 +56,7 @@ def bat_can(input = None):
     algvars = np.hstack([an.algvars, sep.algvars, ca.algvars])
 
     #===========================================================================
-    #   RUN THE MODEL
+    #   RUN THE SIMULATION
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:
