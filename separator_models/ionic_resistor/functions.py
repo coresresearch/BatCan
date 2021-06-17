@@ -73,36 +73,3 @@ def electrode_boundary_potential(SV, ed, sep):
             + ed.dy/ed.elyte_microstructure)
 
     return dy_elyte_eff, phi_elyte_ed
-
-def make_alg_consistent(SV, an, sep, ca, params):
-    """ 
-    All algebraic variables need to begin the simulation in a 'consistent' state. This means that, when the simulation begins and boudary conditions are applied, the current state of the solution vector must satisfy all algebraic constraints.  In the separator, this means that the electric potential gradient must be consistent with the applied external current.
-    """
-
-    # Get the distance between separator node center and anode node center at 
-    # separator boundary, plus the electrolyte electric potential in the anode 
-    # at the separator boundary:
-    dy_elyte, phi_elyte_an = electrode_boundary_potential(SV, an, sep)
-
-    # Calculate the separator electric potential which satisfied the algebraic 
-    # constraint:
-    phi_elyte_sep = phi_elyte_an - params['i_ext']*dy_elyte/sep.sigma_io
-
-    # Modify SV to satisfy the constraint:
-    SV[sep.SVptr['residual'][sep.SVptr['phi']]] = phi_elyte_sep
-
-    # Get the distance between separator node center and cathode node center at 
-    # separator boundary, plus the electrolyte electric potential in the 
-    # cathode at the separator boundary:
-    dy_elyte, phi_elyte_ca = electrode_boundary_potential(SV, ca, sep)
-    # Set the electrolyte electric potential in the cathode at the separator 
-    # boundary equal to that which matches i_ext.
-    phi_elyte_ca = phi_elyte_sep - params['i_ext']*dy_elyte/sep.sigma_io
-    phi_ca = SV[ca.SVptr['residual'][ca.SVptr['phi_ed']]]
-
-    # Modify SV to satisfy the constraint. This is stored as the double layer 
-    # potential:
-    SV[ca.SVptr['residual'][ca.SVptr['phi_dl']]] = phi_elyte_ca - phi_ca
-
-    # Return the updated solution vector:
-    return SV

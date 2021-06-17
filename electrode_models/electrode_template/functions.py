@@ -29,12 +29,6 @@ def residual(SV, SVdot, self, sep, counter, params):
 
     return resid
 
-def make_alg_consistent(SV, an, sep, ca, params):
-    """ 
-    All algebraic variables need to begin the simulation in a 'consistent' state. This means that, when the simulation begins and boudary conditions are applied, the current state of the solution vector must satisfy all algebraic constraints.
-    """
-    return SV
-
 def voltage_lim(SV, self, val):
     """
     Check to see if the voltage limits have been exceeded.

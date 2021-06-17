@@ -13,8 +13,7 @@ def initialize(input_file, inputs, params, offset):
         # State variables: electrolyte potential
         nVars = 1
 
-        from .functions import (residual, electrode_boundary_flux,  
-            make_alg_consistent)
+        from .functions import residual, electrode_boundary_flux
     
         dy = inputs['thickness']
         dyInv = 1/dy

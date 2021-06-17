@@ -44,7 +44,7 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Set up the differential algebraic equation (dae) solver:
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-8, 'atol':1e-11, 
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
-            'rootfn':terminate_check, 'nr_rootfns':2}
+            'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
@@ -55,10 +55,6 @@ def run(SV_0, an, sep, ca, algvars, params):
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'\n')
         t_out = np.linspace(0,t_final,10000)
-
-        # Make the initial solution consistent with the algebraic constraints:
-        SV_0 = an.make_alg_consistent(SV_0, an, sep, ca, params)
-        SV_0 = sep.make_alg_consistent(SV_0, an, sep, ca, params)
         
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
@@ -190,7 +186,6 @@ def output(solution, an, sep, ca, params):
     # Calculate cell potential:   
     phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
     phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi'][:]), 2)
-<<<<<<< HEAD
  
     # Temporary flag for Li metal anode:
     i_Li = 1
@@ -223,29 +218,6 @@ def output(solution, an, sep, ca, params):
         axs[nplots-1].set(xlabel='Time (h)')
 
     # Format axis ticks:
-=======
-
-    # TEMPORARY flag for a dense Li electrode:
-    i_LiMetal = 1
-
-    # Create figure:
-    lp = 30 #labelpad
-    nplots = 2 + i_LiMetal
-
-    capacity = solution[0,:]/3600
-
-    fig, axs = plt.subplots(nplots,1, sharex=True, 
-            gridspec_kw = {'wspace':0, 'hspace':0})
-    axs[0].plot(capacity, 1000*solution[1,:]/10000)
-    axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp-25)
-    axs[1].plot(capacity, solution[phi_ptr,:])#V_cell)
-    axs[1].set_ylabel('Cell Potential \n(V)',labelpad=lp)
-    if i_LiMetal:
-        axs[nplots-1].plot(capacity, 1e6*solution[2+int(an.SVptr['thickness'])])
-        axs[nplots-1].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-10)
-        axs[nplots-1].set(xlabel='Time (h)')
-
->>>>>>> 8bbf3f9c3 (Minor changes to bat_can and CC_cycle)
     for i in range(nplots):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")

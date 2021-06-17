@@ -82,15 +82,6 @@ def residual(SV, SVdot, self, sep, counter, params):
 
     return resid
 
-def make_alg_consistent(SV, an, sep, ca, params):
-    """ 
-    All algebraic variables need to begin the simulation in a 'consistent' state. This means that, when the simulation begins and boudary conditions are applied, the current state of the solution vector must satisfy all algebraic constraints.  
-    
-    For an anode, there are no constraints. 
-    For a cathode, the electric potential gradient must be consistent with the applied external current. However, this is handled by the separator's 'make_alg_consistent' method.  Therefore, nothing needs to be done, here.
-    """
-    return SV
-
 def voltage_lim(SV, self, val):
     """
     Check to see if the voltage limits have been exceeded.
