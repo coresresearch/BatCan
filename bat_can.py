@@ -11,9 +11,12 @@ from bat_can_init import initialize as init
 import numpy as np
 import sys
 
+# Add to the folders with component models to our path:
 sys.path.append('electrode_models') 
 sys.path.append('separator_models')
 
+# This is the main function that runs the model.  We define it this way so it 
+# is called by "main," below:
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
@@ -49,6 +52,7 @@ def bat_can(input = None):
 
     # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
+    # Ditto for the algebraic variable indices:
     algvars = np.hstack([an.algvars, sep.algvars, ca.algvars])
 
     #===========================================================================
