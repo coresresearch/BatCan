@@ -46,10 +46,10 @@ def initialize(input_file, inputs, params, offset):
     separator.SVptr['phi'] = np.arange(0,separator.n_points*separator.nVars,
         separator.nVars, dtype='int')
 
-    separator.SVptr['C_k elyte'] = np.ndarray(shape=(separator.n_points, 
+    separator.SVptr['C_k_elyte'] = np.ndarray(shape=(separator.n_points, 
         separator.elyte_obj.n_species), dtype='int')       
     for i in range(separator.n_points):
-        separator.SVptr['C_k elyte'][i,:] = range(1 + i*separator.nVars, 
+        separator.SVptr['C_k_elyte'][i,:] = range(1 + i*separator.nVars, 
             1 + i*separator.nVars + separator.elyte_obj.n_species)
     
     # What portion of the SV represents the separator?
@@ -62,7 +62,7 @@ def initialize(input_file, inputs, params, offset):
     # Load intial state variables:
     SV[separator.SVptr['phi']] = inputs['phi_0']
     for i in range(separator.n_points):
-        SV[separator.SVptr['C_k elyte'][i,:]] = \
+        SV[separator.SVptr['C_k_elyte'][i,:]] = \
             separator.elyte_obj.concentrations
 
     return SV, separator

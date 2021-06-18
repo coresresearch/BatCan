@@ -32,26 +32,36 @@ def residual(SV, SVdot, an, self, ca, params):
 
     return resid
 
-def electrode_boundary_flux(SV, ed, sep):
+def electrode_boundary_flux(SV, ed, sep, _):
     """
     Calculate the species fluxes and ionic current between a node in the separator and one of the electrodes.
     """
+
+    # Determine which indices are at the electrode/electrolyte boundary:
+    if ed.name=='anode':
+        j_ed = -1
+        j_elyte = 0
+    elif ed.name=='cathode':
+        j_ed = 0
+        j_elyte = -1
+
+    # Initialize species fluxes:    
     N_k_elyte = np.zeros_like(ed.elyte_obj.X)
 
-    # Elyte electric potential in cathode:
-    phi_ed = SV[ed.SVptr['residual'][ed.SVptr['phi_ed']]]
-    phi_dl = SV[ed.SVptr['residual'][ed.SVptr['phi_dl']]]
-    phi_elyte_ca = phi_ca + phi_dl
+    # Elyte electric potential in electrode:
+    phi_ed = SV[ed.SVptr['residual'][ed.SVptr['phi_ed'][j_ed]]]
+    phi_dl = SV[ed.SVptr['residual'][ed.SVptr['phi_dl'][j_ed]]]
+    phi_elyte_ed = phi_ed + phi_dl
     
     # Elyte electric potential in separator:
     phi_elyte_sep = SV[sep.SVptr['residual'][sep.SVptr['phi']]]
     
     # Average electronic resistance:
-    R_io_avg = 0.5*(sep.dy/sep.elyte_microstructure 
+    dy_eff = 0.5*(sep.dy/sep.elyte_microstructure 
             + ed.dy/ed.elyte_microstructure)
 
     # Ionic current:
-    i_io = (phi_elyte_sep - phi_elyte_ca)*sep.sigma_io/R_io_avg
+    i_io = ed.i_ext_flag*(phi_elyte_sep - phi_elyte_ed)*sep.sigma_io/dy_eff
 
     # Convert this to flux of the lithium ion:
     N_k_elyte[ed.index_Li] = i_io/ct.faraday/ed.elyte_obj.charges[ed.index_Li]
