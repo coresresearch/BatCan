@@ -54,6 +54,7 @@ def run(SV_0, an, sep, ca, algvars, params):
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'\n')
+        
         t_out = np.linspace(0,t_final,10000)
         
         # Create an initial array of time derivatives and runs the integrator:
@@ -185,7 +186,7 @@ def output(solution, an, sep, ca, params):
 
     # Calculate cell potential:   
     phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
-    phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi'][:]), 2)
+    phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi']), 2)
  
     # Temporary flag for Li metal anode:
     i_Li = 1
@@ -199,31 +200,36 @@ def output(solution, an, sep, ca, params):
     fig, axs = plt.subplots(nplots,1, sharex=True, 
             gridspec_kw = {'wspace':0, 'hspace':0})
     
-   
+    fig.set_size_inches((4.0,6.5))
     # Axis 1: Current vs. capacity
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
-    axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp-25)
+    axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
     # Axis 2: Charge/discharge potential vs. capacity.
     axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
-    axs[1].set_ylabel('Cell Potential \n(V)',labelpad=lp)
+    axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
     # Axis 3: Separator electric potential vs. capacity.
     for j in np.arange(sep.n_points):
         axs[2].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
+        axs[2].set_ylabel('Separator Potential \n(V)',labelpad=lp-6)
     
     # Optional axis 4, For dense Li anode: anode thickness:
     if i_Li:
         axs[nplots-1].plot(solution[0,:]/3600, 
             1e6*solution[2+int(an.SVptr['thickness'])])
-        axs[nplots-1].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-10)
+        axs[nplots-1].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-25)
         axs[nplots-1].set(xlabel='Time (h)')
 
     # Format axis ticks:
     for i in range(nplots):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")
-    
+        axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
+        axs[i].yaxis.set_label_coords(-0.07, 0.5)
+
+
+    # fig.align_ylabels(axs[:])
     # Trim down whitespace:
     fig.tight_layout()
-
+    
     # Save figure:
     plt.savefig('output.pdf')

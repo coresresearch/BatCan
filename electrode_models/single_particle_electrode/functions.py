@@ -58,7 +58,7 @@ def residual(SV, SVdot, self, sep, counter, params):
         # For the cathode, the potential of the cathode must be such that the 
         # electrolyte electric potential (calculated as phi_ca + dphi_dl) 
         # produces the correct ionic current between the separator and cathode:
-        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, sep)
+        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, sep, params['T'])
                         
         resid[SVptr['phi_ed']] = i_io - params['i_ext']
 

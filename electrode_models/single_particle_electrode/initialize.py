@@ -109,6 +109,10 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     electrode.SVptr['C_k_ed'] = np.arange(2, 2 + electrode.bulk_obj.n_species)
     electrode.SVptr['C_k_elyte'] = np.arange(2 + electrode.bulk_obj.n_species, 
         2 + electrode.bulk_obj.n_species + electrode.elyte_obj.n_species)
+    
+    # There is only one node, but give the pointer a shape so that SVptr
+    # ['C_k_elyte'][j] accesses the pointer array:
+    electrode.SVptr['C_k_elyte'].shape = (1,electrode.elyte_obj.n_species)
 
     # A pointer to where the SV varaibles for this electrode are, within the 
     # overall solution vector for the entire problem:

@@ -26,6 +26,10 @@ def initialize(input_file, inputs, params, offset):
         # Ionic conductivity of bulk electrolyte (S/m):
         sigma_io = inputs['sigma_io']
 
+        SV_offset = offset
+
+        n_points = 1
+
     SV = np.zeros([separator.nVars])
     
     # Set up pointers:
