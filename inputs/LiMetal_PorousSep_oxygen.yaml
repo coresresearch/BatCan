@@ -5,6 +5,7 @@
 #===============================================================================
 
 cell-description:
+#This section can have any attributes just do whatever you want
   anode:
     class: 'dense_electrode'
     bulk-phase: 'lithium_metal' # Cantera phase name
@@ -26,24 +27,24 @@ cell-description:
     thickness: 20e-6  # separator thickness, m
     n_points: 5       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
-    sigma_io: 1.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
-    phi_0: 2.96 # Initial electric potential, V
+    sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
+    phi_0: 2.91 # Initial electric potential, V // Yin, 2017
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
   cathode:
     class: 'nucleation_single_particle'
-    bulk-phase: 'cathode' # Cantera phase name
-    surf-phase: 'cathode_electrolyte' # Cantera phase name
+    gas-phase: 'oxygen'
+    elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
-    conductor-phase: 'electron' # Cantera phase name
-    stored-ion: # Details on the stored species. Used for capacity calc.
-      name: Li2O2[cathode]
-      charge: 2
+    bulk-phase: 'conductor' # Cantera phase name
+    surf-iphase: 'cathode_surf' # Cantera phase name
+    catalyst-phase: 'catalyst'
+    catalyst-iphase: 'catalyst_surf'
+    product-phase: 'li-oxide'
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 50e-6 # anode thickness, m
     r_p: 6e-6 # Particle radius, m
     phi_0: 2.95 # Initial electric potential, V
     eps_solid: 0.65 # Solid phase volume fraction, -
-    X_0: 'C[cathode]:0.80, Li2O2[cathode]:0.00, Cat[cathode]:0.20'
     C_dl: 6e3 #F/m2
     Minrad: 1e-10 #m
     Maxrad: 1e-6 #m
@@ -62,39 +63,29 @@ parameters:
     C-rate: 10.0 # input C-rate
     n_cycles: 2 # Number of cycles. Currently must be 0.5 or an int.
     first-step: 'discharge'  # Start with charge or discharge?
-    phi-cutoff-lower: 2.2 # Simulation cuts off if E_Cell <= this value
-    phi-cutoff-upper: 6.5 # Simulation cuts off if E_Cell >= this value
+    phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value
+    phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
     species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
 
 # Cantera inputs:
 description: |-
-  Cantera input file for an LCO/graphite lithium-ion battery
+  Cantera input file for an Li-Oxygen battery
 
   This file includes a full set of thermodynamic and kinetic parameters of a
-  lithium-ion battery, in particular:
-  - Active materials: LiCoO2 (LCO) and Li (li metal)
-  - Organic electrolyte: EC/PC with 1M LiPF6
+  lithium-oxygen battery, in particular:
+  - Active materials: Li2O2 and Li (li metal)
+  - Organic electrolyte: TEGDME with 1M LiPF6 # should be switched to TEGDME
   - Interfaces: LCO/electrolyte and Li/electrolyte
+  - Cathode: The cathode is comprised of catalyst, carbon, (will binder be a later addition.)
   - Charge-transfer reactions at the two interfaces
-
-  Reference:
-  M. Mayur, S. C. DeCaluwe, B. L. Kee, W. G. Bessler, “Modeling and simulation
-  of the thermodynamics of lithium-ion battery intercalation materials in the
-  open-source software Cantera,” Electrochim. Acta 323, 134797 (2019),
-  https://doi.org/10.1016/j.electacta.2019.134797
 
   Bulk phases
   ===========
-
   Lithium (anode)
 
-  Lithium cobalt oxide (cathode)
-  Thermodynamic data based on half-cell measurements by K. Kumaresan et al.,
-  J. Electrochem. Soc. 155, A164-A171 (2008)
-
-  Carbonate based electrolyte (electrolyte)
-  Solvent: Ethylene carbonate:Propylene carbonate (1:1 v/v)
-  Salt: 1M LiPF6
+  Ether based electrolyte (electrolyte)
+  Solvent: Tetraethylene glycol dimethyl ether 
+  Salt: 1M LiTFSI
 
   Interface phases
   ================
@@ -107,6 +98,7 @@ description: |-
   Species and site density are dummy entries (as we do not consider surface-
   adsorbed species)
 
+  Builds on prior code development (LeBar, 2019)
 generator: cti2yaml
 cantera-version: 2.5.0
 date: Wed, 11 Dec 2019 16:59:07 -0500
@@ -121,23 +113,7 @@ phases:
   state:
     T: 300.0
     P: 1 atm
-- name: cathode
-  thermo: ideal-condensed
-  elements: [Li, C, O, Mn]
-  species: ['C[cathode]', 'Li2O2[cathode]', 'Cat[cathode]']
-  state:
-    X: {'C[cathode]': 0.80, 'Li2O2[cathode]': 0.00, 'Cat[cathode]': 0.20 }
-  standard-concentration-basis: unity
-  tabulated-species: Li2O2[cathode]
-- name: electrolyte
-  thermo: ideal-condensed
-  elements: [Li, P, F, C, H, O, E]
-  species: ['C3H4O3[elyt]', 'Li+[elyt]', 'PF6-[elyt]', O2(e), LiO2]
-  state:
-    X: {'C3H4O3[elyt]': 0.85464, 'Li+[elyt]': 0.07268,
-      'PF6-[elyt]': 0.07268}
-  standard-concentration-basis: unity
-  reactions: [electrolyte-reactions]
+
 - name: electron
   thermo: electron-cloud
   elements: [E]
@@ -145,12 +121,24 @@ phases:
   state:
     X: {electron: 1.0}
   density: 1.0 kg/m^3
+
 - name: lithium_electrolyte
   thermo: ideal-surface
   species: [(dummy)]
   kinetics: surface
   reactions: [lithium_electrolyte-reactions]
   site-density: 0.01 mol/cm^2
+  
+- name: electrolyte
+  thermo: ideal-condensed
+  elements: [Li, P, F, C, H, O, E]
+  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'TFSI-[elyt]', O2(e), LiO2]
+  state:
+    X: {'C10H22O5[elyt]': 0.85464, 'TFSI-[elyt]': 0.07268,
+      'PF6-[elyt]': 0.07268, 'O2(e)': 0.0, 'LiO2': 0.0} 
+  standard-concentration-basis: unity
+  reactions: [electrolyte-reactions]
+
 - name: air-elyte-interface
   thermo: ideal-surface
   species: [(dummy)]
@@ -158,6 +146,53 @@ phases:
   reactions: [air_electrolyte-reactions]
   site-density: 0.01 mol/cm^2
 
+- name: oxygen
+  thermo: ideal-gas
+  elements: [O]
+  species: [O2(g)]
+  transport: mixture-averaged
+  state: {T: 300.0, P: 1 atm}
+
+- name: conductor
+  thermo: electron-cloud
+  elements: [C]
+  species: ['C[cathode]']
+  standard-concentration-basis: unity
+
+- name: cathode-surf
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [cathode-surf-reactions]
+  state:
+    T: 300.0
+    P: 1 atm
+  site-density: 2.50e-5 mol/cm^2
+
+- name: catalyst
+  thermo: electron-cloud
+  elements: [MnO2]
+  species: ['MnO2[cathode]']
+  standard-concentration-basis: unit
+
+- name: catalyst-surf
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [catalyst-surf-reactions]
+  state:
+    T: 300.0
+    P: 1 atm
+  site-density: 2.50e-5 mol/cm^2
+
+- name: li-oxide
+  composition: {Li: 2, O: 2}
+  thermo: fixed-stoichiometry
+  species: ['Li2O2[cathode]']
+  density: 2140 kg/m^3
+  state: 
+    T: 300.0
+    P: 1 atm
 
 species:
 - name: Li[metal]
@@ -169,68 +204,44 @@ species:
   equation-of-state:
     model: constant-volume
     molar-volume: 12.998 cm^3/mol
-- name: Li2O2[cathode]
-  composition: {Li: 2, O: 2}
+
+- name: electron
+  composition: {E: 1}
   thermo:
     model: constant-cp
     h0: 0.0 kJ/mol
     s0: 0.0 J/mol/K
-  equation-of-state:
-    model: constant-volume
-    molar-volume: 20.432776617954072 cm^3/mol
   note: |-
-    Lithium cobalt oxide, MW: 97.8730 g/mol.
-    Note this species includes the cobalt oxide host matrix.
-    Molar enthalpy and entropy are set to 0 because the values given in the
-    BinarySolidSolutionTabulatedThermo class are used.
-    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
-    2017) (used to calculate species molar volume as molecular weight/density).
-- name: C[cathode]
-  composition: {C: 1}
+    Electron, MW: 0.000545 g/mol
+    Molar enthalpy and entropy set to zero (dummy entries because chemical
+    potential is set to zero for a "metal" phase)
+
+- name: (dummy)
+  composition: {}
   thermo:
     model: constant-cp
     h0: 0.0 kJ/mol
     s0: 0.0 J/mol/K
-  equation-of-state:
-    model: constant-volume
-    molar-volume: 18.983716075156575 cm^3/mol
-  note: |-
-    Vacancy in the cobalt oxide, MW: 90.9320 g/mol.
-    Note this species includes the cobalt oxide host matrix.
-    Molar enthalpy and entropy are set to 0 because this is the reference species
-    for this phase.
-    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
-    2017) (used to calculate species molar volume as molecular weight/density).
-- name: C3H4O3[elyt]
-  composition: {C: 3, H: 4, O: 3}
+  note: Dummy species (needed for defining the interfaces)
+
+- name: C10H22O5[elyt]
+  composition: {C: 10, H: 22, O: 5}
   thermo:
     model: constant-cp
     h0: 0.0 J/mol
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 69.89126984126985 cm^3/mol
+    molar-volume: 226.24380574826557222 cm^3/mol
   note: |-
-    Ethylene carbonate, MW: 88.0630 g/mol
-    Density of electrolyte: 1260 kg/m3 (used to calculate species molar volume
+    tetraethylene glycol dimethyl ether, MW: 228.28 g/mol
+    Density of tetraethylene glycol dimethyl ether: 1009 kg/m3 (used to calculate species molar volume
     as molecular weight (MW)/density)
+    Taken from: https://www.sigmaaldrich.com/US/en/sds/aldrich/172405
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
-- name: C4H6O3[elyt]
-  composition: {C: 4, H: 6, O: 3}
-  thermo:
-    model: constant-cp
-    h0: 0.0 J/mol
-    s0: 0.0 J/mol/K
-  equation-of-state:
-    model: constant-volume
-    molar-volume: 81.02365079365079 cm^3/mol
-  note: |-
-    Propylene carbonate, MW: 102.0898 g/mol
-    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
-    as molecular weight (MW)/density)
-    Molar enthalpy and entropy set to zero (dummy entries as this species does
-    not participate in chemical reactions)
+    Molar heat capacities over a certain temperature are here: https://pubs.acs.org/doi/pdf/10.1021/je800999s implement?
+
 - name: Li+[elyt]
   composition: {Li: 1, E: -1}
   thermo:
@@ -246,8 +257,9 @@ species:
     as molecular weight (MW)/density)
     Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
     Chemistry", Wiley-VCH (2006)
-- name: PF6-[elyt]
-  composition: {P: 1, F: 6, E: 1}
+
+- name: TFSI-[elyt]
+  composition: {C: 2, F: 6, N: 1, O: 4, S: 2, E: 1}
   thermo:
     model: constant-cp
     h0: 0.0 J/mol
@@ -256,11 +268,12 @@ species:
     model: constant-volume
     molar-volume: 115.05138492063492 cm^3/mol
   note: |-
-    Hexafluorophosphate ion, MW: 144.964745 g/mol
+    bis(trifluoromethylsulphonyl)imide ion, MW: 144.964745 g/mol
     Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
     as molecular weight (MW)/density)
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
+    
 - name: LiO2[elyt]
   composition: {Li: 1, O: 6}
   thermo:
@@ -269,33 +282,15 @@ species:
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 115.05138492063492 cm^3/mol
+    molar-volume: 19.344262295081968261 cm^3/mol
   note: |-
-    Hexafluorophosphate ion, MW: 144.964745 g/mol
-    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    Hexafluorophosphate ion, MW: 38.94 g/mol
+    Density of electrolyte: 2013 kg/m3 (used to calculate species molar volume
     as molecular weight (MW)/density)
+    https://www.chemspider.com/Chemical-Structure.145811.html
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
-- name: electron
-  composition: {E: 1}
-  thermo:
-    model: constant-cp
-    h0: 0.0 kJ/mol
-    s0: 0.0 J/mol/K
-  note: |-
-    Electron, MW: 0.000545 g/mol
-    Molar enthalpy and entropy set to zero (dummy entries because chemical
-    potential is set to zero for a "metal" phase)
-- name: Cat[cathode]
-  composition: {Mn: 1, O:2}
-  thermo:
-    model: constant-cp
-    h0: 0.0 kJ/mol
-    s0: 0.0 J/mol/K
-  note: |-
-    MnO2, MW: 0.000545 g/mol
-    Molar enthalpy and entropy set to zero (dummy entries because chemical
-    potential is set to zero for a "metal" phase)
+
 - name: O2(e)
   composition: {O: 2}
   thermo: 
@@ -308,6 +303,7 @@ species:
   note: |-
     An O2 molecule dissolved into electrolyte.  Thermo tuned to get correct solubility at room temperature.
     Molar volume estimated from liquid O2 values. https://en.wikipedia.org/wiki/Liquid_oxygen#cite_note-3
+
 - name: O2(g)
   composition: {O: 2}
   thermo:
@@ -326,13 +322,54 @@ species:
     diameter: 3.458
     polarizability: 1.6
     rotational-relaxation: 3.8
-- name: (dummy)
-  composition: {}
+
+- name: Cat[cathode]
+  composition: {Mn: 1, O:2}
   thermo:
     model: constant-cp
     h0: 0.0 kJ/mol
     s0: 0.0 J/mol/K
-  note: Dummy species (needed for defining the interfaces)
+  note: |-
+    MnO2, MW: 
+    Molar enthalpy and entropy set to zero (dummy entries because chemical
+    potential is set to zero for a "metal" phase)
+
+- name: C[cathode]
+  composition: {C: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 18.983716075156575 cm^3/mol
+  note: |-
+    Vacancy in the cobalt oxide, MW: 90.9320 g/mol.
+    Note this species includes the cobalt oxide host matrix.
+    Molar enthalpy and entropy are set to 0 because this is the reference species
+    for this phase.
+    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
+    2017) (used to calculate species molar volume as molecular weight/density).
+
+- name: Li2O2[cathode]
+  composition: {Li: 2, O: 2}
+  thermo:
+    model: constant-cp
+    h0: -634.3 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 19.8619048 cm^3/mol
+  note: |-
+    Lithium peroxide, MW: 97.8730 g/mol.
+     h0 value tuned to give correct open circuit potential, relative to li metal anode.
+    Note this species includes the cobalt oxide host matrix.
+    
+    Molar enthalpy and entropy are set to 0 because the values given in the
+    BinarySolidSolutionTabulatedThermo class are used.
+
+    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
+    2017) (used to calculate species molar volume as molecular weight/density).
 
 lithium_electrolyte-reactions:
 - equation: Li[metal] <=> Li+[elyt] + electron
@@ -343,7 +380,7 @@ lithium_electrolyte-reactions:
 electrolyte-reactions:
 - equation: Li+[elyt] + O2(e) + electron <=> LiO2[elyte]  # Reaction 2
   id: cathode_reaction
-  rate-constant: {A: 5.629e+11, b: 0.0, Ea: 58.0 kJ/mol}
+  rate-constant: {A: 5.629e+11, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
   exchange-current-density-formulation: true
   beta: 0.5
 
@@ -354,5 +391,12 @@ air-electrolyte-reactions:
   exchange-current-density-formulation: true
   beta: 0.5
 
-#citations:
-#
+"""Citations"""
+#Chen, J.; et al., ACS Omega, vol. 4, no. 20708-20714, 2019, DOI: 10.1021/acsomega.9b02941.
+
+#LeBar, A., Colorado School of Mines, 2019, URL: https://mountainscholar.org/handle/11124/173373
+
+#Yin, Y.; et al., J. Phys. Chem. C, vol. 121, no. 36, pp. 19577–19585, 2017, doi: 10.1021/acs.jpcc.7b05224.
+#Official Soundtrack:
+    #Day 6 - as of 2021 all albums/songs are bangers
+    #      - especially Finale, Congradulations, 예뻤어, etc
