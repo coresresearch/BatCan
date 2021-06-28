@@ -49,6 +49,11 @@ cell-description:
     Minrad: 1e-10 #m
     Maxrad: 1e-6 #m
     buckets: 200 #number
+    stored-species: # Details on the stored species. Used for capacity calc.
+      name: Li[metal]
+      charge: 2
+      MW: 45.881
+    A_0: m.pi*0.009**2
 
 
 # Simulation parameters:
@@ -324,7 +329,7 @@ species:
     rotational-relaxation: 3.8
 
 - name: Cat[cathode]
-  composition: {Mn: 1, O:2}
+  composition: {Mn: 1, O: 2}
   thermo:
     model: constant-cp
     h0: 0.0 kJ/mol
@@ -348,8 +353,7 @@ species:
     Note this species includes the cobalt oxide host matrix.
     Molar enthalpy and entropy are set to 0 because this is the reference species
     for this phase.
-    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
-    2017) (used to calculate species molar volume as molecular weight/density).
+    Density of LCO: 
 
 - name: Li2O2[cathode]
   composition: {Li: 2, O: 2}
@@ -359,17 +363,12 @@ species:
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 19.8619048 cm^3/mol
+    molar-volume: 19.861904761904753514 cm^3/mol
   note: |-
-    Lithium peroxide, MW: 97.8730 g/mol.
-     h0 value tuned to give correct open circuit potential, relative to li metal anode.
-    Note this species includes the cobalt oxide host matrix.
-    
-    Molar enthalpy and entropy are set to 0 because the values given in the
-    BinarySolidSolutionTabulatedThermo class are used.
-
-    Density of LCO: 4790 kg/m3 (E.J. Cheng et al., J. Asian Ceramic Soc. 5, 113,
-    2017) (used to calculate species molar volume as molecular weight/density).
+    h0 value tuned to give correct open circuit potential, relative to li metal anode.
+    Lithium peroxide, MW: 45.881 g/mol.
+    Density of L2O2: 2310 kg/m3 
+    (Haynes, 2016)
 
 lithium_electrolyte-reactions:
 - equation: Li[metal] <=> Li+[elyt] + electron
@@ -394,9 +393,12 @@ air-electrolyte-reactions:
 """Citations"""
 #Chen, J.; et al., ACS Omega, vol. 4, no. 20708-20714, 2019, DOI: 10.1021/acsomega.9b02941.
 
+#Haynes, W.M.; CRC handbook of chemistry and physics, 2016, 97th Edition / Boca Raton, Florida: CRC Press.
+
 #LeBar, A., Colorado School of Mines, 2019, URL: https://mountainscholar.org/handle/11124/173373
 
 #Yin, Y.; et al., J. Phys. Chem. C, vol. 121, no. 36, pp. 19577–19585, 2017, doi: 10.1021/acs.jpcc.7b05224.
+
 #Official Soundtrack:
-    #Day 6 - as of 2021 all albums/songs are bangers
-    #      - especially Finale, Congradulations, 예뻤어, etc
+  #Day 6 - as of 2021 all albums/songs 
+  #      - highlight Finale, Congradulations, 예뻤어

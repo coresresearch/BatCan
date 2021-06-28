@@ -18,11 +18,16 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         """
 
         # Import relevant Cantera objects.
-        bulk_obj = ct.Solution(input_file, inputs['bulk-phase'])
+        gas_obj = ct.Solution(input_file, inputs['gas-phase'])
         elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
-        conductor_obj = ct.Solution(input_file, inputs['conductor-phase'])
+        air_elyte_obj = ct.Interface(input_file, inputs['elyte-iphase'], [gas_obj, elyte_obj])
+        bulk_obj = ct.Solution(input_file, inputs['bulk-phase'])
+        cat_obj = ct.Solution(input_file, inputs['catalyst-phase'])
+        product_obj = ct.Solution(input_file, inputs['product-phase'])
         surf_obj = ct.Interface(input_file, inputs['surf-phase'], 
-            [bulk_obj, elyte_obj, conductor_obj])
+            [bulk_obj, elyte_obj])
+        cat_surf_obj = ct.Interface(input_file, inputs['surf-phase'], 
+            [cat_obj, elyte_obj])
 
         # Anode or cathode? Positive external current delivers positive charge 
         # to the anode, and removes positive charge from the cathode.
@@ -36,11 +41,12 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
 
         # Store the species index of the Li ion in the Cantera object for the 
         # electrolyte phase:
-        index_Li = elyte_obj.species_index(inputs['mobile-ion'])
-
+        #index_Li = elyte_obj.species_index(inputs['mobile-ion'])
+        
         # Electrode thickness and inverse thickness:
         dy = inputs['thickness']
         dyInv = 1/dy
+        buckets = inputs['buckets']
 
         # Phase volume fractions
         eps_solid = inputs['eps_solid']
@@ -64,24 +70,18 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
 
         # Determine the electrode capacity (Ah/m2)
 
-        # Max concentration of stored ion (intercalated Li)
-        # Save initial X
-        X_o = bulk_obj.X 
-        # Set object concentration to fully lithiated:
-        bulk_obj.X = inputs['stored-ion']['name']+':1.0' 
-        # Concentration of stored Li, per unit volume of intercalation phase:
-        C = bulk_obj[inputs['stored-ion']['name']].concentrations[0]
-        
-        capacity = (C*inputs['stored-ion']['charge']*ct.faraday
-                *inputs['eps_solid'])*inputs['thickness']/3600
+        capacity = (inputs['stored-species']['charge']*ct.faraday
+                 *inputs['eps_elyte'])*inputs['thickness']/(3600
+                 *inputs['stored-species']['MW'])  #Lu (2013) Units?
 
-        # Return Cantera object composition to original value:
-        bulk_obj.X = X_o
+        # # Return Cantera object composition to original value:
+        # bulk_obj.X = X_o
         
         # Number of state variables: electrode potential, electrolyte 
         # potential, electrode composition (n_species), electrolyte composition 
         # (n_species)
-        nVars = 2 + bulk_obj.n_species + elyte_obj.n_species + inputs['buckets']
+        radius = np.linspace(inputs['Minrad'], inputs['Maxrad'], buckets)
+        nVars = 3 + elyte_obj.n_species + buckets
 
         # Load the residual function and other required functions and store 
         # them as methods of this class:
@@ -106,9 +106,10 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     electrode.SVptr = {}
     electrode.SVptr['phi_ed'] = np.array([0])
     electrode.SVptr['phi_dl'] = np.array([1])
-    electrode.SVptr['C_k_ed'] = np.arange(2, 2 + electrode.bulk_obj.n_species)
-    electrode.SVptr['C_k_elyte'] = np.arange(2 + electrode.bulk_obj.n_species, 
-        2 + electrode.bulk_obj.n_species + electrode.elyte_obj.n_species)
+    electrode.SVptr['Area'] = np.arange([3])
+    electrode.SVptr['C_k_elyte'] = np.arange(3, 3 + electrode.elyte_obj.n_species)
+    electrode.SVptr['Histogram'] =  (np.arange(3 + electrode.elyte_obj.n_species, 3 +  
+        electrode.elyte_obj.n_species + electrode.buckets))
 
     # A pointer to where the SV varaibles for this electrode are, within the 
     # overall solution vector for the entire problem:
@@ -117,13 +118,20 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
 
     # Save the indices of any algebraic variables:
     electrode.algvars = offset + electrode.SVptr['phi_ed'][:]
-    electrode.radius = np.linspace(inputs['Minrad'], inputs['Maxrad'], inputs['buckets'])
+
 
     # Load intial state variables:
     SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
     SV[electrode.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
-    SV[electrode.SVptr['C_k_ed']] = electrode.bulk_obj.concentrations
+    SV[electrode.SVptr['Area']] = inputs['A_0']
     SV[electrode.SVptr['C_k_elyte']] = electrode.elyte_obj.concentrations
     SV[electrode.SVptr['Histogram']] = np.zeros_like(electrode.radius)
 
     return SV, electrode
+
+"""Citations"""
+#Lu, Y.; et al, Energy Environ. Sci., 2013, vol. 6, 750-768, DOI: 10.1039/C3EE23966G
+#Official Soundtrack: 
+   # Radwimps - Your Name.
+   # Walk the Moon - What If Nothing
+   # Far East Movement - Identity    
