@@ -199,7 +199,7 @@ def output(solution, an, sep, ca, params):
     # Create figure:
     lp = 30 #labelpad
     # Number of subplots:
-    nplots = 4 + i_Li
+    nplots = 5 + i_Li
 
     # Initialize the figure:
     fig, axs = plt.subplots(nplots,1, sharex=True, 
@@ -209,37 +209,44 @@ def output(solution, an, sep, ca, params):
     # Axis 1: Current vs. capacity
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
     axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
+    
     # Axis 2: Charge/discharge potential vs. capacity.
     axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
     axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
-    # Axis 3: Separator electric potential vs. capacity.
     
+    # Axis 3: anode concentration:
+    axs[2].plot(solution[0,:]/3600, an.SVptr['C_k_ed'])
+    axs[2].set_ylabel('Anode Concentration of \n($\mu$m)', labelpad=lp-10)
+    axs[2].set(xlabel='Time (h)')
+    
+    # Axis 4: Separator electric potential vs. capacity.
     phi_elyte_an = (solution[an.SVptr['phi_ed'][0]+2,:] 
         + solution[an.SVptr['phi_dl'][0]+2,:])
-    axs[2].plot(solution[0,:]/3600, phi_elyte_an)
+    axs[3].plot(solution[0,:]/3600, phi_elyte_an)
     for j in np.arange(sep.n_points):
-        axs[2].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
+        axs[3].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
     phi_elyte_ca = (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+2,:] 
         + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+2],:])
-    axs[2].plot(solution[0,:]/3600, phi_elyte_ca)
-    axs[2].set_ylabel('Separator Potential \n(V)',labelpad=lp)
+    axs[3].plot(solution[0,:]/3600, phi_elyte_ca)
+    axs[3].set_ylabel('Separator Potential \n(V)',labelpad=lp)
     
+    # Axis 5: Li+ concentration:
     Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+2,:]
-    axs[3].plot(solution[0,:]/3600, Ck_elyte_an[an.index_Li,:],
+    axs[4].plot(solution[0,:]/3600, Ck_elyte_an[an.index_Li,:],
         label="an interface")
 
     Ck_elyte_sep_ptr = np.add(sep.SV_offset+sep.SVptr['C_k_elyte'],2)
     for j in np.arange(sep.n_points):
-        axs[3].plot(solution[0,:]/3600, 
+        axs[4].plot(solution[0,:]/3600, 
             solution[Ck_elyte_sep_ptr[j,sep.index_Li],:], 
             label="separator "+str(j+1))
 
     Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][0]+2,:]
-    axs[3].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
+    axs[4].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
 
-    axs[3].set_ylabel('Li+ concentration \n(kmol/m$^3$',labelpad=lp)
+    axs[4].set_ylabel('Li+ concentration \n(kmol/m$^3$',labelpad=lp)
     
-    # Optional axis 4, For dense Li anode: anode thickness:
+    # Optional axis 6, For dense Li anode: anode thickness:
     if i_Li:
         axs[nplots-1].plot(solution[0,:]/3600, 
             1e6*solution[2+int(an.SVptr['thickness'])])

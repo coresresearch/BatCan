@@ -20,7 +20,7 @@ sys.path.append('separator_models')
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
-        input = 'inputs/input_template.yaml'
+        input = 'inputs/spm_Graphite_spm_LCO_input.yaml'
     else:
         input = 'inputs/'+input+'.yaml'
 
