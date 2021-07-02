@@ -3,6 +3,13 @@ Battery--Cantera: Modeling fundamental physical chemistry in batteries using Can
 
 This tool allows you to run battery simulations with eaily editable and extensible thermochemistry via [Cantera](cantera.org).
 
+1. [Repository Contents](#repository-contents)
+2. [Installation](#installation-instructions)
+3. [Running the model](#running-the-model)
+4. [Sample results](#sample-results)
+5. [Current status](#current-status-of-the-software)
+
+
 # Repository contents
 - `bat_can.py`: this is the main file that runs the code.  In general, the code is run on the command line via `python bat_can.py` (more on this [below](#Running-the-model))
 - `bat_can_init.py`: reads user inputs and initializes the model.  It is called internally by `bat_can.py`.
@@ -36,7 +43,7 @@ You can replace `bat_can` with whatever other name you would like to give this e
 ```
 conda activate bat_can
 ```
-(again, replacing `bat_can`, as necessary). When you're done using the tool and want to switch back to your base software environment, run:
+(again, replacing `bat_can`, as necessary, if you've named the environment something different). When you're done using the tool and want to switch back to your base software environment, run:
 ```
 conda deactivate
 ```
@@ -65,3 +72,14 @@ The model is run from a command line or terminal by invoking python, the `bat_ca
 ```
 python bat_can.py --input=my_input
 ```
+# Sample results.
+Below is an example of the model output, for a Li metal anode, porous separator with liquid carbonate electrolyte, and single-particle model of an LCO cathode, cycled 5 times at a rate of 0.01C (Note that these parameters have not been tuned; this is for demonstration purposes only 🙂 ).
+
+![Sample output image](sample_output.png)
+
+# Current status of the software 
+(as of 04 May, 2021)
+
+This software is currently in the development phase.  The `ionic_resistor` separator model is complete, but all other component models are in development (primarily, governing equations are being added to describe the evolution of the local chemical compositiondifferent electrode and electrolyte).  Therefore, we would currently describe the software capabilities as ''for demonstration purposes only."
+
+If you would like to help contribute to the software, please do! If you are uncertain of what to do, or have an idea and want to run it by us, maybe create an issue on the issues page, where we can discuss.  Or else, feel free to fork a copy of this repo, make changes, and make a pull request.

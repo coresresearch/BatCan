@@ -11,16 +11,18 @@ from bat_can_init import initialize as init
 import numpy as np
 import sys
 
+# Add to the folders with component models to our path:
 sys.path.append('electrode_models') 
 sys.path.append('separator_models')
 
+# This is the main function that runs the model.  We define it this way so it 
+# is called by "main," below:
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
         input = 'inputs/spm_Graphite_spm_LCO_input.yaml'
     else:
         input = 'inputs/'+input+'.yaml'
-
 
     #===========================================================================
     #   READ IN USER INPUTS
@@ -46,14 +48,15 @@ def bat_can(input = None):
 
     ca_module = importlib.import_module(ca_inputs['class'])
     SV_ca_0, ca = ca_module.initialize(input, ca_inputs, sep_inputs, an_inputs, 
-            'cathode', parameters, an.nVars+sep.nVars)
+            'cathode', parameters, offset=sep.SVptr['sep'][-1]+1)
 
     # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
+    # Ditto for the algebraic variable indices:
     algvars = np.hstack([an.algvars, sep.algvars, ca.algvars])
 
     #===========================================================================
-    #   RUN THE MODEL
+    #   RUN THE SIMULATION
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:

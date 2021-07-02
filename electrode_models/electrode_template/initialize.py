@@ -1,7 +1,7 @@
 """
-    single_particle_electrode.py
+    electrode_template.py
 
-    Class file for single-particle electrode methods
+    Class file for a newly-implemented electrode type.
 """
 
 import cantera as ct
@@ -24,6 +24,10 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
+        
+        # Electrolyte volume fraction in the separator:
+        eps_elyte = sep_inputs['eps_electrolyte']
+
         # Microstructure-based transport scaling factor, based on Bruggeman 
         # coefficient of -0.5:
         elyte_microstructure = eps_elyte**1.5
@@ -44,9 +48,11 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         nVars = 0
 
         # Load the residual model and store it as a method of this class:
-        from .functions import residual, make_alg_consistent, voltage_lim
+        from .functions import residual, voltage_lim
 
     # Set Cantera object state:
+    electrode.bulk_obj.electric_potential = inputs['phi_0']
+    # If the user provided an initial composition, use that here:
     if 'X_0' in inputs:
         electrode.bulk_obj.TPX = (params['T'], params['P'], inputs['X_0'])
     else:
@@ -55,7 +61,6 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     electrode.elyte_obj.TP = params['T'], params['P']
     electrode.surf_obj.TP = params['T'], params['P']
     electrode.conductor_obj.TP = params['T'], params['P']
-    electrode.bulk_obj.electric_potential = inputs['phi_0']
 
     SV = np.zeros([electrode.nVars])
 

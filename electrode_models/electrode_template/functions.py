@@ -1,4 +1,20 @@
+"""
+This file provides a template of necessary functions for any new electrode object you might want to create.  Additional methods can, of course, be defined as necessary.
+
+It is suggested that you copy and paste the entire contents of the 'electrode_template' folder, give the pasted folder a relevant name, and then modify as necessary.
+"""
 def residual(SV, SVdot, self, sep, counter, params):
+    """
+    Define the residual for the state of the electrode.
+
+    This is an array of differential and algebraic governing equations, one for each state variable in the separator.
+
+    1. The residuals corresponding to algebraic variables (supposing the variable has an index 'j') are of the form:
+        resid[j]  = (epression equaling zero)
+
+    2. All other variables are governed by differential equations, i.e. we have a means to calculate dSV[j]/dt for a state variable SV[j] (state variable with index j).  The residuals corresponding to these variables will have the form:
+        resid[j] = SVdot[j] - (expression equalling dSV/dt)
+    """
     import numpy as np
     import cantera as ct
     
@@ -13,17 +29,16 @@ def residual(SV, SVdot, self, sep, counter, params):
 
     return resid
 
-def make_alg_consistent(SV, an, sep, ca, params):
-    # Routines needed to make the initial solutioon consistent with any 
-    # algebraic constraints.
-    return SV
-
 def voltage_lim(SV, self, val):
-    # Evaluate whether or not the electrode voltage has exceeded any 
-    # user-specified bounds.
+    """
+    Check to see if the voltage limits have been exceeded.
+    """
+    # Save local copies of the solution vector and pointers for this electrode:
     SVptr = self.SVptr
     SV_loc = SV[SVptr['residual']]
     
+    # Calculate the current voltage, relative to the limit.  The simulation 
+    # looks for instances where this value changes sign (i.e. crosses zero)
     voltage_eval = SV_loc[SVptr['phi_ed']] - val
     
     return voltage_eval

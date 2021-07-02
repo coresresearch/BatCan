@@ -1,69 +1,85 @@
 """
-    porous_separator.py
+    ionic_resistor.py
 
-    Class file for porous separator methods
+    Class file for ionic resistor separator methods. This is a very simple separator model, that considers it to have an ionic resistance, but no chemical variation.
 """
 
 import cantera as ct
 import numpy as np
 
-def residual(SV, SVdot, an, self, ca, params):
-    resid = SVdot[self.SVptr['residual']]#np.zeros((self.nVars,))
+def residual(SV, SVdot, an, sep, ca, params):
+    """
+    Define the residual for the state of the separator.
 
-    R_io, phi_elyte_an = anode_boundary(SV, an, self)
+    This is a single algebraic governing equation to determine the separator electric potential.  The separator electric potential must be such that the ionic current is spatially invariant (i.e. it is constant and equal to the external applied current, for galvanostatic simulations).  
 
-    phi_elyte_sep = phi_elyte_an - params['i_ext']*R_io/self.sigma_io
+    The residual corresponding to this variable (suppose an index 'j') is of the form:
+            resid[j]  = (epression equaling zero; here i_io - i_ext)
+    """
+    # Initialize the residual vector, assuming dSVdt = 0 (we will overwrite/
+    #  replace this, as necessary)
+    resid = SVdot[sep.SVptr['sep']]
+
+    # Calculate the distance to the anode node center and the anode's electrolyte phase electric potential at the separator boundary:
+    dy, phi_elyte_an = electrode_boundary_potential(SV, an, sep)
+
+    # Calculate the electric potential that satisfies the algebraic equation:
+    phi_elyte_sep = phi_elyte_an - params['i_ext']*dy/sep.sigma_io
     
-    resid[self.SVptr['phi']] = (SV[self.SVptr['residual'][self.SVptr['phi']]] 
+    # Calculate the residual:
+    resid[sep.SVptr['phi']] = (SV[sep.SVptr['sep'][sep.SVptr['phi']]] 
             - phi_elyte_sep)
+
     return resid
 
-def cathode_boundary(SV, ca, sep):
-    N_k_elyte = np.zeros_like(ca.elyte_obj.X)
+def electrode_boundary_flux(SV, ed, sep, _):
+    """
+    Calculate the species fluxes and ionic current between a node in the separator and one of the electrodes.
+    """
 
-    # Elyte electric potential in cathode:
-    phi_ca = SV[ca.SVptr['residual'][ca.SVptr['phi_ed']]]
-    phi_dl = SV[ca.SVptr['residual'][ca.SVptr['phi_dl']]]
-    phi_elyte_ca = phi_ca + phi_dl
+    # Determine which indices are at the electrode/electrolyte boundary:
+    if ed.name=='anode':
+        j_ed = -1
+        j_elyte = 0
+    elif ed.name=='cathode':
+        j_ed = 0
+        j_elyte = -1
+
+    # Initialize species fluxes:    
+    N_k_elyte = np.zeros_like(ed.elyte_obj.X)
+
+    # Elyte electric potential in electrode:
+    phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed'][j_ed]]]
+    phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl'][j_ed]]]
+    phi_elyte_ed = phi_ed + phi_dl
     
     # Elyte electric potential in separator:
-    phi_elyte_sep = SV[sep.SVptr['residual'][sep.SVptr['phi']]]
+    phi_elyte_sep = SV[sep.SVptr['sep'][sep.SVptr['phi']]]
     
+    # Average electronic resistance:
+    dy_eff = 0.5*(sep.dy/sep.elyte_microstructure 
+            + ed.dy/ed.elyte_microstructure)
+
     # Ionic current:
-    R_io_avg = 0.5*(sep.dy/sep.elyte_microstructure 
-            + ca.dy/ca.elyte_microstructure)
-    i_io = (phi_elyte_sep - phi_elyte_ca)*sep.sigma_io/R_io_avg
+    i_io = ed.i_ext_flag*(phi_elyte_sep - phi_elyte_ed)*sep.sigma_io/dy_eff
 
     # Convert this to flux of the lithium ion:
-    N_k_elyte[ca.index_Li] = i_io/ct.faraday/ca.elyte_obj.charges[ca.index_Li]
+    N_k_elyte[ed.index_Li] = i_io/ct.faraday/ed.elyte_obj.charges[ed.index_Li]
 
-    return N_k_elyte
+    return N_k_elyte, i_io
 
-
-def anode_boundary(SV, an, sep):
+def electrode_boundary_potential(SV, ed, sep):
+    """
+    Calculate the effective distance between node centers at the electrode/electrolyte boundary and the electric potential in the electrolyte phase on the electrode side of this boundary.
+    """
     # Elyte electric potential in anode:
-    phi_an = SV[an.SVptr['residual'][an.SVptr['phi_ed']]]
-    phi_dl = SV[an.SVptr['residual'][an.SVptr['phi_dl']]]
-    phi_elyte_an = phi_an + phi_dl
+    phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed']]]
+    phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl']]]
+    phi_elyte_ed = phi_ed + phi_dl
     
-    # Ionic resistance:
-    R_io_avg = 0.5*(sep.dy/sep.elyte_microstructure 
-            + an.dy/an.elyte_microstructure)
+    # Effective distance between node centers, weighted by the electrolyte 
+    # microstructure factors:
+    dy_elyte_eff = 0.5*(sep.dy/sep.elyte_microstructure 
+            + ed.dy/ed.elyte_microstructure)
 
-    return R_io_avg, phi_elyte_an
-
-def make_alg_consistent(SV, an, sep, ca, params):
-
-    R_io, phi_elyte_an = anode_boundary(SV, an, sep)
-
-    phi_elyte_sep = phi_elyte_an - params['i_ext']*R_io/sep.sigma_io
-
-    # We are going to cheat and use the anode function for the cathode :)
-    R_io, phi_elyte_ca = anode_boundary(SV, ca, sep)
-    phi_elyte_ca = phi_elyte_sep - params['i_ext']*R_io/sep.sigma_io
-
-    SV[sep.SVptr['residual'][sep.SVptr['phi']]] = phi_elyte_sep
-    phi_ca = SV[ca.SVptr['residual'][ca.SVptr['phi_ed']]]
-    SV[ca.SVptr['residual'][ca.SVptr['phi_dl']]] = phi_elyte_ca - phi_ca
-
-    return SV
+    return dy_elyte_eff, phi_elyte_ed
