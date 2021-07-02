@@ -75,7 +75,6 @@ def residual(SV, SVdot, electrode, sep, counter, params):
 
     # TEMPORARY: Set time derivatives for the species concentrations to zero:
     resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']] 
-    # -         sdot_bulk_obj*A_surf_ratio*electrode.eps_bulk)
 
     # Molar production rate of electrode species (kmol/m2/s).
     sdot_elyte = \
