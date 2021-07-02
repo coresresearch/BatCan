@@ -52,13 +52,14 @@ def residual(SV, SVdot, electrode, sep, counter, params):
     electrode.elyte_obj.electric_potential = phi_elyte
     
     # Faradaic current density is positive when electrons are consumed 
-    # (Li transferred to the anode)
+    # (Li transferred to the electrode)
     i_Far = -(ct.faraday 
         * electrode.surf_obj.get_net_production_rates(electrode.conductor_obj))
     
     # Double layer current has the same sign as i_Far:
     i_dl = electrode.i_ext_flag*params['i_ext']/electrode.A_surf_ratio - i_Far
-    
+    N_k_sep, i_io = sep.electrode_boundary_flux(SV, electrode, sep, params['T'])
+
     if electrode.name=='anode':
         # The electric potential of the anode = 0 V.
         resid[[SVptr['phi_ed'][0]]] = SV_loc[SVptr['phi_ed'][0]]
@@ -66,9 +67,6 @@ def residual(SV, SVdot, electrode, sep, counter, params):
         # For the cathode, the potential of the cathode must be such that the 
         # electrolyte electric potential (calculated as phi_ca + dphi_dl) 
         # produces the correct ionic current between the separator and cathode:
-        N_k_sep, i_io = \
-            sep.electrode_boundary_flux(SV, electrode, sep, params['T'])
-                        
         resid[SVptr['phi_ed']] = i_io - params['i_ext']
 
     # Differential equation for the double layer potential:
@@ -77,8 +75,19 @@ def residual(SV, SVdot, electrode, sep, counter, params):
 
     # TEMPORARY: Set time derivatives for the species concentrations to zero:
     resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']] 
-    # -         sdot_bulk_obj*A_surf_ratio*electrode.eps_bulk)
-    resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']]
+
+    # Molar production rate of electrode species (kmol/m2/s).
+    sdot_elyte = \
+        electrode.surf_obj.get_net_production_rates(electrode.elyte_obj)
+    
+    # Double layer current removes Li from the electrolyte.  Subtract this from 
+    # sdot_electrolyte:
+    sdot_elyte[electrode.index_Li] -= i_dl / ct.faraday
+        
+    # Change in electrolyte species concentration per unit time:
+    dCk_elyte_dt = \
+        ((sdot_elyte * electrode.A_surf_ratio + electrode.i_ext_flag * N_k_sep)* electrode.dyInv / electrode.eps_elyte)
+    resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
 
     return resid
 

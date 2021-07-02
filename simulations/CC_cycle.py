@@ -156,8 +156,12 @@ def setup_cycles(params, current):
     else:
         steps = params['n_cycles']*cycle
         currents = params['n_cycles']*cycle_currents
-    # steps = ('equilibrate',)+ steps
-    # currents = (0,) + currents
+
+    # If requested, start with a hold at open circuit:
+    if params['equilibrate']:
+        steps = ('equilibrate',)+ steps
+        currents = (0,) + currents
+        
     return steps, currents
 
 def residual(t, SV, SVdot, resid, inputs):
@@ -229,9 +233,11 @@ def output(solution, an, sep, ca, params):
         axs[3].plot(solution[0,:]/3600, 
             solution[Ck_elyte_sep_ptr[j,sep.index_Li],:], 
             label="separator "+str(j+1))
+
+    Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][0]+2,:]
+    axs[3].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
+
     axs[3].set_ylabel('Li+ concentration \n(kmol/m$^3$',labelpad=lp)
-    # Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][0]+2,:]
-    # axs[3].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
     
     # Optional axis 4, For dense Li anode: anode thickness:
     if i_Li:
