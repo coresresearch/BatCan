@@ -48,7 +48,7 @@ def bat_can(input = None):
 
     ca_module = importlib.import_module(ca_inputs['class'])
     SV_ca_0, ca = ca_module.initialize(input, ca_inputs, sep_inputs, an_inputs, 
-            'cathode', parameters, offset=sep.SVptr['residual'][-1]+1)
+            'cathode', parameters, offset=sep.SVptr['sep'][-1]+1)
 
     # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])

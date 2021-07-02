@@ -26,6 +26,8 @@ def initialize(input_file, inputs, params, offset):
         # coefficient of -0.5:
         elyte_microstructure = eps_elyte**1.5
 
+        index_Li = elyte_obj.species_index(inputs['mobile-ion'])
+
         SV_offset = offset
 
         # Ionic conductivity of bulk electrolyte (S/m):
@@ -53,7 +55,7 @@ def initialize(input_file, inputs, params, offset):
             1 + i*separator.nVars + separator.elyte_obj.n_species)
     
     # What portion of the SV represents the separator?
-    separator.SVptr['residual'] = np.arange(offset, 
+    separator.SVptr['sep'] = np.arange(offset, 
         offset+separator.n_points*separator.nVars)
 
     # Save indices for any algebraic variables.
