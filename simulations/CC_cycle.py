@@ -178,12 +178,12 @@ def output(solution, an, sep, ca, params):
     axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp-25)
     axs[1].plot(solution[0,:]/3600, V_cell)
     axs[1].set_ylabel('Cell Potential \n(V)',labelpad=lp)
-    axs[2].plot(solution[0,:]/3600, 1e6*solution[2+an.SVptr['thickness']])
-    axs[2].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-10)
+    axs[2].plot(solution[0,:]/3600, an.SVptr['C_k_ed'])
+    axs[2].set_ylabel('Anode Concentration of \n($\mu$m)', labelpad=lp-10)
     axs[2].set(xlabel='Time (h)')
-    # plt.figure(2)
+    #plt.figure(2)
     # plt.plot(solution[0,:]/3600, solution[2+an.SVptr['phi_dl']])
-    for i in range(3):
+    for i in range(2):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")
     fig.tight_layout()
