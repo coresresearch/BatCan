@@ -108,9 +108,9 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     # ['C_k_elyte'][j] accesses the pointer array:
     electrode.SVptr['C_k_elyte'].shape = (1,electrode.elyte_obj.n_species)
 
-    # A pointer to where the SV varaibles for this electrode are, within the 
+    # A pointer to where the SV variables for this electrode are, within the 
     # overall solution vector for the entire problem:
-    electrode.SVptr['residual'] = np.arange(offset, offset+electrode.nVars)
+    electrode.SVptr['electrode'] = np.arange(offset, offset+electrode.nVars)
 
     # Save the SV indices of any algebraic variables:
     electrode.algvars = offset + electrode.SVptr['phi_ed'][:]

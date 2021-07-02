@@ -34,11 +34,11 @@ def initialize(input_file, inputs, params, offset):
     
     # Set up pointers:
     separator.SVptr = {}
-    separator.SVptr['phi'] = 0
-    separator.SVptr['residual'] = np.arange(offset, offset+separator.nVars)
+    separator.SVptr['phi'] = np.array([0])
+    separator.SVptr['sep'] = np.arange(offset, offset+separator.nVars)
 
     # Save indices for any algebraic variables.
-    separator.algvars = [offset + separator.SVptr['phi']]
+    separator.algvars = [offset + separator.SVptr['phi'][0]]
     
     # Load intial state variables:
     SV[separator.SVptr['phi']] = inputs['phi_0']

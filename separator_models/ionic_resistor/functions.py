@@ -7,7 +7,7 @@
 import cantera as ct
 import numpy as np
 
-def residual(SV, SVdot, an, self, ca, params):
+def residual(SV, SVdot, an, sep, ca, params):
     """
     Define the residual for the state of the separator.
 
@@ -18,16 +18,16 @@ def residual(SV, SVdot, an, self, ca, params):
     """
     # Initialize the residual vector, assuming dSVdt = 0 (we will overwrite/
     #  replace this, as necessary)
-    resid = SVdot[self.SVptr['residual']]
+    resid = SVdot[sep.SVptr['sep']]
 
     # Calculate the distance to the anode node center and the anode's electrolyte phase electric potential at the separator boundary:
-    dy, phi_elyte_an = electrode_boundary_potential(SV, an, self)
+    dy, phi_elyte_an = electrode_boundary_potential(SV, an, sep)
 
     # Calculate the electric potential that satisfies the algebraic equation:
-    phi_elyte_sep = phi_elyte_an - params['i_ext']*dy/self.sigma_io
+    phi_elyte_sep = phi_elyte_an - params['i_ext']*dy/sep.sigma_io
     
     # Calculate the residual:
-    resid[self.SVptr['phi']] = (SV[self.SVptr['residual'][self.SVptr['phi']]] 
+    resid[sep.SVptr['phi']] = (SV[sep.SVptr['sep'][sep.SVptr['phi']]] 
             - phi_elyte_sep)
 
     return resid
@@ -49,12 +49,12 @@ def electrode_boundary_flux(SV, ed, sep, _):
     N_k_elyte = np.zeros_like(ed.elyte_obj.X)
 
     # Elyte electric potential in electrode:
-    phi_ed = SV[ed.SVptr['residual'][ed.SVptr['phi_ed'][j_ed]]]
-    phi_dl = SV[ed.SVptr['residual'][ed.SVptr['phi_dl'][j_ed]]]
+    phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed'][j_ed]]]
+    phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl'][j_ed]]]
     phi_elyte_ed = phi_ed + phi_dl
     
     # Elyte electric potential in separator:
-    phi_elyte_sep = SV[sep.SVptr['residual'][sep.SVptr['phi']]]
+    phi_elyte_sep = SV[sep.SVptr['sep'][sep.SVptr['phi']]]
     
     # Average electronic resistance:
     dy_eff = 0.5*(sep.dy/sep.elyte_microstructure 
@@ -73,8 +73,8 @@ def electrode_boundary_potential(SV, ed, sep):
     Calculate the effective distance between node centers at the electrode/electrolyte boundary and the electric potential in the electrolyte phase on the electrode side of this boundary.
     """
     # Elyte electric potential in anode:
-    phi_ed = SV[ed.SVptr['residual'][ed.SVptr['phi_ed']]]
-    phi_dl = SV[ed.SVptr['residual'][ed.SVptr['phi_dl']]]
+    phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed']]]
+    phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl']]]
     phi_elyte_ed = phi_ed + phi_dl
     
     # Effective distance between node centers, weighted by the electrolyte 

@@ -156,7 +156,8 @@ def setup_cycles(params, current):
     else:
         steps = params['n_cycles']*cycle
         currents = params['n_cycles']*cycle_currents
-
+    # steps = ('equilibrate',)+ steps
+    # currents = (0,) + currents
     return steps, currents
 
 def residual(t, SV, SVdot, resid, inputs):
@@ -170,11 +171,11 @@ def residual(t, SV, SVdot, resid, inputs):
 
     # Call residual functions for anode, separator, and cathode. Assemble them 
     # into a single residual vector 'resid':
-    resid[an.SVptr['residual']] = an.residual(SV, SVdot, an, sep, ca, params)
+    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, an, sep, ca, params)
 
-    resid[sep.SVptr['residual']] = sep.residual(SV, SVdot, an, sep, ca, params)
+    resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, sep, ca, params)
     
-    resid[ca.SVptr['residual']] = ca.residual(SV, SVdot, ca, sep, an, params)
+    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, ca, sep, an, params)
 
 def output(solution, an, sep, ca, params):
     """
@@ -194,13 +195,13 @@ def output(solution, an, sep, ca, params):
     # Create figure:
     lp = 30 #labelpad
     # Number of subplots:
-    nplots = 3 + i_Li
+    nplots = 4 + i_Li
 
     # Initialize the figure:
     fig, axs = plt.subplots(nplots,1, sharex=True, 
             gridspec_kw = {'wspace':0, 'hspace':0})
     
-    fig.set_size_inches((4.0,6.5))
+    fig.set_size_inches((4.0,8.5))
     # Axis 1: Current vs. capacity
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
     axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
@@ -208,23 +209,45 @@ def output(solution, an, sep, ca, params):
     axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
     axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
     # Axis 3: Separator electric potential vs. capacity.
+    
+    phi_elyte_an = (solution[an.SVptr['phi_ed'][0]+2,:] 
+        + solution[an.SVptr['phi_dl'][0]+2,:])
+    axs[2].plot(solution[0,:]/3600, phi_elyte_an)
     for j in np.arange(sep.n_points):
         axs[2].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
-        axs[2].set_ylabel('Separator Potential \n(V)',labelpad=lp-6)
+    phi_elyte_ca = (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+2,:] 
+        + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+2],:])
+    axs[2].plot(solution[0,:]/3600, phi_elyte_ca)
+    axs[2].set_ylabel('Separator Potential \n(V)',labelpad=lp)
+    
+    Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+2,:]
+    axs[3].plot(solution[0,:]/3600, Ck_elyte_an[an.index_Li,:],
+        label="an interface")
+
+    Ck_elyte_sep_ptr = np.add(sep.SV_offset+sep.SVptr['C_k_elyte'],2)
+    for j in np.arange(sep.n_points):
+        axs[3].plot(solution[0,:]/3600, 
+            solution[Ck_elyte_sep_ptr[j,sep.index_Li],:], 
+            label="separator "+str(j+1))
+    axs[3].set_ylabel('Li+ concentration \n(kmol/m$^3$',labelpad=lp)
+    # Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][0]+2,:]
+    # axs[3].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
     
     # Optional axis 4, For dense Li anode: anode thickness:
     if i_Li:
         axs[nplots-1].plot(solution[0,:]/3600, 
             1e6*solution[2+int(an.SVptr['thickness'])])
-        axs[nplots-1].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-25)
+        axs[nplots-1].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp)
         axs[nplots-1].set(xlabel='Time (h)')
+
+
 
     # Format axis ticks:
     for i in range(nplots):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")
         axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
-        axs[i].yaxis.set_label_coords(-0.07, 0.5)
+        axs[i].yaxis.set_label_coords(-0.2, 0.5)
 
 
     # fig.align_ylabels(axs[:])
@@ -233,3 +256,4 @@ def output(solution, an, sep, ca, params):
     
     # Save figure:
     plt.savefig('output.pdf')
+    plt.show()
