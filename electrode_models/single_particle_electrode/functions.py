@@ -62,7 +62,7 @@ def residual(SV, SVdot, electrode, sep, counter, params):
     N_k_sep, i_io = sep.electrode_boundary_flux(SV, electrode, sep, params['T'])
     
     # species production
-    sdot_k_ed = self.surf_obj.get_net_production_rates(self.bulk_obj)
+    sdot_k_ed = electrode.surf_obj.get_net_production_rates(electrode.bulk_obj)
 
     if electrode.name=='anode':
         # The electric potential of the anode = 0 V.
@@ -77,7 +77,9 @@ def residual(SV, SVdot, electrode, sep, counter, params):
     resid[SVptr['phi_dl']] = \
         SVdot_loc[SVptr['phi_dl']] - i_dl*electrode.C_dl_Inv
 
-    resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']] - (self.A_surf_ratio * sdot_k_ed * self.dyInv / self.eps_solid)
+    resid[SVptr['C_k_ed']] = (SVdot_loc[SVptr['C_k_ed']] 
+        - electrode.A_surf_ratio *  sdot_k_ed * electrode.dyInv 
+        / electrode.eps_solid)
 
     # Molar production rate of electrode species (kmol/m2/s).
     sdot_elyte = \

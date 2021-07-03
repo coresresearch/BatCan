@@ -205,7 +205,7 @@ def output(solution, an, sep, ca, params):
     fig, axs = plt.subplots(nplots,1, sharex=True, 
             gridspec_kw = {'wspace':0, 'hspace':0})
     
-    fig.set_size_inches((4.0,8.5))
+    fig.set_size_inches((4.0,1.8*nplots))
     # Axis 1: Current vs. capacity
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
     axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
@@ -214,9 +214,10 @@ def output(solution, an, sep, ca, params):
     axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
     axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
     
-    # Axis 3: anode concentration:
-    axs[2].plot(solution[0,:]/3600, an.SVptr['C_k_ed'])
-    axs[2].set_ylabel('Anode Concentration of \n($\mu$m)', labelpad=lp-10)
+    # Axis 3: cathode concentration:
+    C_k_ca = solution[2+ca.SV_offset+ca.SVptr['C_k_ed'][0],:]
+    axs[2].plot(solution[0,:]/3600, C_k_ca)
+    axs[2].set_ylabel('Cathode Li \n(kmol/m%^3%)', labelpad=lp-10)
     axs[2].set(xlabel='Time (h)')
     
     # Axis 4: Separator electric potential vs. capacity.
