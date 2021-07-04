@@ -89,15 +89,13 @@ def elyte_flux(SV, sep, j, T):
     phi_loc = SV[sep.SVptr['phi'][j]]
     phi_next = SV[sep.SVptr['phi'][j+1]]
 
-    D_k = np.ones_like(sep.elyte_obj.X)*20E-12
-    D_k[-1] *= 1e-4
     C_k_loc = SV[sep.SVptr['C_k_elyte'][j]]
     C_k_next = SV[sep.SVptr['C_k_elyte'][j+1]]
     C_k_int = 0.5*(C_k_loc + C_k_next)
-    D_k_mig = D_k*sep.elyte_obj.charges*ct.faraday*C_k_int/ct.gas_constant/T
+    D_k_mig = sep.D_k*sep.elyte_obj.charges*ct.faraday*C_k_int/ct.gas_constant/T
     
     # Dilute solution theory:
-    N_k_elyte = ((D_k*(C_k_loc - C_k_next) + D_k_mig*(phi_loc - phi_next))
+    N_k_elyte = ((sep.D_k*(C_k_loc - C_k_next) + D_k_mig*(phi_loc - phi_next))
         *sep.dyInv*sep.elyte_microstructure)
     
     # Ionic current = sum(z_k*N_k*F)
@@ -145,15 +143,13 @@ def electrode_boundary_flux(SV, ed, sep, T):
         + ed.dy*ed.elyte_microstructure)/dy_elyte/2)
 
     # TEMPORARY:
-    D_k = np.ones_like(sep.elyte_obj.X)*20E-12
-    D_k[-1] *= 1e-4
     C_k_sep = SV[sep.SVptr['sep'][sep.SVptr['C_k_elyte'][j_elyte]]]
     C_k_ed = SV[ed.SVptr['electrode'][ed.SVptr['C_k_elyte'][j_ed]]]
     C_k_int = (C_k_sep*ed.dy + C_k_ed*sep.dy) / (ed.dy + sep.dy)
-    D_k_mig = D_k*sep.elyte_obj.charges*ct.faraday*C_k_int/ct.gas_constant/T
+    D_k_mig = sep.D_k*sep.elyte_obj.charges*ct.faraday*C_k_int/ct.gas_constant/T
     
     # Dilute solution theory:
-    N_k_elyte = ed.i_ext_flag*((D_k * (C_k_sep - C_k_ed) 
+    N_k_elyte = ed.i_ext_flag*((sep.D_k * (C_k_sep - C_k_ed) 
         + D_k_mig * (phi_elyte_sep - phi_elyte_ed))
         / dy_elyte) * microstructure
     

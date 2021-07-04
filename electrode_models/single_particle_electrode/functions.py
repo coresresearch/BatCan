@@ -77,15 +77,9 @@ def residual(SV, SVdot, electrode, sep, counter, params):
     resid[SVptr['phi_dl']] = \
         SVdot_loc[SVptr['phi_dl']] - i_dl*electrode.C_dl_Inv
 
-<<<<<<< HEAD
     resid[SVptr['C_k_ed']] = (SVdot_loc[SVptr['C_k_ed']] 
         - electrode.A_surf_ratio *  sdot_k_ed * electrode.dyInv 
         / electrode.eps_solid)
-=======
-    # TEMPORARY: Set time derivatives for the species concentrations to zero:
-    resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']] 
-    # -         sdot_bulk_obj*A_surf_ratio*electrode.eps_bulk)
->>>>>>> 78d86f3ed (Electrolyte dynamics in single particle electrode.)
 
     # Molar production rate of electrode species (kmol/m2/s).
     sdot_elyte = \

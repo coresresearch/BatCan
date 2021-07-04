@@ -27,7 +27,18 @@ cell-description:
     n_points: 5       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 1.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
-    mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+    transport:
+      mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+      model: 'dilute-solution'
+      diffusion-coefficients: # Species names must match those in the phase definition, below:
+        - species: 'C3H4O3[elyt]'
+          D_k: 1e-15
+        - species: 'C4H6O3[elyt]' 
+          D_k: 1e-15
+        - species: 'Li+[elyt]'
+          D_k: 2e-11
+        - species: 'PF6-[elyt]'
+          D_k: 2e-13
     phi_0: 2.96 # Initial electric potential, V
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
   cathode:
@@ -57,7 +68,7 @@ parameters:
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
     C-rate: 0.01 # input C-rate
-    n_cycles: 10 # Number of cycles. Currently must be 0.5 or an int.
+    n_cycles: 5 # Number of cycles. Currently must be 0.5 or an int.
     first-step: 'discharge'  # Start with charge or discharge?
     equilibrate: False # Start with a hold at open circuit?
     phi-cutoff-lower: 2.9 # Simulation cuts off if E_Cell <= this value
