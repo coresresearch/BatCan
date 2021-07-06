@@ -169,3 +169,37 @@ def electrode_boundary_potential(SV, ed, sep):
             + ed.dy/ed.elyte_microstructure)
 
     return dy_elyte_eff, phi_elyte_ed
+
+def output(axs, solution, an, sep, ca, lp, offset):
+    
+    phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi']), 2)
+    
+    phi_elyte_an = (solution[an.SVptr['phi_ed'][0]+2,:] 
+        + solution[an.SVptr['phi_dl'][0]+2,:])
+    axs[offset+1].plot(solution[0,:]/3600, phi_elyte_an)
+    for j in np.arange(sep.n_points):
+        axs[offset+1].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
+
+    phi_elyte_ca = (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+2,:] 
+        + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+2],:])
+    axs[offset+1].plot(solution[0,:]/3600, phi_elyte_ca)
+    axs[offset+1].set_ylabel('Separator Potential \n(V)',labelpad=lp)
+    
+    # Axis 5: Li+ concentration:
+    Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+2,:]
+    axs[offset+2].plot(solution[0,:]/3600, Ck_elyte_an[an.index_Li,:],
+        label="an interface")
+
+    if 1:
+        Ck_elyte_sep_ptr = np.add(sep.SV_offset+sep.SVptr['C_k_elyte'],2)
+        for j in np.arange(sep.n_points):
+            axs[offset+2].plot(solution[0,:]/3600, 
+                solution[Ck_elyte_sep_ptr[j,sep.index_Li],:], 
+                label="separator "+str(j+1))
+
+    Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][0]+2,:]
+    axs[offset+2].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
+
+    axs[offset+2].set_ylabel('Li+ concentration \n(kmol/m$^3$',labelpad=lp)
+
+    return axs

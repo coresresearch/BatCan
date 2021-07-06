@@ -132,3 +132,11 @@ def adjust_separator(electrode, sep):
     """
     sep.dy -= electrode.dy_elyte
     return sep
+
+def output(axs, solution, ed, lp, offset):
+
+    axs[offset+1].plot(solution[0,:]/3600, 
+        1e6*solution[2+int(ed.SVptr['thickness'])])
+    axs[offset+1].set_ylabel(ed.name+' Thickness \n($\mu$m)', labelpad=lp)
+
+    return axs

@@ -69,7 +69,7 @@ parameters:
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
     C-rate: 0.01 # input C-rate
-    n_cycles: 2 # Number of cycles. Currently must be 0.5 or an int.
+    n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
     first-step: 'discharge'  # Start with charge or discharge?
     equilibrate: False # Start with a hold at open circuit?
     phi-cutoff-lower: 2.9 # Simulation cuts off if E_Cell <= this value

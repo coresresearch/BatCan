@@ -117,3 +117,12 @@ def adjust_separator(electrode, sep):
 
     # Return the separator class object, unaltered:
     return sep
+
+def output(axs, solution, ed, lp, offset):
+    """Plot the intercalation fraction vs. time"""
+    C_k_an = solution[2+ed.SV_offset+ed.SVptr['C_k_ed'][0],:]
+    axs[offset+1].plot(solution[0,:]/3600, C_k_an)
+    axs[offset+1].set_ylabel(ed.name+' Li \n(kmol/m$^3$)', labelpad=lp-10)
+    axs[offset+1].set(xlabel='Time (h)')
+
+    return axs

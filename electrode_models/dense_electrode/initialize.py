@@ -76,9 +76,12 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         # potential, thickness, electrolyte composition (n_species)
         nVars = 3 + elyte_obj.n_species
 
+        # This model produces one plot, for the electrode thickness:
+        n_plots = 1
+
         # Load the residual function and other necessary functions, store them 
         # as methods of this class:
-        from .functions import residual, voltage_lim
+        from .functions import residual, voltage_lim, output
 
 
     # Set the Cantera object state.     

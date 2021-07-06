@@ -189,23 +189,23 @@ def output(solution, an, sep, ca, params):
     #TODO #17
     import matplotlib.pyplot as plt 
 
-    # Calculate cell potential:   
-    phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
-    phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi']), 2)
- 
     # Temporary flag for Li metal anode:
     i_Li = 0
     
     # Create figure:
     lp = 30 #labelpad
-    # Number of subplots:
-    nplots = 6 + i_Li
+    # Number of subplots 
+    # (this simulation produces 2: current and voltage, vs. time):
+    n_plots = 2 + an.n_plots + ca.n_plots + sep.n_plots
 
     # Initialize the figure:
-    fig, axs = plt.subplots(nplots,1, sharex=True, 
+    fig, axs = plt.subplots(n_plots, 1, sharex=True, 
             gridspec_kw = {'wspace':0, 'hspace':0})
     
-    fig.set_size_inches((4.0,1.8*nplots))
+    fig.set_size_inches((4.0,1.8*n_plots))
+    # Calculate cell potential:   
+    phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
+ 
     # Axis 1: Current vs. capacity
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
     axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
@@ -213,68 +213,26 @@ def output(solution, an, sep, ca, params):
     # Axis 2: Charge/discharge potential vs. capacity.
     axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
     axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
-    
-    # Axis 3: anode concentration:
-    C_k_an = solution[2+an.SV_offset+an.SVptr['C_k_ed'][0],:]
-    axs[2].plot(solution[0,:]/3600, C_k_an)
-    axs[2].set_ylabel('Anode Li \n(kmol/m$^3$)', labelpad=lp-10)
-    axs[2].set(xlabel='Time (h)')
 
-    # Axis 4: cathode concentration:
-    C_k_ca = solution[2+ca.SV_offset+ca.SVptr['C_k_ed'][0],:]
-    axs[3].plot(solution[0,:]/3600, C_k_ca)
-    axs[3].set_ylabel('Cathode Li \n(kmol/m$^3$)', labelpad=lp-10)
-    axs[3].set(xlabel='Time (h)')
-    
-    # Axis 4: Separator electric potential vs. capacity.
-    phi_elyte_an = (solution[an.SVptr['phi_ed'][0]+2,:] 
-        + solution[an.SVptr['phi_dl'][0]+2,:])
-    axs[4].plot(solution[0,:]/3600, phi_elyte_an)
-    for j in np.arange(sep.n_points):
-        axs[4].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
-    phi_elyte_ca = (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+2,:] 
-        + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+2],:])
-    axs[4].plot(solution[0,:]/3600, phi_elyte_ca)
-    axs[4].set_ylabel('Separator Potential \n(V)',labelpad=lp)
-    
-    # Axis 5: Li+ concentration:
-    Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+2,:]
-    axs[5].plot(solution[0,:]/3600, Ck_elyte_an[an.index_Li,:],
-        label="an interface")
+    # Add any relevant anode, cathode, and separator plots: 
+    axs = an.output(axs, solution, an, lp, offset=1)
+    axs = ca.output(axs, solution, ca, lp, offset=1+an.n_plots)
+    axs = sep.output(axs, solution, an, sep, ca, lp, 
+        offset=1+an.n_plots+ca.n_plots)
 
-    if 1:
-        Ck_elyte_sep_ptr = np.add(sep.SV_offset+sep.SVptr['C_k_elyte'],2)
-        for j in np.arange(sep.n_points):
-            axs[5].plot(solution[0,:]/3600, 
-                solution[Ck_elyte_sep_ptr[j,sep.index_Li],:], 
-                label="separator "+str(j+1))
-
-    Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][0]+2,:]
-    axs[5].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
-
-    axs[5].set_ylabel('Li+ concentration \n(kmol/m$^3$',labelpad=lp)
-    
-    # Optional axis 6, For dense Li anode: anode thickness:
-    if i_Li:
-        axs[nplots-1].plot(solution[0,:]/3600, 
-            1e6*solution[2+int(an.SVptr['thickness'])])
-        axs[nplots-1].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp)
-        axs[nplots-1].set(xlabel='Time (h)')
-
-
+    axs[n_plots-1].set(xlabel='Time (h)')
 
     # Format axis ticks:
-    for i in range(nplots):
+    for i in range(n_plots):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")
         axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
         axs[i].yaxis.set_label_coords(-0.2, 0.5)
 
-
-    # fig.align_ylabels(axs[:])
     # Trim down whitespace:
     fig.tight_layout()
     
     # Save figure:
     plt.savefig('output.pdf')
-    plt.show()
+    if params['outputs']['show-plots']:
+        plt.show()
