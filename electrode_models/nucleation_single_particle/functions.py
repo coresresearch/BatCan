@@ -33,10 +33,8 @@ def residual(SV, SVdot, self, sep, counter, params):
     phi_ed = SV_loc[SVptr['phi_ed']]
     phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
 
-    # Read out electrode bulk composition; set the Cantra object:
-    C_k_ed = SV_loc[SVptr['C_k_ed']] # Molar density (kmol/m3 of phase)
-    X_k_ed = C_k_ed/sum(C_k_ed) # Mole fraction
-    self.bulk_obj.X = X_k_ed
+    # Read out electrolyte bulk composition; set the Cantra object:
+    C_k_elyte = SV_loc[SVptr['C_k_elyte']] # Molar density (kmol/m3 of phase)
 
     # Set electric potentials for Cantera objects:
     self.bulk_obj.electric_potential = phi_ed
@@ -45,11 +43,16 @@ def residual(SV, SVdot, self, sep, counter, params):
     
     # Faradaic current density is positive when electrons are consumed 
     # (Li transferred to the anode)
-    sdot_electron = self.surf_obj.get_net_production_rates(self.conductor_obj)
+    sdot_electron = self.surf_obj.get_net_production_rates(self.bulk_obj)
+    sdot_elyte = self.surf_obj.get_net_production_rates(self.air_elyte_obj)
+    sdot_cathode = self.surf_obj.get_net_production_rates(self.surf_obj)
     i_Far = -ct.faraday*sdot_electron
+
+    A_avail = self.A_init - SV_loc[SVptr['residual']]/self.th_oxide
+
     
     # Double layer current has the same sign as i_Far:
-    i_dl = self.i_ext_flag*params['i_ext']/self.A_surf_ratio - i_Far
+    i_dl = self.i_ext_flag*params['i_ext']/self.A_surf_ratio - i_Far*A_avail
     
     if self.name=='anode':
         # The electric potential of the anode = 0 V.
@@ -62,14 +65,20 @@ def residual(SV, SVdot, self, sep, counter, params):
         N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, sep)               
         resid[SVptr['phi_ed']] = i_io - params['i_ext']
 
+
+    dPhi_dt = i_dl*self.C_dl_Inv
+    dEpsOxide_dt = A_avail*sdot_cathode * 19.861904761904753514 # self.product_obj.molar-volume?
+    #There must be a way to call molar volume with cantera?
+    dRhoElyte_dt = sdot_elyte*A_avail - sdot_cathode
     # Differential equation for the double layer potential:
-    resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv)
+    resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - dPhi_dt)
 
     # TEMPORARY: Set time derivatives for the species concentrations to zero:
-    resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']] 
+    #resid[SVptr['C_k_ed']] = SVdot_loc[SVptr['C_k_ed']] 
     # -         sdot_bulk_obj*A_surf_ratio*self.eps_bulk)
-    resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']]
 
+    resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] - dRhoElyte_dt)
+    resid[SVptr['eps oxide']] = (SVdot_loc[SVptr['eps oxide']] - dEpsOxide_dt)
     return resid
 
 def voltage_lim(SV, self, val):
@@ -93,3 +102,5 @@ def adjust_separator(self, sep):
 
     # Return the separator class object, unaltered:
     return sep
+
+#Official Soundtrack: 

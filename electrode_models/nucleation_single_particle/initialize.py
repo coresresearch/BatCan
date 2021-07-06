@@ -22,12 +22,9 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
         air_elyte_obj = ct.Interface(input_file, inputs['elyte-iphase'], [gas_obj, elyte_obj])
         bulk_obj = ct.Solution(input_file, inputs['bulk-phase'])
-        cat_obj = ct.Solution(input_file, inputs['catalyst-phase'])
         product_obj = ct.Solution(input_file, inputs['product-phase'])
         surf_obj = ct.Interface(input_file, inputs['surf-phase'], 
             [bulk_obj, elyte_obj])
-        cat_surf_obj = ct.Interface(input_file, inputs['surf-phase'], 
-            [cat_obj, elyte_obj])
 
         # Anode or cathode? Positive external current delivers positive charge 
         # to the anode, and removes positive charge from the cathode.
@@ -46,12 +43,15 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         # Electrode thickness and inverse thickness:
         dy = inputs['thickness']
         dyInv = 1/dy
-        buckets = inputs['buckets']
 
+        A_init = inputs['A_0']
+        th_oxide= inputs['th_oxide']
+        A_oxide = np.pi* inputs['d_part']**2/4.
+        V_oxide = 2./3. * np.pi* (inputs['d_part']/2.)**2 * th_oxide
         # Phase volume fractions
         eps_solid = inputs['eps_solid']
         eps_elyte = 1 - eps_solid
-
+ 
         # Electrode-electrolyte interface area, per unit geometric area.
         # This calculation assumes spherical particles of a single radius, with 
         # no overlap.
@@ -80,8 +80,7 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         # Number of state variables: electrode potential, electrolyte 
         # potential, electrode composition (n_species), electrolyte composition 
         # (n_species)
-        radius = np.linspace(inputs['Minrad'], inputs['Maxrad'], buckets)
-        nVars = 3 + elyte_obj.n_species + buckets
+        nVars = 3 + elyte_obj.n_species
 
         # Load the residual function and other required functions and store 
         # them as methods of this class:
@@ -106,10 +105,8 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     electrode.SVptr = {}
     electrode.SVptr['phi_ed'] = np.array([0])
     electrode.SVptr['phi_dl'] = np.array([1])
-    electrode.SVptr['Area'] = np.arange([3])
+    electrode.SVptr['eps_oxide'] = np.arange([3])
     electrode.SVptr['C_k_elyte'] = np.arange(3, 3 + electrode.elyte_obj.n_species)
-    electrode.SVptr['Histogram'] =  (np.arange(3 + electrode.elyte_obj.n_species, 3 +  
-        electrode.elyte_obj.n_species + electrode.buckets))
 
     # A pointer to where the SV varaibles for this electrode are, within the 
     # overall solution vector for the entire problem:
@@ -123,15 +120,12 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
     # Load intial state variables:
     SV[electrode.SVptr['phi_ed']] = inputs['phi_0']
     SV[electrode.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
-    SV[electrode.SVptr['Area']] = inputs['A_0']
+    SV[electrode.SVptr['eps_oxide']] = electrode.eps_solid
     SV[electrode.SVptr['C_k_elyte']] = electrode.elyte_obj.concentrations
-    SV[electrode.SVptr['Histogram']] = np.zeros_like(electrode.radius)
 
     return SV, electrode
 
 """Citations"""
 #Lu, Y.; et al, Energy Environ. Sci., 2013, vol. 6, 750-768, DOI: 10.1039/C3EE23966G
 #Official Soundtrack: 
-   # Radwimps - Your Name.
-   # Walk the Moon - What If Nothing
-   # Far East Movement - Identity    
+   # Tayeon
