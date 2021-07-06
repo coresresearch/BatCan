@@ -43,6 +43,10 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         dy = inputs['thickness']
         dyInv = 1/dy
 
+        # For some models, the elyte thickness is different from that of the 
+        # electrode, so we specify is separately:
+        dy_elyte = dy
+
         # Phase volume fractions
         eps_solid = inputs['eps_solid']
         eps_elyte = 1 - eps_solid

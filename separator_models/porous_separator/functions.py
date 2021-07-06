@@ -85,23 +85,20 @@ def elyte_flux(SV, sep, j, T):
     # TEMPORARY: set species fluxes to zero.
     N_k_elyte = np.zeros_like(sep.elyte_obj.X)
 
-    # Read out local and adjacent electric potentials:
-    phi_loc = SV[sep.SVptr['phi'][j]]
-    phi_next = SV[sep.SVptr['phi'][j+1]]
+    # Read out local and adjacent electrolyte properties:
+    phi_1 = SV[sep.SVptr['phi'][j]]
+    phi_2 = SV[sep.SVptr['phi'][j+1]]
 
-    D_k = np.ones_like(sep.elyte_obj.X)*20E-12
-    D_k[-1] *= 1e-4
-    C_k_loc = SV[sep.SVptr['C_k_elyte'][j]]
-    C_k_next = SV[sep.SVptr['C_k_elyte'][j+1]]
-    C_k_int = 0.5*(C_k_loc + C_k_next)
-    D_k_mig = D_k*sep.elyte_obj.charges*ct.faraday*C_k_int/ct.gas_constant/T
-    
-    # Dilute solution theory:
-    N_k_elyte = ((D_k*(C_k_loc - C_k_next) + D_k_mig*(phi_loc - phi_next))
-        *sep.dyInv*sep.elyte_microstructure)
-    
-    # Ionic current = sum(z_k*N_k*F)
-    i_io = ct.faraday*np.dot(N_k_elyte, sep.elyte_obj.charges)
+    C_k_1 = SV[sep.SVptr['C_k_elyte'][j]]
+    C_k_2 = SV[sep.SVptr['C_k_elyte'][j+1]]
+
+    # Create dictionaries to pass to the transport function:
+    state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':sep.dy, 
+        'microstructure':sep.elyte_microstructure}
+    state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':sep.dy, 
+        'microstructure':sep.elyte_microstructure}
+
+    N_k_elyte, i_io = sep.elyte_transport(state_1, state_2, sep)
 
     return N_k_elyte, i_io
 
@@ -126,39 +123,28 @@ def electrode_boundary_flux(SV, ed, sep, T):
         j_ed = 0
         j_elyte = -1
 
-    # Initialize the species fluxes:
-    N_k_elyte = np.zeros_like(ed.elyte_obj.X)
-
-    # Elyte electric potential in the electrode:
-    phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed'][j_ed]]]
-    phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl'][j_ed]]]
-    phi_elyte_ed = phi_ed + phi_dl
+    # Determine the electrolyte properties in the separator and electrode domains. Let the separator be "state_1," the electrode "state_2"
     
     # Elyte electric potential in separator:
-    phi_elyte_sep = SV[sep.SVptr['sep'][sep.SVptr['phi'][j_elyte]]]
-    
-    # Distance between node centers. 
-    dy_elyte = 0.5*(sep.dy + ed.dy)
-    # 'elyte_microstructure' is a multiplying factor on transport parameters 
-    # (e.g. porosity divided by tau factor), which we weight by thickness, here:
-    microstructure = ((sep.dy*sep.elyte_microstructure 
-        + ed.dy*ed.elyte_microstructure)/dy_elyte/2)
+    phi_1 = SV[sep.SVptr['sep'][sep.SVptr['phi'][j_elyte]]]
 
-    # TEMPORARY:
-    D_k = np.ones_like(sep.elyte_obj.X)*20E-12
-    D_k[-1] *= 1e-4
-    C_k_sep = SV[sep.SVptr['sep'][sep.SVptr['C_k_elyte'][j_elyte]]]
-    C_k_ed = SV[ed.SVptr['electrode'][ed.SVptr['C_k_elyte'][j_ed]]]
-    C_k_int = (C_k_sep*ed.dy + C_k_ed*sep.dy) / (ed.dy + sep.dy)
-    D_k_mig = D_k*sep.elyte_obj.charges*ct.faraday*C_k_int/ct.gas_constant/T
+    # Elyte electric potential in electrode:
+    phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed'][j_ed]]]
+    phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl'][j_ed]]]
+    phi_2 = phi_ed + phi_dl
     
-    # Dilute solution theory:
-    N_k_elyte = ed.i_ext_flag*((D_k * (C_k_sep - C_k_ed) 
-        + D_k_mig * (phi_elyte_sep - phi_elyte_ed))
-        / dy_elyte) * microstructure
-    
-    # Ionic current = sum(z_k*N_k*F)
-    i_io = ct.faraday*np.dot(N_k_elyte, sep.elyte_obj.charges)
+    C_k_1 = SV[sep.SVptr['sep'][sep.SVptr['C_k_elyte'][j_elyte]]]
+    C_k_2 = SV[ed.SVptr['electrode'][ed.SVptr['C_k_elyte'][j_ed]]]
+
+    # Create dictionaries to pass to the transport function:
+    state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':sep.dy, 
+        'microstructure':sep.elyte_microstructure}
+    state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':ed.dy_elyte, 
+        'microstructure':ed.elyte_microstructure}
+
+    # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
+    N_k_elyte, i_io = tuple(x*ed.i_ext_flag 
+        for x in sep.elyte_transport(state_1, state_2, sep))
 
     return N_k_elyte, i_io
 

@@ -6,6 +6,7 @@
 
 import cantera as ct
 import numpy as np
+import sys
 
 # Initialize the model.
 def initialize(input_file, inputs, params, offset):
@@ -26,7 +27,18 @@ def initialize(input_file, inputs, params, offset):
         # coefficient of -0.5:
         elyte_microstructure = eps_elyte**1.5
 
-        index_Li = elyte_obj.species_index(inputs['mobile-ion'])
+        index_Li = elyte_obj.species_index(inputs['transport']['mobile-ion'])
+
+        # Process transport inputs:
+        if inputs['transport']['model']=='dilute-solution':
+            # Import transport function:
+            from submodels.transport import dilute_solution as elyte_transport
+            D_k = np.zeros_like(elyte_obj.X)
+            for item in inputs['transport']['diffusion-coefficients']:
+                D_k[elyte_obj.species_index(item['species'])] = item['D_k']
+        else:
+            raise ValueError('Please specify a valid electrolyte transport ',
+                'model.')
 
         SV_offset = offset
 
