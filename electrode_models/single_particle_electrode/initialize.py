@@ -88,9 +88,12 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
         # (n_species)
         nVars = 2 + bulk_obj.n_species + elyte_obj.n_species
 
+        # This model produces one plot, for the intercalation concentration.
+        n_plots = 1
+
         # Load the residual function and other required functions and store 
         # them as methods of this class:
-        from .functions import residual, voltage_lim
+        from .functions import residual, voltage_lim, output
 
     # Set Cantera object state:
     electrode.bulk_obj.electric_potential = inputs['phi_0']

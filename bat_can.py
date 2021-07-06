@@ -7,9 +7,11 @@
 """
 # Import modules
 import importlib # allows us to import from user input string.
-from bat_can_init import initialize as init
 import numpy as np
 import sys
+import matplotlib.pyplot as plt 
+
+from bat_can_init import initialize as init
 
 # Add to the folders with component models to our path:
 sys.path.append('electrode_models') 
@@ -20,7 +22,7 @@ sys.path.append('separator_models')
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
-        input = 'inputs/spm_Graphite_spm_LCO_input.yaml'
+        input = 'inputs/spm_Graphite_Porous_Sep_spm_LCO_input.yaml'
     else:
         input = 'inputs/'+input+'.yaml'
 

@@ -16,7 +16,7 @@ def initialize(input_file, inputs, params, offset):
         # State variables: electrolyte potential, electrolyte composition (nsp)
         nVars = 1 + elyte_obj.n_species
 
-        from .functions import residual, electrode_boundary_flux
+        from .functions import residual, electrode_boundary_flux, output
     
         n_points = inputs['n_points']
         dy = inputs['thickness']/n_points
@@ -44,6 +44,10 @@ def initialize(input_file, inputs, params, offset):
 
         # Ionic conductivity of bulk electrolyte (S/m):
         sigma_io = inputs['sigma_io']
+
+        # This model produces two plots: Electric potential and Li 
+        # concentration in the separator.
+        n_plots = 2
 
     # Set Cantera object state:
     if 'X_0' in inputs:

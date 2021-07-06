@@ -13,7 +13,7 @@ def initialize(input_file, inputs, params, offset):
         # State variables: electrolyte potential
         nVars = 1
 
-        from .functions import residual, electrode_boundary_flux
+        from .functions import residual, electrode_boundary_flux, output
     
         dy = inputs['thickness']
         dyInv = 1/dy
@@ -29,6 +29,9 @@ def initialize(input_file, inputs, params, offset):
         SV_offset = offset
 
         n_points = 1
+
+        # This model produces one plot: Electric potential in the separator.
+        n_plots = 1
 
     SV = np.zeros([separator.nVars])
     

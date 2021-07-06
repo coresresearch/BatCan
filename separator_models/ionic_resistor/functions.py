@@ -83,3 +83,23 @@ def electrode_boundary_potential(SV, ed, sep):
             + ed.dy/ed.elyte_microstructure)
 
     return dy_elyte_eff, phi_elyte_ed
+
+def output(axs, solution, an, sep, ca, lp, offset):
+    
+    phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi']), 2)
+    
+    phi_elyte_an = (solution[an.SVptr['phi_ed'][0]+2,:] 
+        + solution[an.SVptr['phi_dl'][0]+2,:])
+
+    axs[offset+1].plot(solution[0,:]/3600, phi_elyte_an)
+    
+    for j in np.arange(sep.n_points):
+        axs[offset+1].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
+
+    phi_elyte_ca = (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+2,:] 
+        + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+2],:])
+    
+    axs[offset+1].plot(solution[0,:]/3600, phi_elyte_ca)
+    axs[offset+1].set_ylabel('Separator Potential \n(V)',labelpad=lp)
+    
+    return axs
