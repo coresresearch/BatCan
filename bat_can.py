@@ -46,8 +46,9 @@ def bat_can(input = None):
     SV_an_0 = an.initialize(an_inputs, sep_inputs)
     
     sep_module = importlib.import_module(sep_inputs['class'])
-    SV_sep_0, sep = sep_module.initialize(input, sep_inputs, parameters, 
+    sep = sep_module.separator(input, sep_inputs, parameters, 
             offset=an.n_vars)
+    SV_sep_0 = sep.initialize(sep_inputs)
 
     ca_module = importlib.import_module(ca_inputs['class'])
     ca = ca_module.electrode(input, ca_inputs, sep_inputs, an_inputs, 
