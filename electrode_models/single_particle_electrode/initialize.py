@@ -93,7 +93,7 @@ def initialize(input_file, inputs, sep_inputs, counter_inputs, electrode_name,
 
         # Load the residual function and other required functions and store 
         # them as methods of this class:
-        from .functions import residual, voltage_lim, output
+        from .functions import residual, voltage_lim, output, adjust_separator
 
     # Set Cantera object state:
     electrode.bulk_obj.electric_potential = inputs['phi_0']
