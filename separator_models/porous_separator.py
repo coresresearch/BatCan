@@ -242,9 +242,9 @@ class separator():
         for j in np.arange(self.n_points):
             axs[ax_offset].plot(solution[0,:]/3600, 
                 solution[phi_elyte_ptr[j],:])
-
+        
         phi_ca = (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+2,:] 
-            + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+2],:])
+            + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]]+2,:])
         axs[ax_offset].plot(solution[0,:]/3600, phi_ca)
         axs[ax_offset].set_ylabel('Separator Potential \n(V)')
         

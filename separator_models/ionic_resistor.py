@@ -30,7 +30,9 @@ class separator():
 
         # This model produces one plot: Electric potential in the separator.
         self.n_plots = 1
-
+    
+    def initialize(self, inputs):
+        
         # Set up pointers:
         self.SVptr = {}
         self.SVptr['phi'] = np.array([0])
@@ -38,8 +40,6 @@ class separator():
 
         # Save indices for any algebraic variables.
         self.algvars = [offset + self.SVptr['phi'][0]]
-    
-    def initialize(self, inputs):
         SV = np.zeros([self.nVars])
     
         # Load intial state variables:

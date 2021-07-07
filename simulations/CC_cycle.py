@@ -14,7 +14,6 @@
 
 """
 import numpy as np
-import cantera as ct
 from scikits.odes.dae import dae
 
 def run(SV_0, an, sep, ca, algvars, params):

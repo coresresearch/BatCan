@@ -164,8 +164,6 @@ class electrode():
             - counter: the object representing the electrode counter to the current electrode
             - params: dict of battery simulation parameters.
         """
-        import numpy as np
-        import cantera as ct
         
         # Initialize the residual:
         resid = np.zeros((self.n_vars,))

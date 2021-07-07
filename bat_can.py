@@ -41,24 +41,28 @@ def bat_can(input = None):
         + an_inputs['class'])
     an = an_module.electrode(input, an_inputs, sep_inputs, ca_inputs, 
             'anode', parameters, offset=0)
-    SV_an_0 = an.initialize(an_inputs, sep_inputs)
     
     sep_module = importlib.import_module('separator_models.' 
         + sep_inputs['class'])
     sep = sep_module.separator(input, sep_inputs, parameters, 
             offset=an.n_vars)
-    SV_sep_0 = sep.initialize(sep_inputs)
+
+    # Check to see if the anode object needs to adjust the separator properties:
+    sep = an.adjust_separator(sep)
 
     ca_module = importlib.import_module('electrode_models.' 
         + ca_inputs['class'])
     ca = ca_module.electrode(input, ca_inputs, sep_inputs, an_inputs, 
-            'cathode', parameters, offset=sep.SVptr['sep'][-1]+1)
-    SV_ca_0 = ca.initialize(ca_inputs, sep_inputs)
+        'cathode', parameters, offset= an.n_vars+sep.n_vars*sep.n_points)
 
-    # Check to see if either of the electrode objects need to adjust the 
-    # separator properties:
-    sep = an.adjust_separator(sep)
+    # Check to see if the cathode object needs to adjust the separator 
+    # properties:
     sep = ca.adjust_separator(sep)
+
+    # Initialize the solution vector:
+    SV_an_0 = an.initialize(an_inputs, sep_inputs)
+    SV_sep_0 = sep.initialize(sep_inputs)
+    SV_ca_0 = ca.initialize(ca_inputs, sep_inputs)
 
     # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])

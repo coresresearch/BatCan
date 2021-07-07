@@ -5,6 +5,7 @@
 """
 
 import cantera as ct
+from math import tanh
 import numpy as np
 
 class electrode():
@@ -78,10 +79,6 @@ class electrode():
         # This model produces one plot, for the electrode thickness:
         self.n_plots = 1
 
-        # # Load the residual function and other necessary functions, store them 
-        # # as methods of this class:
-        # from .functions import voltage_lim, output
-
         # Set the Cantera object state.     
         self.bulk_obj.electric_potential = inputs['phi_0']
         # If the user provided an initial composition, use that, here:
@@ -122,7 +119,6 @@ class electrode():
             - counter: the object representing the electrode counter to the current electrode
             - params: dict of battery simulation parameters.
         """
-        from math import tanh
         
         # Initialize the residual array:
         resid = np.zeros((self.n_vars,))
@@ -258,6 +254,7 @@ class electrode():
         The electrode domain considers the electrode object plus a thin layer of the separator, adjacent to the self. We subtract this thickness from the total separator thickness, so that we do not inadvertently increase the total transport resistance through the separator.
         """
         sep.dy -= self.dy_elyte
+        sep.n_points -= 1
         return sep
 
     def output(self, axs, solution, ax_offset):
