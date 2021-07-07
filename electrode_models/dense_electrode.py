@@ -1,5 +1,5 @@
 """
-    single_particle_electrode.py
+    dense_electrode.py
 
     Class file for dense metal (e.g. Li) electrode methods
 """
@@ -94,7 +94,7 @@ class electrode():
         self.surf_obj.TP = params['T'], params['P']
         self.conductor_obj.TP = params['T'], params['P']
 
-    def residual(self, SV, SVdot, sep, counter, params):
+    def residual(self, SV, SVdot, sep, params):
         """
         Define the residual for the state of the dense self.
 

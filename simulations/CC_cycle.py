@@ -36,9 +36,9 @@ def run(SV_0, an, sep, ca, algvars, params):
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
     def terminate_check(t, SV, SVdot, return_val, inputs):
-        return_val[0] = ca.voltage_lim(SV, ca, params['simulation']
+        return_val[0] = ca.voltage_lim(SV, params['simulation']
                 ['phi-cutoff-lower'])
-        return_val[1] = ca.voltage_lim(SV, ca, params['simulation']
+        return_val[1] = ca.voltage_lim(SV, params['simulation']
                 ['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
@@ -175,11 +175,11 @@ def residual(t, SV, SVdot, resid, inputs):
 
     # Call residual functions for anode, separator, and cathode. Assemble them 
     # into a single residual vector 'resid':
-    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, ca, params)
+    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, params)
 
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, sep, ca, params)
     
-    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, ca, sep, an, params)
+    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, sep, params)
 
 def output(solution, an, sep, ca, params):
     """
@@ -216,7 +216,7 @@ def output(solution, an, sep, ca, params):
 
     # Add any relevant anode, cathode, and separator plots: 
     axs = an.output(axs, solution, ax_offset=2)
-    axs = ca.output(axs, solution, ca, lp, offset=1+an.n_plots)
+    axs = ca.output(axs, solution, ax_offset=2+an.n_plots)
     axs = sep.output(axs, solution, an, sep, ca, lp, 
         offset=1+an.n_plots+ca.n_plots)
 
