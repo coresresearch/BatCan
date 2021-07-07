@@ -13,10 +13,6 @@ import matplotlib.pyplot as plt
 
 from bat_can_init import initialize as init
 
-# Add to the folders with component models to our path:
-sys.path.append('electrode_models') 
-sys.path.append('separator_models')
-
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
 def bat_can(input = None):
@@ -40,17 +36,20 @@ def bat_can(input = None):
     # module, and then run its 'initialize' routine to create an intial 
     # solution vector and an object that stores needed parameters.
     # import single_particle_electrode as an_module_0
-    an_module = importlib.import_module(an_inputs['class'])
+    an_module = importlib.import_module('electrode_models.' 
+        + an_inputs['class'])
     an = an_module.electrode(input, an_inputs, sep_inputs, ca_inputs, 
             'anode', parameters, offset=0)
     SV_an_0 = an.initialize(an_inputs, sep_inputs)
     
-    sep_module = importlib.import_module(sep_inputs['class'])
+    sep_module = importlib.import_module('separator_models.' 
+        + sep_inputs['class'])
     sep = sep_module.separator(input, sep_inputs, parameters, 
             offset=an.n_vars)
     SV_sep_0 = sep.initialize(sep_inputs)
 
-    ca_module = importlib.import_module(ca_inputs['class'])
+    ca_module = importlib.import_module('electrode_models.' 
+        + ca_inputs['class'])
     ca = ca_module.electrode(input, ca_inputs, sep_inputs, an_inputs, 
             'cathode', parameters, offset=sep.SVptr['sep'][-1]+1)
     SV_ca_0 = ca.initialize(ca_inputs, sep_inputs)
