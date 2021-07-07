@@ -8,10 +8,8 @@
 # Import modules
 import importlib # allows us to import from user input string.
 import numpy as np
-import sys
-import matplotlib.pyplot as plt 
 
-from bat_can_init import initialize as init
+from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
@@ -25,7 +23,7 @@ def bat_can(input = None):
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
-    an_inputs, sep_inputs, ca_inputs, parameters = init(input)
+    an_inputs, sep_inputs, ca_inputs, parameters = initialize(input)
 
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
