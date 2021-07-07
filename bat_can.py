@@ -18,7 +18,10 @@ def bat_can(input = None):
         # Default is a single-particle model of graphite/LCO
         input = 'inputs/spm_Graphite_Porous_Sep_spm_LCO_input.yaml'
     else:
-        input = 'inputs/'+input+'.yaml'
+        if input[-5:] == '.yaml':
+            input  = 'inputs/'+input
+        else:
+            input = 'inputs/'+input+'.yaml'
 
     #===========================================================================
     #   READ IN USER INPUTS
