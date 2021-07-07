@@ -177,7 +177,7 @@ def residual(t, SV, SVdot, resid, inputs):
     # into a single residual vector 'resid':
     resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, params)
 
-    resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, sep, ca, params)
+    resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
     
     resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, sep, params)
 
@@ -217,8 +217,7 @@ def output(solution, an, sep, ca, params):
     # Add any relevant anode, cathode, and separator plots: 
     axs = an.output(axs, solution, ax_offset=2)
     axs = ca.output(axs, solution, ax_offset=2+an.n_plots)
-    axs = sep.output(axs, solution, an, sep, ca, lp, 
-        offset=1+an.n_plots+ca.n_plots)
+    axs = sep.output(axs, solution, an, ca, ax_offset=2+an.n_plots+ca.n_plots)
 
     axs[n_plots-1].set(xlabel='Time (h)')
 

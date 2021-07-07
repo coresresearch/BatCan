@@ -197,7 +197,7 @@ class electrode():
         # Double layer current has the same sign as i_Far:
 
         i_dl = self.i_ext_flag*params['i_ext']/self.A_surf_ratio - i_Far
-        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, sep, params['T'])
+        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T'])
         
         # species production
         sdot_k_ed = self.surf_obj.get_net_production_rates(self.bulk_obj)

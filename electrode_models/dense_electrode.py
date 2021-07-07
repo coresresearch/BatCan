@@ -168,7 +168,7 @@ class electrode():
 
         # Flux of electrolyte species between the separator and the electrolyte in 
         # the current electrode domain:
-        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, sep, params['T'])
+        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T'])
 
         # Electrode electric potential
         if self.name=='anode':
