@@ -72,6 +72,8 @@ The model is run from a command line or terminal by invoking python, the `bat_ca
 ```
 python bat_can.py --input=my_input
 ```
+Inluding the file extension is optional.
+
 # Sample results.
 Below is an example of the model output, for a Li metal anode, porous separator with liquid carbonate electrolyte, and single-particle model of an LCO cathode, cycled 5 times at a rate of 0.01C (Note that these parameters have not been tuned; this is for demonstration purposes only 🙂 ).
 
