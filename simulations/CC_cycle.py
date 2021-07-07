@@ -175,7 +175,7 @@ def residual(t, SV, SVdot, resid, inputs):
 
     # Call residual functions for anode, separator, and cathode. Assemble them 
     # into a single residual vector 'resid':
-    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, an, sep, ca, params)
+    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, ca, params)
 
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, sep, ca, params)
     
@@ -215,7 +215,7 @@ def output(solution, an, sep, ca, params):
     axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
 
     # Add any relevant anode, cathode, and separator plots: 
-    axs = an.output(axs, solution, an, lp, offset=1)
+    axs = an.output(axs, solution, ax_offset=2)
     axs = ca.output(axs, solution, ca, lp, offset=1+an.n_plots)
     axs = sep.output(axs, solution, an, sep, ca, lp, 
         offset=1+an.n_plots+ca.n_plots)
