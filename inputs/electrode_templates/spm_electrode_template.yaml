@@ -1,0 +1,26 @@
+#===============================================================================
+#  spm_electrode_template.yaml
+#
+#  Template demonstrating how to set up a single-particle model electrode. 
+#  Copy, paste, and edit in your own input file, as desired. Only intended to 
+#  demonstrate the required fields--you will still have to make sure that the
+#  entries are correct (for example, that the phase names provided match with #  the cantera phase names, further below in your file.)
+#===============================================================================
+
+cell-description:
+  cathode:
+    class: 'single_particle_electrode'
+    bulk-phase: 'cathode' # Cantera phase name
+    surf-phase: 'cathode_electrolyte' # Cantera phase name
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    conductor-phase: 'electron' # Cantera phase name
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li[cathode]
+      charge: 1
+    mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+    thickness: 50e-6 # anode thickness, m
+    r_p: 6e-6 # Particle radius, m
+    phi_0: 4.125 # Initial electric potential, V
+    eps_solid: 0.65 # Solid phase volume fraction, -
+    X_0: 'Li[cathode]:0.001, V[cathode]:0.999'
+    C_dl: 6e3 #F/m2

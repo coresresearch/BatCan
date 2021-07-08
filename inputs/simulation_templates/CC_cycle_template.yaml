@@ -1,0 +1,23 @@
+#===============================================================================
+#  CC_cycle_template.yaml
+#
+#  User inputs for a constant-current cycling simulation.
+#
+#  Copy, paste, and edit in your own input file.
+#===============================================================================
+
+# Simulation parameters:
+parameters:
+  T: 60 # C
+  P: 101325 # Pa
+  # Describe simulation type, parameters, etc.
+  simulation:
+    type: 'CC_cycle' # Constant current cycling
+    # Specify only one of i_ext or C-rate. The other should be null:
+    i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+    C-rate: 0.01 # input C-rate
+    n_cycles: 5 # Number of cycles. Currently must be 0.5 or an int.
+    first-step: 'discharge'  # Start with charge or discharge?
+    phi-cutoff-lower: 2.2 # Simulation cuts off if E_Cell <= this value
+    phi-cutoff-upper: 5.5 # Simulation cuts off if E_Cell >= this value
+    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value

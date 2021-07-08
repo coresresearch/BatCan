@@ -1,0 +1,172 @@
+#===============================================================================
+#  li_metal_ec_pc_template.yaml
+#
+#  Demonstrates how to specify the thermo-kinetic parameters in Cantera for a 
+#  li metal anode paired with a carbonate (LiPF6 in EC:PC) electrolyte.
+#
+#  Copy, paste, and edit in your own input file, as desired.
+#
+#  Specific names and parameter values can, of course, be changed as desired/
+#  justified by the data.
+#===============================================================================
+
+
+# Cantera inputs:
+description: |-
+  Cantera input file for an Li metal anode
+
+  This file includes a full set of thermodynamic and kinetic parameters of a
+  lithium-ion half-cell, in particular:
+  - Active materials: Li (li metal)
+  - Organic electrolyte: EC/PC with 1M LiPF6
+  - Interfaces: Li/electrolyte
+  - Charge-transfer reactions at the interface
+
+  Reference:
+  For the electrolyte:
+  M. Mayur, S. C. DeCaluwe, B. L. Kee, W. G. Bessler, “Modeling and simulation
+  of the thermodynamics of lithium-ion battery intercalation materials in the
+  open-source software Cantera,” Electrochim. Acta 323, 134797 (2019),
+  https://doi.org/10.1016/j.electacta.2019.134797
+
+  Bulk phases
+  ===========
+
+  Lithium (anode)
+
+
+  Carbonate based electrolyte (electrolyte)
+  Solvent: Ethylene carbonate:Propylene carbonate (1:1 v/v)
+  Salt: 1M LiPF6
+
+  Interface phases
+  ================
+
+  lithium/electrolyte interface (lithium_electrolyte)
+  Species and site density are dummy entries (as we do not consider surface-
+  adsorbed species)
+
+phases:
+
+- name: lithium_metal
+  thermo: ideal-condensed
+  species: ['Li[metal]']
+  density: 0.534 g/cm^3
+  state:
+    T: 300.0
+    P: 1 atm
+- name: electrolyte
+  thermo: ideal-condensed
+  elements: [Li, P, F, C, H, O, E]
+  species: ['C3H4O3[elyt]', 'C4H6O3[elyt]', 'Li+[elyt]', 'PF6-[elyt]']
+  state:
+    X: {'C3H4O3[elyt]': 0.47901, 'C4H6O3[elyt]': 0.37563, 'Li+[elyt]': 0.07268,
+      'PF6-[elyt]': 0.07268}
+  standard-concentration-basis: unity
+- name: electron
+  thermo: electron-cloud
+  elements: [E]
+  species: [electron]
+  state:
+    X: {electron: 1.0}
+  density: 1.0 kg/m^3
+- name: lithium_electrolyte
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [lithium_electrolyte-reactions]
+  site-density: 0.01 mol/cm^2
+
+species:
+- name: Li[metal]
+  composition: {Li: 1}
+  thermo:
+    model: constant-cp
+    h0: 19.50 kJ/mol
+    s0: 29.1 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 12.998 cm^3/mol
+- name: C3H4O3[elyt]
+  composition: {C: 3, H: 4, O: 3}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 69.89126984126985 cm^3/mol
+  note: |-
+    Ethylene carbonate, MW: 88.0630 g/mol
+    Density of electrolyte: 1260 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+- name: C4H6O3[elyt]
+  composition: {C: 4, H: 6, O: 3}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 81.02365079365079 cm^3/mol
+  note: |-
+    Propylene carbonate, MW: 102.0898 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+- name: Li+[elyt]
+  composition: {Li: 1, E: -1}
+  thermo:
+    model: constant-cp
+    h0: -278.49 kJ/mol
+    s0: 13.4 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 5.508297619047619 cm^3/mol
+  note: |-
+    Lithium ion, MW: 6.940455 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
+    Chemistry", Wiley-VCH (2006)
+- name: PF6-[elyt]
+  composition: {P: 1, F: 6, E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 115.05138492063492 cm^3/mol
+  note: |-
+    Hexafluorophosphate ion, MW: 144.964745 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+- name: electron
+  composition: {E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: |-
+    Electron, MW: 0.000545 g/mol
+    Molar enthalpy and entropy set to zero (dummy entries because chemical
+    potential is set to zero for a "metal" phase)
+- name: (dummy)
+  composition: {}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: Dummy species (needed for defining the interfaces)
+
+lithium_electrolyte-reactions:
+- equation: Li[metal] <=> Li+[elyt] + electron
+  id: lithium_faradaic_reaction
+  rate-constant: {A: 6.0e+09, b: 0.0, Ea: 0.0}
+  beta: 0.5
