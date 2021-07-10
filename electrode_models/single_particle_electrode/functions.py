@@ -44,7 +44,7 @@ def residual(SV, SVdot, self, sep, counter, params):
     self.elyte_obj.electric_potential = phi_elyte
     
     # Faradaic current density is positive when electrons are consumed 
-    # (Li transferred to the anode)
+    # (Li transferred to the electrode)
     sdot_electron = self.surf_obj.get_net_production_rates(self.conductor_obj)
     i_Far = -ct.faraday*sdot_electron
     

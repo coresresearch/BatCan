@@ -1,6 +1,6 @@
 def residual(SV, SVdot, self, sep, counter, params):
     """
-    Define the residual for the state of the single particle electrode.
+    Define the residual for the state of the HNG model.
 
     This is an array of differential and algebraic governing equations, one for each state variable in the anode (anode plus a thin layer of electrolyte + separator).
 
@@ -42,7 +42,7 @@ def residual(SV, SVdot, self, sep, counter, params):
     self.elyte_obj.electric_potential = phi_elyte
     
     # Faradaic current density is positive when electrons are consumed 
-    # (Li transferred to the anode)
+    # (Li transferred to the electrode)
     sdot_electron = self.surf_obj.get_net_production_rates(self.bulk_obj)
     sdot_elyte = self.surf_obj.get_net_production_rates(self.air_elyte_obj)
     sdot_cathode = self.surf_obj.get_net_production_rates(self.surf_obj)

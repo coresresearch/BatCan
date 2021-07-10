@@ -1,7 +1,7 @@
 """
-    single_particle_electrode.py
+    nucleation_single_particle.py
 
-    Class file for single-particle (SPM) electrode methods
+    Class file for heterogenous nucleation and growth (HNG) electrode methods
 """
 
 import cantera as ct
