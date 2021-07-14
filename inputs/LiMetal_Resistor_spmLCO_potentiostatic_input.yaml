@@ -6,40 +6,26 @@
 
 cell-description:
   anode:
-    class: 'single_particle_electrode'
-    bulk-phase: 'anode' # Cantera phase name
-    surf-phase: 'anode_electrolyte' # Cantera phase name
+    class: 'dense_electrode'
+    bulk-phase: 'lithium_metal' # Cantera phase name
+    surf-phase: 'lithium_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
     conductor-phase: 'electron' # Cantera phase name
     stored-ion: # Details on the stored species. Used for capacity calc.
-      name: Li[anode]
+      name: Li[metal]
       charge: 1
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
-    thickness: 50e-6 # anode thickness, m
-    r_p: 1e-6 # Particle radius, m
+    thickness: 1e-6 # anode thickness, m
+    minimum-thickness: 1e-9 # minimum anode thickness. 
     phi_0: 0. # Initial electric potential, V
-    eps_solid: 0.55 # Solid phase volume fraction, -
-    X_0: 'Li[anode]:0.999, V[anode]:0.001'
-    C_dl: 1e-2 #F/m2
+    A_surf_ratio: 1.0 # Interface area per unit geometric area
+    C_dl: 6e-3 #F/m2
+    dy_elyte: 2e-6
   separator:
-    class: 'porous_separator'
-    thickness: 20e-6  # separator thickness, m
-    n_points: 5       # Number of finite volumes to discretize
+    class: 'ionic_resistor'
+    thickness: 20e-6 # separator thickness, m
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 1.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
-    transport:
-      mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
-      model: 'dilute-solution'
-      diffusion-coefficients: # Species names must match those in the phase 
-      #definition, below:
-        - species: 'C3H4O3[elyt]'
-          D_k: 1e-15
-        - species: 'C4H6O3[elyt]' 
-          D_k: 1e-15
-        - species: 'Li+[elyt]'
-          D_k: 2e-11
-        - species: 'PF6-[elyt]'
-          D_k: 2e-13
     phi_0: 2.96 # Initial electric potential, V
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
   cathode:
@@ -56,27 +42,20 @@ cell-description:
     r_p: 6e-6 # Particle radius, m
     phi_0: 4.125 # Initial electric potential, V
     eps_solid: 0.65 # Solid phase volume fraction, -
-    X_0: 'Li[cathode]:0.001, V[cathode]:0.999'
-    C_dl: 1e-2 #F/m2
+    X_0: 'Li[cathode]:0.97, V[cathode]:0.03'
+    C_dl: 6e-3 #F/m2
 
 # Simulation parameters:
 parameters:
   T: 60 # C
   P: 101325 # Pa
   # Describe simulation type, parameters, etc.
-  outputs:
-    show-plots: True
-    save-path: 'spmGraph_spmLCO_test'
   simulation:
-    type: 'CC_cycle' # Constant current cycling
+    type: 'potential_hold' # Constant current cycling
     # Specify only one of i_ext or C-rate. The other should be null:
-    i_ext: null #0.00001 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    C-rate: 0.1 # input C-rate
-    n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
-    equilibrate: True # Start with a hold at open circuit?
-    first-step: 'discharge'  # Start with charge or discharge?
-    phi-cutoff-lower: 3.75 # Simulation cuts off if E_Cell <= this value
-    phi-cutoff-upper: 4.25 # Simulation cuts off if E_Cell >= this value
+    potential: 5.25 # V, cell potential for the hold.
+    time: 4900 # s, time for the hold.
+    equilibrate: False # Begin with a hold at i_ext = 0?
     species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
 
 # Cantera inputs:
@@ -85,17 +64,10 @@ description: |-
 
   This file includes a full set of thermodynamic and kinetic parameters of a
   lithium-ion battery, in particular:
-  - Active materials: LiCoO2 (LCO) and LiC6 (graphite)
+  - Active materials: LiCoO2 (LCO) and Li (li metal)
   - Organic electrolyte: EC/PC with 1M LiPF6
-  - Interfaces: LCO/electrolyte and LiC6/electrolyte
+  - Interfaces: LCO/electrolyte and Li/electrolyte
   - Charge-transfer reactions at the two interfaces
-
-  We use Butler-Volmer kinetics by setting `exchange-current-density-formulation`
-  to `true`. The preexponential factors and activation energies are converted
-  from Guo et al., J. Electrochem. Soc. 158, A122 (2011)
-
-  A MATLAB example using this file for simulating a discharge curve is
-  samples/matlab/lithium_ion_battery.m
 
   Reference:
   M. Mayur, S. C. DeCaluwe, B. L. Kee, W. G. Bessler, “Modeling and simulation
@@ -106,9 +78,7 @@ description: |-
   Bulk phases
   ===========
 
-  Graphite (anode)
-  Thermodynamic data based on half-cell measurements by K. Kumaresan et al.,
-  J. Electrochem. Soc. 155, A164-A171 (2008)
+  Lithium (anode)
 
   Lithium cobalt oxide (cathode)
   Thermodynamic data based on half-cell measurements by K. Kumaresan et al.,
@@ -121,11 +91,11 @@ description: |-
   Interface phases
   ================
 
-  Graphite/electrolyte interface (edge_anode_electrolyte)
+  lithium/electrolyte interface (lithium_electrolyte)
   Species and site density are dummy entries (as we do not consider surface-
   adsorbed species)
 
-  LCO/electrolyte interface (edge_cathode_electrolyte)
+  LCO/electrolyte interface (cathode_electrolyte)
   Species and site density are dummy entries (as we do not consider surface-
   adsorbed species)
 
@@ -135,45 +105,14 @@ date: Wed, 11 Dec 2019 16:59:07 -0500
 input-files: [lithium_ion_battery.cti]
 
 phases:
-- name: anode
-  thermo: binary-solution-tabulated
-  elements: [Li, C]
-  species: ['Li[anode]', 'V[anode]']
+
+- name: lithium_metal
+  thermo: ideal-condensed
+  species: ['Li[metal]']
+  density: 0.534 g/cm^3
   state:
-    X: {'Li[anode]': 0.999, 'V[anode]': 0.001}
-  standard-concentration-basis: unity
-  tabulated-species: Li[anode]
-  tabulated-thermo:
-    units: {energy: J, quantity: mol}
-    mole-fractions: [5.75e-03, 0.0177591, 0.0297682, 0.0417773, 0.0537864,
-      0.0657954, 0.0778045, 0.0898136, 0.101823, 0.113832, 0.125841, 0.13785,
-      0.149859, 0.161868, 0.173877, 0.185886, 0.197896, 0.209904, 0.221914,
-      0.233923, 0.245932, 0.257941, 0.26995, 0.281959, 0.293968, 0.305977,
-      0.317986, 0.329995, 0.342004, 0.354014, 0.366023, 0.378032, 0.390041,
-      0.40205, 0.414059, 0.426068, 0.438077, 0.450086, 0.462095, 0.474104,
-      0.486114, 0.498123, 0.510132, 0.522141, 0.53415, 0.546159, 0.558168,
-      0.570177, 0.582186, 0.594195, 0.606205, 0.618214, 0.630223, 0.642232,
-      0.654241, 0.66625, 0.678259, 0.690268, 0.702277, 0.714286, 0.726295,
-      0.738305, 0.750314, 0.762323, 0.774332, 0.786341, 0.79835]
-    enthalpy: [-6.40692e+04, -3.78794e+04, -1.99748e+04, -1.10478e+04, -7049.73,
-      -7137.49, -8797.28, -9936.55, -1.0306e+04, -1.00679e+04, -9696.64,
-      -9315.56, -8905.03, -8570.57, -8381.17, -8319.28, -8314.53, -8329.77,
-      -8332.92, -8329.31, -8313.39, -8213.31, -8089.2, -8001.31, -7922.94,
-      -7815.43, -7774.98, -7794.4, -7788.04, -7732.18, -7690.63, -7696.3,
-      -7632.41, -7419.1, -7068.28, -6645.44, -6171.93, -5670.55, -5142.99,
-      -4557.04, -3945.68, -3354.08, -2878.25, -2576.9, -2434.68, -2339.52,
-      -2232.18, -2114.82, -2039.76, -2019.9, -2013.29, -1979.91, -1926.86,
-      -1866.02, -1814.19, -1776.93, -1749.08, -1714.94, -1672.87, -1636.85,
-      -1596.49, -1522.95, -1390.33, -1115.24, -534.643, 373.854, 1604.42]
-    entropy: [30.5724, 40.4307, 47.5718, 52.569, 51.0953, 44.3414, 37.1575,
-      32.3216, 29.1586, 27.0081, 25.3501, 24.0845, 23.0042, 21.9373, 20.7212,
-      19.3057, 17.7319, 16.1153, 14.6399, 13.4767, 12.7, 12.3377, 12.2815,
-      12.37, 12.4863, 12.6368, 12.6925, 12.625, 12.4861, 12.3294, 12.1865,
-      12.0723, 12.1228, 12.4383, 13.0288, 13.7342, 14.446, 15.0813, 15.618,
-      16.2213, 17.0474, 18.0584, 18.8377, 19.2094, 19.2957, 19.3172, 19.3033,
-      19.2971, 19.2977, 19.2978, 19.298, 19.2978, 19.2945, 19.2899, 19.2877,
-      19.2882, 19.2882, 19.2882, 19.2882, 19.2882, 19.2885, 19.2876, 19.2837,
-      19.2769, 19.285, 19.31, 19.3514]
+    T: 300.0
+    P: 1 atm
 - name: cathode
   thermo: binary-solution-tabulated
   elements: [Li, Co, O]
@@ -233,11 +172,11 @@ phases:
   state:
     X: {electron: 1.0}
   density: 1.0 kg/m^3
-- name: anode_electrolyte
+- name: lithium_electrolyte
   thermo: ideal-surface
   species: [(dummy)]
   kinetics: surface
-  reactions: [anode_electrolyte-reactions]
+  reactions: [lithium_electrolyte-reactions]
   site-density: 0.01 mol/cm^2
 - name: cathode_electrolyte
   thermo: ideal-surface
@@ -247,40 +186,15 @@ phases:
   site-density: 0.01 mol/cm^2
 
 species:
-- name: Li[anode]
-  composition: {Li: 1, C: 6}
+- name: Li[metal]
+  composition: {Li: 1}
   thermo:
     model: constant-cp
-    h0: 0.0 kJ/mol
-    s0: 0.0 J/mol/K
+    h0: 19.50 kJ/mol
+    s0: 29.1 J/mol/K
   equation-of-state:
     model: constant-volume
-    molar-volume: 34.80484581497797 cm^3/mol
-  note: |-
-    Lithium intercalated in graphite, MW: 79.0070 g/mol.
-    Note this species includes the carbon host matrix.
-    Molar enthalpy and entropy are set to 0 because the values given in the
-    BinarySolidSolutionTabulatedThermo class are used.
-    Density of graphite: 2270 kg/m3 (W. M. Haynes et al, CRC Handbook of Chemistry
-    and Physics, 94th edition, CRC press, Boca Raton, London, New York, 2013)
-    (used to calculate species molar volume as molecular weight (MW)/density).
-- name: V[anode]
-  composition: {C: 6}
-  thermo:
-    model: constant-cp
-    h0: 0.0 kJ/mol
-    s0: 0.0 J/mol/K
-  equation-of-state:
-    model: constant-volume
-    molar-volume: 31.74713656387665 cm^3/mol
-  note: |-
-    Vacancy in graphite, MW: 72.0660 g/mol.
-    Note this species includes the carbon host matrix.
-    Molar enthalpy and entropy are set to 0 because this is the reference species
-    for this phase.
-    Density of graphite: 2270 kg/m3 (W. M. Haynes et al, CRC Handbook of Chemistry
-    and Physics, 94th edition, CRC press, Boca Raton, London, New York, 2013)
-    (used to calculate species molar volume as molecular weight (MW)/density).
+    molar-volume: 12.998 cm^3/mol
 - name: Li[cathode]
   composition: {Li: 1, Co: 1, O: 2}
   thermo:
@@ -391,11 +305,10 @@ species:
     s0: 0.0 J/mol/K
   note: Dummy species (needed for defining the interfaces)
 
-anode_electrolyte-reactions:
-- equation: Li+[elyt] + V[anode] + electron <=> Li[anode]  # Reaction 1
-  id: anode_reaction
-  rate-constant: {A: 2.028e+04, b: 0.0, Ea: 20.0 kJ/mol}
-  exchange-current-density-formulation: true
+lithium_electrolyte-reactions:
+- equation: Li[metal] <=> Li+[elyt] + electron
+  id: lithium_faradaic_reaction
+  rate-constant: {A: 6.0e+09, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 cathode_electrolyte-reactions:
