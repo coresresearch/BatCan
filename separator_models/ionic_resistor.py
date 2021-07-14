@@ -55,18 +55,18 @@ class separator():
         This is a single algebraic governing equation to determine the separator electric potential.  The separator electric potential must be such that the ionic current is spatially invariant (i.e. it is constant and equal to the external applied current, for galvanostatic simulations).  
 
         The residual corresponding to this variable (suppose an index 'j') is of the form:
-                resid[j]  = (epression equaling zero; here i_io - i_ext)
+                resid[j]  = (epression equaling zero; here i_io_an - i_io_ca)
         """
         # Initialize the residual vector, assuming dSVdt = 0 (we will overwrite/
         #  replace this, as necessary)
         resid = SVdot[self.SVptr['sep']]
 
-        # For the galvanostatic boundary condition, the ionic current must 
-        # equal the external current:
-        N_k, i_io_an = self.electrode_boundary_flux(SV, an, params['T'])
+        # The ionic currents at the anode and cathode boundaries must be equal:
+        _, i_io_an = self.electrode_boundary_flux(SV, an, params['T'])
+        _, i_io_ca = self.electrode_boundary_flux(SV, ca, params['T'])
         
-        # Calculate the residual:
-        resid[self.SVptr['phi'][0]] = i_io_an - params['i_ext']
+        # Calculate the residual, which must always equal zero:
+        resid[self.SVptr['phi'][0]] = i_io_an - i_io_ca
 
         return resid
 
