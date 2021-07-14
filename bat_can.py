@@ -16,7 +16,7 @@ from bat_can_init import initialize
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
-        input = 'inputs/spm_Graphite_Porous_Sep_spm_LCO_input.yaml'
+        input = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
     else:
         if input[-5:] == '.yaml':
             input  = 'inputs/'+input
@@ -46,10 +46,10 @@ def bat_can(input = None):
         + sep_inputs['class'])
     sep = sep_module.separator(input, sep_inputs, parameters, 
             offset=an.n_vars)
-
+    
     # Check to see if the anode object needs to adjust the separator properties:
     sep = an.adjust_separator(sep)
-
+    
     ca_module = importlib.import_module('electrode_models.' 
         + ca_inputs['class'])
     ca = ca_module.electrode(input, ca_inputs, sep_inputs, an_inputs, 

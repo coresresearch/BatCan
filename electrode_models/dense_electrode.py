@@ -254,7 +254,12 @@ class electrode():
         The electrode domain considers the electrode object plus a thin layer of the separator, adjacent to the self. We subtract this thickness from the total separator thickness, so that we do not inadvertently increase the total transport resistance through the separator.
         """
         sep.dy -= self.dy_elyte
-        sep.n_points -= 1
+        
+        # Reduce the number of points in the separator by one, unless the 
+        # separator already only contains one point (which is the case for the 
+        # `ionic_resistor` model. In this case, leave sep.n_points at 1.)
+        sep.n_points = max(sep.n_points - 1, 1)
+        
         return sep
 
     def output(self, axs, solution, ax_offset):

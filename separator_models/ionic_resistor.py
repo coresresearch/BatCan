@@ -11,7 +11,7 @@ class separator():
 # Initialize the model.
     def __init__(self, input_file, inputs, params, offset):
         # State variables: electrolyte potential
-        self.nVars = 1
+        self.n_vars = 1
     
         self.dy = inputs['thickness']
         self.dyInv = 1/self.dy
@@ -36,11 +36,12 @@ class separator():
         # Set up pointers:
         self.SVptr = {}
         self.SVptr['phi'] = np.array([0])
-        self.SVptr['sep'] = np.arange(offset, offset+self.nVars)
+        self.SVptr['sep'] = np.arange(self.SV_offset, 
+            self.SV_offset + self.n_vars)
 
         # Save indices for any algebraic variables.
-        self.algvars = [offset + self.SVptr['phi'][0]]
-        SV = np.zeros([self.nVars])
+        self.algvars = [self.SV_offset + self.SVptr['phi'][0]]
+        SV = np.zeros([self.n_vars])
     
         # Load intial state variables:
         SV[self.SVptr['phi']] = inputs['phi_0']
@@ -60,15 +61,12 @@ class separator():
         #  replace this, as necessary)
         resid = SVdot[self.SVptr['sep']]
 
-        # Calculate the distance to the anode node center and the anode's electrolyte phase electric potential at the separator boundary:
-        dy, phi_elyte_an = self.electrode_boundary_potential(SV, an)
-
-        # Calculate the electric potential that satisfies the algebraic equation:
-        phi_elyte_sep = phi_elyte_an - params['i_ext']*dy/self.sigma_io
+        # For the galvanostatic boundary condition, the ionic current must 
+        # equal the external current:
+        N_k, i_io_an = self.electrode_boundary_flux(SV, an, params['T'])
         
         # Calculate the residual:
-        resid[self.SVptr['phi']] = (SV[self.SVptr['sep'][self.SVptr['phi']]] 
-                - phi_elyte_sep)
+        resid[self.SVptr['phi'][0]] = i_io_an - params['i_ext']
 
         return resid
 
@@ -80,10 +78,8 @@ class separator():
         # Determine which indices are at the electrode/electrolyte boundary:
         if ed.name=='anode':
             j_ed = -1
-            j_elyte = 0
         elif ed.name=='cathode':
             j_ed = 0
-            j_elyte = -1
 
         # Initialize species fluxes:    
         N_k_elyte = np.zeros_like(ed.elyte_obj.X)
@@ -94,15 +90,15 @@ class separator():
         phi_elyte_ed = phi_ed + phi_dl
         
         # Elyte electric potential in separator:
-        phi_elyte_sep = SV[self.SVptr['sep'][self.SVptr['phi']]]
+        phi_elyte_sep = SV[self.SVptr['sep'][self.SVptr['phi'][0]]]
         
         # Average electronic resistance:
         dy_eff = 0.5*(self.dy / self.elyte_microstructure 
-                + ed.dy/ed.elyte_microstructure)
-
+                + ed.dy / ed.elyte_microstructure)
+        
         # Ionic current:
         i_io = ed.i_ext_flag*(phi_elyte_sep - phi_elyte_ed)*self.sigma_io/dy_eff
-
+        
         # Convert this to flux of the lithium ion:
         N_k_elyte[ed.index_Li] = i_io/ct.faraday/ed.elyte_obj.charges[ed.index_Li]
 
@@ -112,9 +108,9 @@ class separator():
         """
         Calculate the effective distance between node centers at the electrode/electrolyte boundary and the electric potential in the electrolyte phase on the electrode side of this boundary.
         """
-        # Elyte electric potential in anode:
-        phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed']]]
-        phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl']]]
+        # Elyte electric potential in electrode:
+        phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed'][-1]]]
+        phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl'][-1]]]
         phi_elyte_ed = phi_ed + phi_dl
         
         # Effective distance between node centers, weighted by the electrolyte 
