@@ -213,7 +213,9 @@ class electrode():
             elif params['boundary'] == 'potential':
                 _, i_io_an = \
                     sep.electrode_boundary_flux(SV, counter, params['T'])
-                resid[SVptr['phi_ed']] = i_io - i_io_an
+                  
+                resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
+                    - params['potential']) #i_io - i_io_an
 
         # Differential equation for the double layer potential:
         resid[SVptr['phi_dl']] = \
