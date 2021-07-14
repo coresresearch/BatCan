@@ -8,7 +8,7 @@
         - 'residual' implements the governing DAE equations to calculate the residual at each time.  This is called by the integrator.
         - 'output' prepares and creates relevant figures and data and saves them to the specified location.
 
-    The methods 'run' and 'ouput' are called by bat_can.py.  All other functions are called internally.
+    The methods 'run' and 'output' are called by bat_can.py.  All other functions are called internally.
 
 """
 import numpy as np
@@ -22,22 +22,15 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Store the location of all algebraic variables.
     params['algvars'] = algvars
 
-    # Specify the boundary condition as potentiostatic:
-    params['boundary'] = 'potential'
-
-    # For convenience / readability:
-    params['potential'] = params['simulation']['potential']
-
+    # Initialize the vector of state vector time derivative (dSV/dt):
+    SVdot_0 = np.zeros_like(SV_0)
     
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
     def terminate_check(t, SV, SVdot, return_val, inputs):
+        #TODO: implement concentration check.
         return_val[0] = 1.0
         return_val[1] = 1.0
-        # return_val[0] = ca.voltage_lim(SV, params['simulation']
-        #         ['phi-cutoff-lower'])
-        # return_val[1] = ca.voltage_lim(SV, params['simulation']
-        #         ['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-8, 'atol':1e-11, 
@@ -45,132 +38,97 @@ def run(SV_0, an, sep, ca, algvars, params):
             'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
-    print('Potential = ', round(params['potential'], 3),' V \n')
+    # If requested by the user, begin with a hold at zero current, to 
+    # equilibrate the system:
+    if params['simulation']['equilibrate']:
 
-    t_out = np.linspace(0, params['simulation']['time'], 10000)
+        params['boundary'] = 'current'
+        params['i_ext'] = 0.0
 
-    SVdot_0 = np.zeros_like(SV_0)
-    solution =solver.solve(t_out, SV_0, SVdot_0)
+        print('Step 1: Equilibrating...\n')
+        print('    i_ext = 0.0 A/cm2.\n')
 
-    data_out = np.vstack((solution.values.t , np.zeros_like(solution.values.t), 
-        solution.values.y.T))
+        # Equilibrate for 1h:
+        t_out = np.linspace(0, 3600, 10000)
 
-    # # Go through the current steps and integrate for each current:
-    # for i, step in enumerate(steps):
-    #     print('Step ',int(i+1),': ',step,'...\n')
+        # Run the solver
+        solution =solver.solve(t_out, SV_0, SVdot_0)
 
-    #     # Set the external current density (A/m2)
-    #     params['i_ext'] = currents[i]
-    #     print('    Current = ', round(currents[i],3),'A/m^2 \n')
+        # Array of current densities, one for each time step taken:
+        i_ext = np.zeros_like(solution.values.t)
         
-    #     t_out = np.linspace(0,t_final,10000)
+        # Stack the times, current densities, and state vectors:
+        data_out = np.vstack((solution.values.t, i_ext, solution.values.y.T))
         
-    #     # Create an initial array of time derivatives and runs the integrator:
-    #     SVdot_0 = np.zeros_like(SV_0)
-    #     solution = solver.solve(t_out, SV_0, SVdot_0)
+        # Use solution at the end of simulation as the new initial condition:
+        SV_0 = solution.values.y[-1,:]
 
-    #     # Create an array of currents, one for each time step:
-    #     i_data = currents[i]*np.ones_like(solution.values.t)
+        # Initialize the step counter to 1:
+        i_step = 1
 
-    #     # Append the current data array to any preexisting data, for output.  
-    #     # If this is the first step, create the output data array.
-    #     if i: # Not the first step. 'data_out' already exists:
-    #         # Stack the times, the current at each time step, and the solution 
-    #         # vector at each time step into a single data array.
-    #         SV = np.vstack((solution.values.t+data_out[0,-1], i_data, solution.
-    #             values.y.T))
-    #         data_out = np.hstack((data_out, SV))
+    else:
+        # Initialize the step counter:
+        i_step = 0
 
-    #         # Use SV at the end of the simualtion as the new initial condition:
-    #         SV_0 = solution.values.y[-1,:]
-    #     else: # First step. 'data_out' does not yet exist:
-    #         # Stack the times, the current at each time step, and the solution 
-    #         # vector at each time step into a single data array.
-    #         SV = np.vstack((solution.values.t, i_data, solution.values.y.T))
-    #         data_out = SV
+    # Specify the boundary condition as potentiostatic:
+    params['boundary'] = 'potential'
 
-    #         # Use SV at the end of the simualtion as the new initial condition:
-    #         SV_0 = solution.values.y[-1,:]
+    for step in params['simulation']['steps']:
+        
+        # Store the potential:
+        params['potential'] = step['potential']
+
+        # Print out the conditions:
+        print('Step {:0.0f}: Potentiostatic hold...\n'.format(i_step+1))
+        print('    Potential = ', round(params['potential'], 3),' V \n')
+
+        # Determine the range of times to simulate:
+        t_out = np.linspace(0, step['time'], 10000)
+
+        # Run the solver
+        solution =solver.solve(t_out, SV_0, SVdot_0)
+
+        # Calculate the external current at each time step:
+        i_ext = calc_current(solution, sep, an, params)
+
+        # Append the current data array to any preexisting data, for output.  
+        # If this is the first step, create the output data array.
+        if i_step: # Not the first step. 'data_out' already exists:
+            # Stack the times, the current at each time step, and the solution 
+            # vector at each time step into a single data array.
+            
+            # For the times, add the final time from the previous step to all 
+            # values:
+            SV = np.vstack((solution.values.t+data_out[0,-1], i_ext, 
+                solution.values.y.T))
+            data_out = np.hstack((data_out, SV))
+
+            # Use SV at the end of the simulation as the new initial condition:
+            SV_0 = solution.values.y[-1,:]
+        else: # First step. 'data_out' does not yet exist:
+            # Stack the times, the current at each time step, and the solution 
+            # vector at each time step into a single data array.
+            SV = np.vstack((solution.values.t, i_ext, solution.values.y.T))
+            data_out = SV
+
+            # Use SV at the end of the simulation as the new initial condition:
+            SV_0 = solution.values.y[-1,:]
+        
+        # Increment the step number:
+        i_step += 1
 
     return data_out
 
-def calc_current(params, an, ca):
+def calc_current(solution, sep, ed, params):
     """
-    Calculates the external current from the user inputs.  If a C-rate is given, calculate the battery capacity and convert this to a current.  If 
-    i_ext is given, convert the units to A/m2.
+    Calculates the external current from the the state vector.  Since the ionic current in the separator should be equal to the external current at any given point in time, we'll use the current at the anode boundary:
     """
 
-    # Battery capacity is the lesser of the anode and cathode capacities. It is 
-    # required for determining the simulation time.
-    cap = min(an.capacity, ca.capacity)
+    i_ext = np.zeros_like(solution.values.t)
+    for i, SV in enumerate(solution.values.y):
+            _, i_ext[i] = sep.electrode_boundary_flux(SV, ed, params['T'])
 
-    if params['i_ext'] is not None: # User specified a current density.
-        # User cannot set both i_ext and C-rate. Throw an error, if they have:
-        if params['C-rate'] is not None:
-            raise ValueError("Both i_ext and C-rate are specified. "
-                "Please specify only one of the two in your input file.")
-        else:
-            # Read the current and units, and convert the units, if necessary. 
-            # Read in the user input:
-            current = params['i_ext']
-            # Split the current from the units:
-            i_ext, units = current.split()
-            # Convert i_ext to a float:
-            i_ext = float(i_ext)
-
-            # Read the units and convert i_ext to A/m2 as necessary:
-            i_units, A_units = units.split('/')
-            if i_units=="mA":
-                i_ext *= 0.001
-            elif i_units=="uA":
-                i_ext *= 1e-6
-            if A_units=="cm2":
-                i_ext *= 10000
-            
-    elif params['C-rate'] is not None: # User specified a C-rate, but not i_ext:
-        i_ext = cap*params['C-rate']
-
-    else:
-        # If neither i_ext or C_rate is provided, throw an error:
-        raise ValueError("Please specify either the external current (i_ext) "
-            "or the C-rate (C-rate).")
-    
-    # Use the capacity divided by current to find the max charge/discharge time:
-    t_final = cap*3600/i_ext
-
-    return i_ext, t_final
-
-def setup_cycles(params, current):
-    """
-    Set up a tuple representing steps in the requested charge-discharge cycles.
-    Also create a tuple of currents, one for each step.
-    """
-    steps = ()
-    currents = ()
-
-    if params['first-step'] == "discharge":
-        cycle = ('discharge', 'charge')
-        cycle_currents = (current, -current)
-    else:
-        cycle = ('charge','discharge')
-        cycle_currents = (-current, current)
-    
-    # At present, the only partial cycle accepted is for a single half-cycle 
-    # (i.e. a single charge or discharge step).
-    #TODO #16
-    if params['n_cycles'] < 1.0:
-        steps = (cycle[0],)
-        currents = (cycle_currents[0],)
-    else:
-        steps = params['n_cycles']*cycle
-        currents = params['n_cycles']*cycle_currents
-
-    # If requested, start with a hold at open circuit:
-    if params['equilibrate']:
-        steps = ('equilibrate',)+ steps
-        currents = (0,) + currents
-        
-    return steps, currents
+    return i_ext
 
 def residual(t, SV, SVdot, resid, inputs):
     """
@@ -216,8 +174,8 @@ def output(solution, an, sep, ca, params):
     phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
  
     # Axis 1: Current vs. capacity
-    axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
-    axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
+    axs[0].semilogy(solution[0,:]/3600, abs(1000*solution[1,:]/10000))
+    axs[0].set_ylabel('abs(Current Density) \n (mA/cm$^2$)',labelpad=lp)
     
     # Axis 2: Charge/discharge potential vs. capacity.
     axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
@@ -234,7 +192,8 @@ def output(solution, an, sep, ca, params):
     for i in range(n_plots):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")
-        axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
+        if i: # Skip the first plot, which is log scale:
+            axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
         axs[i].yaxis.set_label_coords(-0.2, 0.5)
 
     # Round voltage values:

@@ -196,10 +196,6 @@ class electrode():
         # at the boundary with the separator:
         N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T'])
 
-        # Double layer current has the same sign as i_Far, and is based on 
-        # charge balance in the electrolyte phase:
-        i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
-
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
             resid[[SVptr['phi_ed'][0]]] = SV_loc[SVptr['phi_ed'][0]]
@@ -213,6 +209,10 @@ class electrode():
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
+
+        # Double layer current has the same sign as i_Far, and is based on 
+        # charge balance in the electrolyte phase:
+        i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
 
         # Differential equation for the double layer potential:
         resid[SVptr['phi_dl']] = \

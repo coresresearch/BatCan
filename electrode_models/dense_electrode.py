@@ -154,16 +154,9 @@ class electrode():
         # Faradaic current density is positive when electrons are consumed 
         # (Li transferred to the anode)
         i_Far = -ct.faraday*sdot_electron
-        
-        # Double layer current has the same sign as i_Far:
-        i_dl = self.i_ext_flag*params['i_ext'] / self.A_surf_ratio - i_Far
-        
-        # Differential equation for the double layer potential difference:
-        resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] 
-            - i_dl*self.C_dl_Inv)
 
-        # Flux of electrolyte species between the separator and the electrolyte in 
-        # the current electrode domain:
+        # Flux of electrolyte species between the separator and the electrolyte 
+        # in the current electrode domain:
         N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T'])
 
         # Electrode electric potential
@@ -173,11 +166,22 @@ class electrode():
             resid[SVptr['phi_ed']] = SV_loc[SVptr['phi_ed']]
 
         elif self.name=='cathode':
-            # The electric potential of the electrolyte in the cathode domain must 
-            # be such that the ionic current from the separator to the cathode 
-            # equals the external current:
-                    
-            resid[SVptr['phi_ed']] = i_io - params['i_ext']
+            # For the cathode, the potential of the cathode must be such that 
+            # the electrolyte electric potential (calculated as phi_ca + 
+            # dphi_dl) produces the correct ionic current between the separator # and cathode:
+            if params['boundary'] == 'current':
+                resid[SVptr['phi_ed']] = i_io - params['i_ext']
+            elif params['boundary'] == 'potential':
+                resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
+                    - params['potential']) 
+        
+        # Double layer current has the same sign as i_Far, and is based on 
+        # charge balance in the electrolyte phase:
+        i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
+        
+        # Differential equation for the double layer potential difference:
+        resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] 
+            - i_dl*self.C_dl_Inv)
         
         # Change in thickness per time:
         dH_dt = np.dot(sdot_electrode, self.bulk_obj.partial_molar_volumes)
