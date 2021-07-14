@@ -91,7 +91,7 @@ class electrode():
         self.surf_obj.TP = params['T'], params['P']
         self.conductor_obj.TP = params['T'], params['P']
 
-    def residual(self, SV, SVdot, sep, params):
+    def residual(self, SV, SVdot, sep, counter, params):
         """
         Define the residual for the state of the dense self.
 

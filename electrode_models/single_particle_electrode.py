@@ -136,7 +136,7 @@ class electrode():
 
         return SV
 
-    def residual(self, SV, SVdot, sep, params):
+    def residual(self, SV, SVdot, sep, counter, params):
         """
         Define the residual for the state of the single particle electrode.
 
@@ -192,10 +192,12 @@ class electrode():
         i_Far = -(ct.faraday 
             * self.surf_obj.get_net_production_rates(self.conductor_obj))
         
-        # Double layer current has the same sign as i_Far:
-
-        i_dl = self.i_ext_flag*params['i_ext']/self.A_surf_ratio - i_Far
         N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T'])
+
+
+        # Double layer current has the same sign as i_Far:
+        i_dl = i_io/self.A_surf_ratio - i_Far
+        # self.i_ext_flag*params['i_ext']/self.A_surf_ratio - i_Far
         
         # species production
         sdot_k_ed = self.surf_obj.get_net_production_rates(self.bulk_obj)
@@ -204,9 +206,11 @@ class electrode():
             # The electric potential of the anode = 0 V.
             resid[[SVptr['phi_ed'][0]]] = SV_loc[SVptr['phi_ed'][0]]
         elif self.name=='cathode':
-            # For the cathode, the potential of the cathode must be such that the 
-            # electrolyte electric potential (calculated as phi_ca + dphi_dl) 
-            # produces the correct ionic current between the separator and cathode:
+            # For the cathode, the potential of the cathode must be such that 
+            # the electrolyte electric potential (calculated as phi_ca + 
+            # dphi_dl) produces the correct ionic current between the separator # and cathode:
+            N_k_counter, i_io_counter = \
+                sep.electrode_boundary_flux(SV, counter, params['T'])
             resid[SVptr['phi_ed']] = i_io - params['i_ext']
 
         # Differential equation for the double layer potential:
