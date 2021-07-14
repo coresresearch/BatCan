@@ -123,34 +123,39 @@ class separator():
         
         # Calculate the electrolyte species fluxes and the corresponding ionic 
         # current at the anode boundary:
-        N_k_elyte, i_io = self.electrode_boundary_flux(SV, an, params['T'])
+        N_k_elyte_in, i_io_in = self.electrode_boundary_flux(SV, an, 
+            params['T'])
         
         # The ionic current must equal the external current.
-        resid[self.SVptr['phi'][0]] = i_io - params['i_ext']
+        # resid[self.SVptr['phi'][0]] = i_io - params['i_ext']
         
         # Repeat this for the electric potential in the other separator nodes:
         for j in np.arange(self.n_points-1):
-            N_k_elyte_in = N_k_elyte
             # Calculate the electrolyte species fluxes and the corresponding 
             # ionic current at the boundary between this separator node and the 
             # next one toward the cathode:
-            N_k_elyte, i_io = self.elyte_flux(SV_loc, j, params['T'])
+            N_k_elyte_out, i_io_out = self.elyte_flux(SV_loc, j, params['T'])
             
             # The ionic current must equal the external current.
-            resid[self.SVptr['phi'][j+1]] = i_io - params['i_ext']
+            resid[self.SVptr['phi'][j]] = i_io_in - i_io_out# - params['i_ext']
             
             resid[self.SVptr['C_k_elyte'][j]] = \
                 (SVdot_loc[self.SVptr['C_k_elyte'][j]] 
-                - (N_k_elyte_in - N_k_elyte) * self.dyInv / self.eps_elyte)
+                - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte)
+            
+            N_k_elyte_in, i_io_in = N_k_elyte_out, i_io_out
 
-        j = self.n_points-1
-        N_k_elyte_in = N_k_elyte    
-        N_k_elyte, i_io = self.electrode_boundary_flux(SV, ca, params['T'])
+        j = self.n_points-1   
+        N_k_elyte_out, i_io_out = self.electrode_boundary_flux(SV, ca, 
+            params['T'])
 
         resid[self.SVptr['C_k_elyte'][j]] = \
             (SVdot_loc[self.SVptr['C_k_elyte'][j]] 
-            - (N_k_elyte_in - N_k_elyte) * self.dyInv / self.eps_elyte) 
+            - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte) 
 
+        # The ionic current must equal the external current.
+        resid[self.SVptr['phi'][j]] = i_io_in - i_io_out
+        
         return resid
 
     def electrode_boundary_flux(self, SV, ed, T):
