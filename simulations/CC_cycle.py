@@ -27,6 +27,9 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Store the location of all algebraic variables.
     params['algvars'] = algvars
 
+    # Specify the boundary condition as galvanostatic:
+    params['boundary'] = 'current'
+
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
     # current for each step.
@@ -174,11 +177,11 @@ def residual(t, SV, SVdot, resid, inputs):
 
     # Call residual functions for anode, separator, and cathode. Assemble them 
     # into a single residual vector 'resid':
-    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, params)
+    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, ca, params)
 
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
     
-    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, sep, params)
+    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, sep, an, params)
 
 def output(solution, an, sep, ca, params):
     """
