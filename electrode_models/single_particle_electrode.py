@@ -210,12 +210,9 @@ class electrode():
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
                 resid[SVptr['phi_ed']] = i_io - params['i_ext']
-            elif params['boundary'] == 'potential':
-                _, i_io_an = \
-                    sep.electrode_boundary_flux(SV, counter, params['T'])
-                  
+            elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
-                    - params['potential']) #i_io - i_io_an
+                    - params['potential']) 
 
         # Differential equation for the double layer potential:
         resid[SVptr['phi_dl']] = \
