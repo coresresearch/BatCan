@@ -40,7 +40,7 @@ def run(SV_0, an, sep, ca, algvars, params):
 
     # If requested by the user, begin with a hold at zero current, to 
     # equilibrate the system:
-    if params['simulation']['equilibrate']:
+    if params['simulation']['equilibrate']['enable']:
 
         params['boundary'] = 'current'
         params['i_ext'] = 0.0
@@ -48,8 +48,9 @@ def run(SV_0, an, sep, ca, algvars, params):
         print('Step 1: Equilibrating...\n')
         print('    i_ext = 0.0 A/cm2.\n')
 
-        # Equilibrate for 1h:
-        t_out = np.linspace(0, 3600, 10000)
+        # Read out and set the OCV hold time:
+        t_equil = params['simulation']['equilibrate']['time']
+        t_out = np.linspace(0, t_equil, 10000)
 
         # Run the solver
         solution =solver.solve(t_out, SV_0, SVdot_0)

@@ -63,13 +63,18 @@ cell-description:
 parameters:
   T: 60 # C
   P: 101325 # Pa
+  # Describe what to do with the results:
+  outputs:
+    show-plots: True # Do you want the plots shown and saved, or just saved?
   # Describe simulation type, parameters, etc.
   simulation:
     type: 'potential_hold' # Constant current cycling
-    # Specify only one of i_ext or C-rate. The other should be null:
-    potential: 4.85 # V, cell potential for the hold.
-    time: 28800 # s, time for the hold.
-    equilibrate: False # Begin with a hold at i_ext = 0?
+    steps:
+    - potential: 4.85 # V, cell potential for the hold.
+      time: 28800 # s, time for the hold.
+    equilibrate: 
+      enable: False # Begin with a hold at i_ext = 0?
+      time: 100 # If true, how long is the hold, s
     species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
 
 # Cantera inputs:

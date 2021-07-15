@@ -33,7 +33,8 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
     # current for each step.
-    steps, currents = setup_cycles(params['simulation'], current)
+    steps, currents, times = setup_cycles(params['simulation'], current, 
+        t_final)
 
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
@@ -57,7 +58,7 @@ def run(SV_0, an, sep, ca, algvars, params):
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'A/m^2 \n')
         
-        t_out = np.linspace(0,t_final,10000)
+        t_out = np.linspace(0, times[i], 10000)
         
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
@@ -134,20 +135,23 @@ def calc_current(params, an, ca):
 
     return i_ext, t_final
 
-def setup_cycles(params, current):
+def setup_cycles(params, current, time):
     """
     Set up a tuple representing steps in the requested charge-discharge cycles.
     Also create a tuple of currents, one for each step.
     """
     steps = ()
     currents = ()
+    times = ()
 
     if params['first-step'] == "discharge":
         cycle = ('discharge', 'charge')
         cycle_currents = (current, -current)
+        cycle_times = (time, time)
     else:
         cycle = ('charge','discharge')
         cycle_currents = (-current, current)
+        cycle_times = (time, time)
     
     # At present, the only partial cycle accepted is for a single half-cycle 
     # (i.e. a single charge or discharge step).
@@ -155,16 +159,19 @@ def setup_cycles(params, current):
     if params['n_cycles'] < 1.0:
         steps = (cycle[0],)
         currents = (cycle_currents[0],)
+        times = (cycle_times[0],)
     else:
         steps = params['n_cycles']*cycle
         currents = params['n_cycles']*cycle_currents
+        times = params['n_cycles']*cycle_times
 
     # If requested, start with a hold at open circuit:
-    if params['equilibrate']:
+    if params['equilibrate']['enable']:
         steps = ('equilibrate',)+ steps
         currents = (0,) + currents
+        times = (params['equilibrate']['time'],) + times
         
-    return steps, currents
+    return steps, currents, times
 
 def residual(t, SV, SVdot, resid, inputs):
     """
