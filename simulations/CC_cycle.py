@@ -15,6 +15,7 @@
 """
 import numpy as np
 from scikits.odes.dae import dae
+from math import floor
 
 def run(SV_0, an, sep, ca, algvars, params):
     """ 
@@ -156,14 +157,21 @@ def setup_cycles(params, current, time):
     # At present, the only partial cycle accepted is for a single half-cycle 
     # (i.e. a single charge or discharge step).
     #TODO #16
-    if params['n_cycles'] < 1.0:
-        steps = (cycle[0],)
-        currents = (cycle_currents[0],)
-        times = (cycle_times[0],)
-    else:
-        steps = params['n_cycles']*cycle
-        currents = params['n_cycles']*cycle_currents
-        times = params['n_cycles']*cycle_times
+    # For readability:
+    n_cycles = params['n_cycles']
+    steps = floor(n_cycles)*cycle
+    currents = floor(n_cycles)*cycle_currents
+    times = floor(n_cycles)*cycle_times
+    # Is there a partial cycle at the end?
+    partial = n_cycles - floor(n_cycles)
+    if partial>0 and partial<=0.5:
+        steps = steps + (cycle[0],)
+        currents = currents + (cycle_currents[0],)
+        times = times + (time * partial * 2.,)
+    elif partial > 0.5:
+        steps = steps + cycle
+        currents = currents + cycle_currents
+        times = times + (time, time * (partial - 0.5) * 2.)
 
     # If requested, start with a hold at open circuit:
     if params['equilibrate']['enable']:

@@ -19,7 +19,7 @@ parameters:
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
     C-rate: 0.01 # input C-rate
-    n_cycles: 5 # Number of cycles. Currently must be 0.5 or an int.
+    n_cycles: 5 # Number of cycles. Can do partial cycles (non-integers)
     first-step: 'discharge'  # Start with charge or discharge?
     equilibrate: 
       enable: False # Begin with a hold at i_ext = 0?
