@@ -9,7 +9,7 @@ def residual(SV, SVdot, self, sep, counter, params):
         In the cathode, the electric potential must be such that the ionic current is spatially invariant (i.e. it is constant and equal to the external applied current, for galvanostatic simulations).  
 
         The residual corresponding to these variables (suppose an index 'j') are of the form:
-            resid[j]  = (epression equaling zero)
+            resid[j]  = (expression equaling zero)
 
     2. All other variables are governed by differential equations.
     
@@ -27,7 +27,7 @@ def residual(SV, SVdot, self, sep, counter, params):
     # Save local copies of the solution vectors, pointers for this electrode:
     SVptr = self.SVptr
     SV_loc = SV[SVptr['residual']]
-    SVdot_loc = SVdot[SVptr['residual']]
+    SVdot_loc = SVdot[SVptr['residual']] #integrators guess for the derivative. 
 
     # Read the electrode and electrolyte electric potential:
     phi_ed = SV_loc[SVptr['phi_ed']]
@@ -44,8 +44,10 @@ def residual(SV, SVdot, self, sep, counter, params):
     # Faradaic current density is positive when electrons are consumed 
     # (Li transferred to the electrode)
     sdot_electron = self.surf_obj.get_net_production_rates(self.bulk_obj)
-    sdot_elyte = self.surf_obj.get_net_production_rates(self.air_elyte_obj)
-    sdot_cathode = self.surf_obj.get_net_production_rates(self.surf_obj)
+    sdot_elyte_air = self.air_elyte_obj.get_net_production_rates(self.elyte_obj) #which phase has the reaction vs which phase the concentration changes
+    sdot_elyte_cathode = self.surf_obj.get_net_production_rates(self.elyte_obj)
+    sdot_oxide = self.surf_obj.get_net_production_rates(self.prod_obj)
+
     i_Far = -ct.faraday*sdot_electron
 
     A_avail = self.A_init - SV_loc[SVptr['residual']]/self.th_oxide
@@ -67,7 +69,7 @@ def residual(SV, SVdot, self, sep, counter, params):
 
 
     dPhi_dt = i_dl*self.C_dl_Inv
-    dEpsOxide_dt = A_avail*sdot_cathode * 19.861904761904753514 # self.product_obj.molar-volume?
+    dEpsOxide_dt = A_avail*np.dot(sdot_cathode, self.product_obj.molar_volume)
     #There must be a way to call molar volume with cantera?
     dRhoElyte_dt = sdot_elyte*A_avail - sdot_cathode
     # Differential equation for the double layer potential:
