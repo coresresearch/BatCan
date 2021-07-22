@@ -14,8 +14,8 @@
 
 """
 import numpy as np
-import cantera as ct
 from scikits.odes.dae import dae
+from math import floor
 
 def run(SV_0, an, sep, ca, algvars, params):
     """ 
@@ -28,17 +28,21 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Store the location of all algebraic variables.
     params['algvars'] = algvars
 
+    # Specify the boundary condition as galvanostatic:
+    params['boundary'] = 'current'
+
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
     # current for each step.
-    steps, currents = setup_cycles(params['simulation'], current)
+    steps, currents, times = setup_cycles(params['simulation'], current, 
+        t_final)
 
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
     def terminate_check(t, SV, SVdot, return_val, inputs):
-        return_val[0] = ca.voltage_lim(SV, ca, params['simulation']
+        return_val[0] = ca.voltage_lim(SV, params['simulation']
                 ['phi-cutoff-lower'])
-        return_val[1] = ca.voltage_lim(SV, ca, params['simulation']
+        return_val[1] = ca.voltage_lim(SV, params['simulation']
                 ['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
@@ -53,8 +57,9 @@ def run(SV_0, an, sep, ca, algvars, params):
 
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
-        print('    Current = ', round(currents[i],3),'\n')
-        t_out = np.linspace(0,t_final,10000)
+        print('    Current = ', round(currents[i],3),'A/m^2 \n')
+        
+        t_out = np.linspace(0, times[i], 10000)
         
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
@@ -131,32 +136,50 @@ def calc_current(params, an, ca):
 
     return i_ext, t_final
 
-def setup_cycles(params, current):
+def setup_cycles(params, current, time):
     """
     Set up a tuple representing steps in the requested charge-discharge cycles.
     Also create a tuple of currents, one for each step.
     """
     steps = ()
     currents = ()
+    times = ()
 
     if params['first-step'] == "discharge":
         cycle = ('discharge', 'charge')
         cycle_currents = (current, -current)
+        cycle_times = (time, time)
     else:
         cycle = ('charge','discharge')
         cycle_currents = (-current, current)
+        cycle_times = (time, time)
     
     # At present, the only partial cycle accepted is for a single half-cycle 
     # (i.e. a single charge or discharge step).
     #TODO #16
-    if params['n_cycles'] < 1.0:
-        steps = (cycle[0],)
-        currents = (cycle_currents[0],)
-    else:
-        steps = params['n_cycles']*cycle
-        currents = params['n_cycles']*cycle_currents
+    # For readability:
+    n_cycles = params['n_cycles']
+    steps = floor(n_cycles)*cycle
+    currents = floor(n_cycles)*cycle_currents
+    times = floor(n_cycles)*cycle_times
+    # Is there a partial cycle at the end?
+    partial = n_cycles - floor(n_cycles)
+    if partial>0 and partial<=0.5:
+        steps = steps + (cycle[0],)
+        currents = currents + (cycle_currents[0],)
+        times = times + (time * partial * 2.,)
+    elif partial > 0.5:
+        steps = steps + cycle
+        currents = currents + cycle_currents
+        times = times + (time, time * (partial - 0.5) * 2.)
 
-    return steps, currents
+    # If requested, start with a hold at open circuit:
+    if params['equilibrate']['enable']:
+        steps = ('equilibrate',)+ steps
+        currents = (0,) + currents
+        times = (params['equilibrate']['time'],) + times
+        
+    return steps, currents, times
 
 def residual(t, SV, SVdot, resid, inputs):
     """
@@ -169,11 +192,11 @@ def residual(t, SV, SVdot, resid, inputs):
 
     # Call residual functions for anode, separator, and cathode. Assemble them 
     # into a single residual vector 'resid':
-    resid[an.SVptr['residual']] = an.residual(SV, SVdot, an, sep, ca, params)
+    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, ca, params)
 
-    resid[sep.SVptr['residual']] = sep.residual(SV, SVdot, an, sep, ca, params)
+    resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
     
-    resid[ca.SVptr['residual']] = ca.residual(SV, SVdot, ca, sep, an, params)
+    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, sep, an, params)
 
 def output(solution, an, sep, ca, params):
     """
@@ -183,47 +206,49 @@ def output(solution, an, sep, ca, params):
     #TODO #17
     import matplotlib.pyplot as plt 
 
-    # Calculate cell potential:   
-    phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
-    phi_elyte_ptr = np.add(sep.SV_offset+(sep.SVptr['phi'][:]), 2)
- 
     # Temporary flag for Li metal anode:
-    i_Li = 1
+    i_Li = 0
     
     # Create figure:
     lp = 30 #labelpad
-    # Number of subplots:
-    nplots = 3 + i_Li
+    # Number of subplots 
+    # (this simulation produces 2: current and voltage, vs. time):
+    n_plots = 2 + an.n_plots + ca.n_plots + sep.n_plots
 
     # Initialize the figure:
-    fig, axs = plt.subplots(nplots,1, sharex=True, 
+    fig, axs = plt.subplots(n_plots, 1, sharex=True, 
             gridspec_kw = {'wspace':0, 'hspace':0})
     
-   
+    fig.set_size_inches((4.0,1.8*n_plots))
+    # Calculate cell potential:   
+    phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
+ 
     # Axis 1: Current vs. capacity
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
-    axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp-25)
+    axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
+    
     # Axis 2: Charge/discharge potential vs. capacity.
     axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
-    axs[1].set_ylabel('Cell Potential \n(V)',labelpad=lp)
-    # Axis 3: Separator electric potential vs. capacity.
-    for j in np.arange(sep.n_points):
-        axs[2].plot(solution[0,:]/3600, solution[phi_elyte_ptr[j],:])
-    
-    # Optional axis 4, For dense Li anode: anode thickness:
-    if i_Li:
-        axs[nplots-1].plot(solution[0,:]/3600, 
-            1e6*solution[2+int(an.SVptr['thickness'])])
-        axs[nplots-1].set_ylabel('Anode Thickness \n($\mu$m)', labelpad=lp-10)
-        axs[nplots-1].set(xlabel='Time (h)')
+    axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
+
+    # Add any relevant anode, cathode, and separator plots: 
+    axs = an.output(axs, solution, ax_offset=2)
+    axs = ca.output(axs, solution, ax_offset=2+an.n_plots)
+    axs = sep.output(axs, solution, an, ca, ax_offset=2+an.n_plots+ca.n_plots)
+
+    axs[n_plots-1].set(xlabel='Time (h)')
 
     # Format axis ticks:
-    for i in range(nplots):
+    for i in range(n_plots):
         axs[i].tick_params(axis="x",direction="in")
         axs[i].tick_params(axis="y",direction="in")
-    
+        axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
+        axs[i].yaxis.set_label_coords(-0.2, 0.5)
+
     # Trim down whitespace:
     fig.tight_layout()
-
+    
     # Save figure:
     plt.savefig('output.pdf')
+    if params['outputs']['show-plots']:
+        plt.show()

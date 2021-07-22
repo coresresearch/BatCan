@@ -7,27 +7,26 @@
 """
 # Import modules
 import importlib # allows us to import from user input string.
-from bat_can_init import initialize as init
 import numpy as np
-import sys
 
-# Add to the folders with component models to our path:
-sys.path.append('electrode_models') 
-sys.path.append('separator_models')
+from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
-        input = 'inputs/input_template.yaml'
+        input = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
     else:
-        input = 'inputs/'+input+'.yaml'
+        if input[-5:] == '.yaml':
+            input  = 'inputs/'+input
+        else:
+            input = 'inputs/'+input+'.yaml'
 
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
-    an_inputs, sep_inputs, ca_inputs, parameters = init(input)
+    an_inputs, sep_inputs, ca_inputs, parameters = initialize(input)
 
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
@@ -38,17 +37,32 @@ def bat_can(input = None):
     # module, and then run its 'initialize' routine to create an intial 
     # solution vector and an object that stores needed parameters.
     # import single_particle_electrode as an_module_0
-    an_module = importlib.import_module(an_inputs['class'])
-    SV_an_0, an = an_module.initialize(input, an_inputs, sep_inputs, ca_inputs, 
+    an_module = importlib.import_module('electrode_models.' 
+        + an_inputs['class'])
+    an = an_module.electrode(input, an_inputs, sep_inputs, ca_inputs, 
             'anode', parameters, offset=0)
+    
+    sep_module = importlib.import_module('separator_models.' 
+        + sep_inputs['class'])
+    sep = sep_module.separator(input, sep_inputs, parameters, 
+            offset=an.n_vars)
+    
+    # Check to see if the anode object needs to adjust the separator properties:
+    sep = an.adjust_separator(sep)
+    
+    ca_module = importlib.import_module('electrode_models.' 
+        + ca_inputs['class'])
+    ca = ca_module.electrode(input, ca_inputs, sep_inputs, an_inputs, 
+        'cathode', parameters, offset= an.n_vars+sep.n_vars*sep.n_points)
 
-    sep_module = importlib.import_module(sep_inputs['class'])
-    SV_sep_0, sep = sep_module.initialize(input, sep_inputs, parameters, 
-            offset=an.nVars)
+    # Check to see if the cathode object needs to adjust the separator 
+    # properties:
+    sep = ca.adjust_separator(sep)
 
-    ca_module = importlib.import_module(ca_inputs['class'])
-    SV_ca_0, ca = ca_module.initialize(input, ca_inputs, sep_inputs, an_inputs, 
-            'cathode', parameters, offset=sep.SVptr['residual'][-1]+1)
+    # Initialize the solution vector:
+    SV_an_0 = an.initialize(an_inputs, sep_inputs)
+    SV_sep_0 = sep.initialize(sep_inputs)
+    SV_ca_0 = ca.initialize(ca_inputs, sep_inputs)
 
     # Stack the three initial solution vectors into a single vector:
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
@@ -56,7 +70,7 @@ def bat_can(input = None):
     algvars = np.hstack([an.algvars, sep.algvars, ca.algvars])
 
     #===========================================================================
-    #   RUN THE MODEL
+    #   RUN THE SIMULATION
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:

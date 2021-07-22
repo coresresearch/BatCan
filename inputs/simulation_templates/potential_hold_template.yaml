@@ -1,0 +1,25 @@
+#===============================================================================
+#  potential_hold_template.yaml
+#
+#  User inputs for a potentiostatic hold simulation.
+#
+#  Copy, paste, and edit in your own input file.
+#===============================================================================
+
+# Simulation parameters:
+parameters:
+  T: 60 # C
+  P: 101325 # Pa
+  # Describe what to do with the results:
+  outputs:
+    show-plots: True # Do you want the plots shown and saved, or just saved?
+  # Describe simulation type, parameters, etc.
+  simulation:
+    type: 'potential_hold' # Constant current cycling
+    steps: #Sequence of potential holds
+    - potential: 5.25 # cell potential for the hold, V
+      time: 4900 # time for the hold, s
+    equilibrate: 
+      enable: False # Begin with a hold at i_ext = 0?
+      time: 100 # If true, how long is the hold, s
+    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m^3

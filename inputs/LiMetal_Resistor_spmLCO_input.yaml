@@ -15,49 +15,36 @@ cell-description:
       name: Li[metal]
       charge: 1
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
-    thickness: 8e-6 # Initial anode thickness, m
-    minimum-thickness: 1e-9 # minimum anode thickness, m 
+    thickness: 15e-6 # anode thickness, m
+    minimum-thickness: 1e-9 # minimum anode thickness. 
     phi_0: 0. # Initial electric potential, V
     A_surf_ratio: 1.0 # Interface area per unit geometric area
-    C_dl: 9e-6 #F/m2
+    C_dl: 6e-3 #F/m2
     dy_elyte: 2e-6
   separator:
-    class: 'porous_separator'
-    thickness: 20e-6  # separator thickness, m
-    n_points: 4       # Number of finite volumes to discretize
+    class: 'ionic_resistor'
+    thickness: 20e-6 # separator thickness, m
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 1.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
-    transport:
-      mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
-      model: 'dilute-solution'
-      diffusion-coefficients: # Species names must match those in the phase 
-      #definition, below:
-        - species: 'C3H4O3[elyt]'
-          D_k: 1e-15
-        - species: 'C4H6O3[elyt]' 
-          D_k: 1e-15
-        - species: 'Li+[elyt]'
-          D_k: 2e-11
-        - species: 'PF6-[elyt]'
-          D_k: 2e-13
     phi_0: 2.96 # Initial electric potential, V
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
   cathode:
     class: 'single_particle_electrode'
-    bulk-phase: 'cathode' # Cantera phase name
-    surf-phase: 'cathode_electrolyte' # Cantera phase name
-    electrolyte-phase: 'electrolyte' # Cantera phase name
-    conductor-phase: 'electron' # Cantera phase name
+    # Specify the phase names in the Cantera inputs, below:
+    bulk-phase: 'cathode' # Cantera phase name for active material
+    surf-phase: 'cathode_electrolyte' # Cantera phase name for interface between active material and electrolyte.
+    electrolyte-phase: 'electrolyte' # Cantera phase name for electrolyte phase.
+    conductor-phase: 'electron' # Cantera phase name for conductor phase.
     stored-ion: # Details on the stored species. Used for capacity calc.
-      name: Li[cathode]
+      name: Li[cathode] # Species name in Cantera inputs, below.
       charge: 1
-    mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
-    thickness: 20e-6 # anode thickness, m
+    mobile-ion:  'Li+[elyt]' # Li+ elyte species name in Cantera inputs below.
+    thickness: 50e-6 # anode thickness, m
     r_p: 6e-6 # Particle radius, m
     phi_0: 4.125 # Initial electric potential, V
     eps_solid: 0.65 # Solid phase volume fraction, -
-    X_0: 'Li[cathode]:0.1, V[cathode]:0.9'
-    C_dl: 6e-5 #F/m2
+    X_0: 'Li[cathode]:0.001, V[cathode]:0.999' # Initial active material mole fractions string.
+    C_dl: 6e-3 #F/m2
 
 # Simulation parameters:
 parameters:
@@ -71,19 +58,19 @@ parameters:
     type: 'CC_cycle' # Constant current cycling
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    C-rate: 0.1 # input C-rate
+    C-rate: 0.01 # input C-rate
     n_cycles: 5 # Number of cycles. Currently must be 0.5 or an int.
     first-step: 'discharge'  # Start with charge or discharge?
     equilibrate: 
-      enable: True # Start with a hold at open circuit?
+      enable: False # Begin with a hold at i_ext = 0?
       time: 100 # If true, how long is the hold, s
-    phi-cutoff-lower: 3.4 # Simulation cuts off if E_Cell <= this value, V
-    phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
-    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m3
+    phi-cutoff-lower: 2.25 # Simulation cuts off if E_Cell <= this value
+    phi-cutoff-upper: 5.05 # Simulation cuts off if E_Cell >= this value
+    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
 
 # Cantera inputs:
 description: |-
-  Cantera input file for an LCO/Li metal lithium-ion battery
+  Cantera input file for an LCO/graphite lithium-ion battery
 
   This file includes a full set of thermodynamic and kinetic parameters of a
   lithium-ion battery, in particular:
@@ -93,7 +80,6 @@ description: |-
   - Charge-transfer reactions at the two interfaces
 
   Reference:
-  For the electrolyte and LCO:
   M. Mayur, S. C. DeCaluwe, B. L. Kee, W. G. Bessler, “Modeling and simulation
   of the thermodynamics of lithium-ion battery intercalation materials in the
   open-source software Cantera,” Electrochim. Acta 323, 134797 (2019),
@@ -123,6 +109,10 @@ description: |-
   Species and site density are dummy entries (as we do not consider surface-
   adsorbed species)
 
+generator: cti2yaml
+cantera-version: 2.5.0
+date: Wed, 11 Dec 2019 16:59:07 -0500
+input-files: [lithium_ion_battery.cti]
 
 phases:
 

@@ -1,0 +1,32 @@
+#===============================================================================
+#  porous_separator_template.yaml
+#
+#  Demonstrates how to set up a porous separator model. Copy, paste, and edit 
+#  in your own input file. Only intended to demonstrate the required fields; 
+#  you will still need to make sure the entries are correct (for example, the 
+#  phase name must match one of the Cantera phase names provided further below 
+#  in your file).
+#===============================================================================
+
+cell-description:
+  separator:
+    class: 'porous_separator'
+    thickness: 20e-6  # separator thickness, m
+    n_points: 4       # Number of finite volumes to discretize
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    sigma_io: 1.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
+    transport:
+      mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+      model: 'dilute-solution'
+      diffusion-coefficients: # Species names must match those in the phase 
+      #definition, below:
+        - species: 'C3H4O3[elyt]'
+          D_k: 1e-15
+        - species: 'C4H6O3[elyt]' 
+          D_k: 1e-15
+        - species: 'Li+[elyt]'
+          D_k: 2e-11
+        - species: 'PF6-[elyt]'
+          D_k: 2e-13
+    phi_0: 2.96 # Initial electric potential, V
+    eps_electrolyte: 0.65 # Electrolyte volume fraction, -

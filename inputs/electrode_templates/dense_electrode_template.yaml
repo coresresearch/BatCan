@@ -1,0 +1,29 @@
+#===============================================================================
+#  dense_electrode_template.yaml
+#
+#  User inputs for bat-can model creation and running.
+#
+#  Demonstrates how to set up a dense_electrode model.  Copy, paste, and edit 
+#  in your own input file, as desired. This only demonstrates the fields 
+#  required. You will have to make sure the entries are correct (for example, 
+#  that phase names match with the cantera phases provided).
+#===============================================================================
+
+cell-description:
+  anode:
+    class: 'dense_electrode'
+    bulk-phase: 'lithium_metal' # Cantera phase name
+    surf-phase: 'lithium_electrolyte' # Cantera phase name
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    conductor-phase: 'electron' # Cantera phase name
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li[metal]
+      charge: 1
+    mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+    thickness: 15e-6 # anode thickness, m
+    minimum-thickness: 1e-9 # minimum anode thickness. 
+    phi_0: 0. # Initial electric potential, V
+    A_surf_ratio: 1.0 # Interface area per unit geometric area
+    C_dl: 6e3 #F/m2
+    dy_elyte: 2e-6
+    

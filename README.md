@@ -72,14 +72,19 @@ The model is run from a command line or terminal by invoking python, the `bat_ca
 ```
 python bat_can.py --input=my_input
 ```
+Inluding the file extension is optional.
+
 # Sample results.
 Below is an example of the model output, for a Li metal anode, porous separator with liquid carbonate electrolyte, and single-particle model of an LCO cathode, cycled 5 times at a rate of 0.01C (Note that these parameters have not been tuned; this is for demonstration purposes only 🙂 ).
 
 ![Sample output image](sample_output.png)
 
 # Current status of the software 
-(as of 04 May, 2021)
+(as of 06 July, 2021)
 
-This software is currently in the development phase.  The `ionic_resistor` separator model is complete, but all other component models are in development (primarily, governing equations are being added to describe the evolution of the local chemical compositiondifferent electrode and electrolyte).  Therefore, we would currently describe the software capabilities as ''for demonstration purposes only."
+This software is currently in the development phase. All models currently assume galvanostatic operation. 
+- The `ionic_resistor` and `porous_separator` separator models are complete. The `porous_separator` model currently only allows dilute solution approximation transport calcualtions, via the Poisson-Nernst-Planck equation.
+- The `dense_electrode` model is complete 
+- The `single_particle_model` electrode is functional, but is zero-dimensional (there is no discretization of the representative particle in the radial direction).
 
 If you would like to help contribute to the software, please do! If you are uncertain of what to do, or have an idea and want to run it by us, maybe create an issue on the issues page, where we can discuss.  Or else, feel free to fork a copy of this repo, make changes, and make a pull request.
