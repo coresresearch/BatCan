@@ -192,11 +192,11 @@ def residual(t, SV, SVdot, resid, inputs):
 
     # Call residual functions for anode, separator, and cathode. Assemble them 
     # into a single residual vector 'resid':
-    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, ca, params)
+    resid[an.SVptr['electrode']] = an.residual(t, SV, SVdot, sep, ca, params)
 
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
     
-    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, sep, an, params)
+    resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
 def output(solution, an, sep, ca, params):
     """

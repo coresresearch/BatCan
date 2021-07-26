@@ -77,12 +77,15 @@ def run(SV_0, an, sep, ca, algvars, params):
 
     for step in params['simulation']['steps']:
         
-        # Store the potential:
-        params['potential'] = step['potential']
+        # Store the potential. We do this as an array of potential vs. time, 
+        # which the function interpolates.  For a constant potnetial, we just 
+        # need the initial and final potentials, which are the same:
+        params['potentials'] = np.array((step['potential'], step['potential']))
+        params['times'] = np.array((0, step['time']))
 
         # Print out the conditions:
         print('Step {:0.0f}: Potentiostatic hold...\n'.format(i_step+1))
-        print('    Potential = ', round(params['potential'], 3),' V \n')
+        print('    Potential = ', round(params['potentials'][0], 3),' V \n')
 
         # Determine the range of times to simulate:
         t_out = np.linspace(0, step['time'], 10000)
@@ -143,11 +146,11 @@ def residual(t, SV, SVdot, resid, inputs):
 
     # Call residual functions for anode, separator, and cathode. Assemble them 
     # into a single residual vector 'resid':
-    resid[an.SVptr['electrode']] = an.residual(SV, SVdot, sep, ca, params)
+    resid[an.SVptr['electrode']] = an.residual(t, SV, SVdot, sep, ca, params)
 
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
     
-    resid[ca.SVptr['electrode']] = ca.residual(SV, SVdot, sep, an, params)
+    resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
 def output(solution, an, sep, ca, params):
     """
