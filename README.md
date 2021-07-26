@@ -14,17 +14,19 @@ This tool allows you to run battery simulations with eaily editable and extensib
 - `bat_can.py`: this is the main file that runs the code.  In general, the code is run on the command line via `python bat_can.py` (more on this [below](#Running-the-model))
 - `bat_can_init.py`: reads user inputs and initializes the model.  It is called internally by `bat_can.py`.
 - Simluation packages which define different simulation types/routines:
-    1. `CC_cycle.py`: constant current galvanostatc cycling.
-    2. `potential_hold.py`: a series of potentiostatic holds of variable duration.
-    3. `cyclic_voltammetry.py`: cyclic voltammetry experiment.
+    1. `CC_cycle`: constant current galvanostatc cycling.
+    2. `potential_hold`: a series of potentiostatic holds of variable duration.
+    3. `cyclic_voltammetry`: cyclic voltammetry experiment.
 - Electrode model packages:
     1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode.
     2. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
 - Electrolyte model packages:
     1. `ionic_resistor`: Simple ionic resistor with no chemical composition dynamics.
     2. `porous_separator`: porous inert separator filled with electrolyte.
+- Submodels: functions and routines that are used by multiple parts of the code.
+    1. `transport`: functions to describe transport phenomena.
 - `inputs`: folder with all input files.
-- `old_model_files`: Files associated with previously-developed models, which are currently being integrated into the new model framework. 
+- `derivation_verification`: Notes and documents to describe model development, governing equations, etc. (currently under development)
 # Installation Instructions
 
 In order to use the BatCan suite, it is necessary to download and install:
@@ -40,7 +42,7 @@ For example, to create a conda environment `bat_can` from which to run this tool
 ```
 conda create --name bat_can --channel conda-forge cantera scikits.odes matplotlib numpy ruamel.yaml 
 ```
-You can replace `bat_can` with whatever other name you would like to give this environment. After this completes, activate the environment:
+You can replace `bat_can` with whatever name you would like to give this environment. After this completes, activate the environment:
 ```
 conda activate bat_can
 ```
@@ -62,26 +64,27 @@ The input file includes three primary sections:
 - A description of the simulation to run and parameters to specify the necessary operating conditions.
 - A Cantera input section, used to create objects that represent the phases of matter present, the interfaces between then, and the thermodynamic, chemical kinetic, and transport processes involved.
 
-If you would like to create your own input, there is an `input_template.yaml` that you can save a copy of and edit. 
-
-All input files are located in the `inputs` folder.  Locate one that you would like to use, modify an existing file to suit your purposes, or copy a file, save it to a new name, and edit as necessary.
+If you would like to create your own input, there are template folders which demonstrate how to specify inputs for the various electrode, separator, and simulation types, as well as a number of relevant Cantera phases.  You can copy and paste these snippets into a single input file to customize.  There are also a large number of working input files located in the `inputs` folder, which are meant to demonstrate and test the minimum functionality of the code.  Locate one that you would like to use, modify an existing file to suit your purposes, or copy a file, save it to a new name, and edit as necessary.
 
 At present, the input file must be saved to the `inputs` folder.
 
 ## Run the Model
-The model is run from a command line or terminal by invoking python, the `bat_can.py` name, and providing the name of your input file (wihout the `.yaml` suffix) by assigning the keyword `--input`. For example, if your input file is located at `inputs/my_input.yaml`, you would run:
+The model is run from a command line or terminal by invoking python, the `bat_can.py` name, and providing the name of your input file (with or wihout the `.yaml` suffix) by assigning the keyword `--input`. For example, if your input file is located at `inputs/my_input.yaml`, you would run:
 ```
 python bat_can.py --input=my_input
 ```
-Inluding the file extension is optional.
-
+Again including the file extension is optional.  The command:
+```
+python bat_can.py --input=my_input.yaml
+```
+would also work.
 # Sample results.
-Below is an example of the model output, for a Li metal anode, porous separator with liquid carbonate electrolyte, and single-particle model of an LCO cathode, cycled 5 times at a rate of 0.01C (Note that these parameters have not been tuned; this is for demonstration purposes only 🙂 ).
+Below is an example of the model output, for a Li metal anode, porous separator with liquid carbonate electrolyte, and single-particle model of an LCO cathode, cycled 5 times at a rate of 0.01C (Note that the kinetic and transport parameters have not been tuned or even sourced from literature; this is for demonstration purposes only 🙂 ).
 
 ![Sample output image](sample_output.png)
 
 # Current status of the software 
-(as of 06 July, 2021)
+(as of 27 July, 2021)
 
 This software is currently in the development phase. Models are configured for either galvanostatic or potentiostatic operation. 
 - The `ionic_resistor` and `porous_separator` separator models are complete. The `porous_separator` model currently only allows dilute solution approximation transport calcualtions, via the Poisson-Nernst-Planck equation.
