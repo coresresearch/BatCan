@@ -91,7 +91,7 @@ class electrode():
         self.surf_obj.TP = params['T'], params['P']
         self.conductor_obj.TP = params['T'], params['P']
 
-    def residual(self, SV, SVdot, sep, counter, params):
+    def residual(self, t, SV, SVdot, sep, counter, params):
         """
         Define the residual for the state of the dense self.
 
@@ -172,8 +172,11 @@ class electrode():
             if params['boundary'] == 'current':
                 resid[SVptr['phi_ed']] = i_io - params['i_ext']
             elif params['boundary'] == 'potential':
-                resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
-                    - params['potential']) 
+                # Potential at time t:
+                phi = np.interp(t, params['times'], params['potentials'])
+
+                # Cell potential must equal phi:
+                resid[SVptr['phi_ed']] = SV_loc[SVptr['phi_ed']] - phi
         
         # Double layer current has the same sign as i_Far, and is based on 
         # charge balance in the electrolyte phase:
