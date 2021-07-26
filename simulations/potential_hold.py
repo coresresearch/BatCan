@@ -6,6 +6,7 @@
     Function definitions in this file:
         - 'run' runs the model.
         - 'residual' implements the governing DAE equations to calculate the residual at each time.  This is called by the integrator.
+        - 'calc_current' calculates the resulting current density produced by the battery cell at each time step.
         - 'output' prepares and creates relevant figures and data and saves them to the specified location.
 
     The methods 'run' and 'output' are called by bat_can.py.  All other functions are called internally.
@@ -28,7 +29,7 @@ def run(SV_0, an, sep, ca, algvars, params):
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
     def terminate_check(t, SV, SVdot, return_val, inputs):
-        #TODO: implement concentration check.
+        #TODO #36
         return_val[0] = 1.0
         return_val[1] = 1.0
 
@@ -53,7 +54,7 @@ def run(SV_0, an, sep, ca, algvars, params):
         t_out = np.linspace(0, t_equil, 10000)
 
         # Run the solver
-        solution =solver.solve(t_out, SV_0, SVdot_0)
+        solution = solver.solve(t_out, SV_0, SVdot_0)
 
         # Array of current densities, one for each time step taken:
         i_ext = np.zeros_like(solution.values.t)
