@@ -20,7 +20,6 @@ This tool allows you to run battery simulations with eaily editable and extensib
 - Electrode model packages:
     1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode.
     2. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
-
 - Electrolyte model packages:
     1. `ionic_resistor`: Simple ionic resistor with no chemical composition dynamics.
     2. `porous_separator`: porous inert separator filled with electrolyte.
@@ -84,9 +83,12 @@ Below is an example of the model output, for a Li metal anode, porous separator 
 # Current status of the software 
 (as of 06 July, 2021)
 
-This software is currently in the development phase. All models currently assume galvanostatic operation. 
+This software is currently in the development phase. Models are configured for either galvanostatic or potentiostatic operation. 
 - The `ionic_resistor` and `porous_separator` separator models are complete. The `porous_separator` model currently only allows dilute solution approximation transport calcualtions, via the Poisson-Nernst-Planck equation.
 - The `dense_electrode` model is complete 
 - The `single_particle_model` electrode is functional, but is zero-dimensional (there is no discretization of the representative particle in the radial direction).
+- Simulation models (`CC_cycle`, `potential_hold`, and `cyclic_voltammetry`) are all complete, but there are always new and more flexible user inputs that can be enabled 🙂.
+
+Adding new features is relatively easy, so please click on `Issues` above and create a new issue if there is something you would like to see! 
 
 If you would like to help contribute to the software, please do! If you are uncertain of what to do, or have an idea and want to run it by us, maybe create an issue on the issues page, where we can discuss.  Or else, feel free to fork a copy of this repo, make changes, and make a pull request.
