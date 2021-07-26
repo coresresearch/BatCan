@@ -15,6 +15,8 @@ This tool allows you to run battery simulations with eaily editable and extensib
 - `bat_can_init.py`: reads user inputs and initializes the model.  It is called internally by `bat_can.py`.
 - Simluation packages which define different simulation types/routines:
     1. `CC_cycle.py`: constant current galvanostatc cycling.
+    2. `potential_hold.py`: a series of potentiostatic holds of variable duration.
+    3. `cyclic_voltammetry.py`: cyclic voltammetry experiment.
 - Electrode model packages:
     1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode.
     2. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
