@@ -39,14 +39,18 @@ def run(SV_0, an, sep, ca, algvars, params):
             'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
+    """ Equilibration: Optional """
     # If requested by the user, begin with a hold at zero current, to 
     # equilibrate the system:
     if params['simulation']['equilibrate']['enable']:
 
+        # Set the boundary condition to galvanostatic and the external current 
+        # to 0.0:
         params['boundary'] = 'current'
         params['i_ext'] = 0.0
 
-        print('Step 1: Equilibrating...\n')
+        # Print out conditions:
+        print('\nStep 1: Equilibrating...\n')
         print('    i_ext = 0.0 A/cm2.\n')
 
         # Read out and set the OCV hold time:
@@ -75,11 +79,12 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Specify the boundary condition as potentiostatic:
     params['boundary'] = 'potential'
 
+    """ Run the potential hold(s) """
     for step in params['simulation']['steps']:
         
         # Store the potential. We do this as an array of potential vs. time, 
-        # which the function interpolates.  For a constant potnetial, we just 
-        # need the initial and final potentials, which are the same:
+        # which the residual function interpolates.  For a constant potnetial, 
+        # we just need the initial and final potentials, which are the same:
         params['potentials'] = np.array((step['potential'], step['potential']))
         params['times'] = np.array((0, step['time']))
 
@@ -124,17 +129,6 @@ def run(SV_0, an, sep, ca, algvars, params):
 
     return data_out
 
-def calc_current(solution, sep, ed, params):
-    """
-    Calculates the external current from the the state vector.  Since the ionic current in the separator should be equal to the external current at any given point in time, we'll use the current at the anode boundary:
-    """
-
-    i_ext = np.zeros_like(solution.values.t)
-    for i, SV in enumerate(solution.values.y):
-            _, i_ext[i] = sep.electrode_boundary_flux(SV, ed, params['T'])
-
-    return i_ext
-
 def residual(t, SV, SVdot, resid, inputs):
     """
     Call the individual component residual functions, which implement 
@@ -151,6 +145,17 @@ def residual(t, SV, SVdot, resid, inputs):
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
     
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
+
+def calc_current(solution, sep, ed, params):
+    """
+    Calculates the external current from the the state vector.  Since the ionic current in the separator should be equal to the external current at any given point in time, we'll use the current at the anode boundary:
+    """
+
+    i_ext = np.zeros_like(solution.values.t)
+    for i, SV in enumerate(solution.values.y):
+            _, i_ext[i] = sep.electrode_boundary_flux(SV, ed, params['T'])
+
+    return i_ext
 
 def output(solution, an, sep, ca, params):
     """
