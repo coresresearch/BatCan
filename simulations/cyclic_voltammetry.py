@@ -5,14 +5,18 @@
 
     Function definitions in this file:
         - 'run' runs the model.
+        - 'setup_cycles' reads out user inputs and creates arrays of potentials and correponding times to describe the cell potential as a funciton of time during the CV.
+        - 'read_sweep_rate' reads the user-supplied sweep rate and converts the units, as necessary, to V/s.
         - 'residual' implements the governing DAE equations to calculate the residual at each time.  This is called by the integrator.
         - 'calc_current' calculates the resulting current density produced by the battery cell at each time step.
+        - 'data_prepare' concatenate the simulation results (time steps, external currents, and state vectors) into a single data stack, and appends this to existing data from any previous steps.
         - 'output' prepares and creates relevant figures and data and saves them to the specified location.
+        - 'sort_cycles' analyzes the output data and assigns each time step to its relevant cycle number.
 
     The methods 'run' and 'output' are called by bat_can.py.  All other functions are called internally.
 
 """
-from math import ceil, floor
+from math import ceil
 import numpy as np
 from scikits.odes.dae import dae
 
@@ -44,6 +48,7 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Initialize the step counter:
     i_step = 0
     
+    """ Equilibration """
     # If requested by the user, begin with a hold at zero current, to 
     # equilibrate the system:
     if params['simulation']['equilibrate']['enable']:
@@ -51,20 +56,21 @@ def run(SV_0, an, sep, ca, algvars, params):
         params['boundary'] = 'current'
         params['i_ext'] = 0.0
 
-        print('Step 1: Equilibrating...\n')
-        print('    i_ext = 0.0 A/cm2.\n')
+        print('\n Equilibrating at i_ext = 0.0 A/cm2.\n')
 
-        # Read out and set the OCV hold time:
+        # Set the OCV hold time:
         t_equil = params['simulation']['equilibrate']['time']
         t_out = np.linspace(0, t_equil, 10000)
 
         # Run the solver
         solution = solver.solve(t_out, SV_0, SVdot_0)
 
-        # Array of current densities, one for each time step taken:
+        # Array of current densities (all equal to zero), one for each time 
+        # step taken:
         i_ext = np.zeros_like(solution.values.t)
         
-        # Stack the times, current densities, and state vectors:
+        # Stack the times, current densities, and state vectors into a single 
+        # data stack:
         data_out = np.vstack((solution.values.t, i_ext, solution.values.y.T))
         
         # Use solution at the end of simulation as the new initial condition:
@@ -81,6 +87,7 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Specify the boundary condition as potentiostatic:
     params['boundary'] = 'potential'
 
+    """ Initial Potentiostatic Hold """
     # If requested by the user, begin, with a hold at a specified potential
     if params['simulation']['initial-hold']['enable']:
 
@@ -89,14 +96,19 @@ def run(SV_0, an, sep, ca, algvars, params):
             np.array((params['simulation']['initial-potential'],
             params['simulation']['initial-potential']))
 
-        # Print out the conditions:
-        print('Step {:0.0f}: Potentiostatic hold...\n'.format(i_step+1))
-        print('    Potential = ', round(params['potentials'][0], 3),' V \n')
-
+        # Read out the time for the hold
         t_hold = params['simulation']['initial-hold']['time']
 
+        # Set the times in the input parameters, used to read out the potential 
+        # as a function of time:
         params['times'] = np.array((0, t_hold))
+
+        # Set the solver time:
         t_out = np.linspace(0, t_hold, 10000)
+        
+        # Print out the conditions:
+        print('Potentiostatic hold at', round(params['potentials'][0], 3),
+            ' V \n')
 
         # Run the solver
         solution = solver.solve(t_out, SV_0, SVdot_0)
@@ -111,8 +123,8 @@ def run(SV_0, an, sep, ca, algvars, params):
         else: # data_out does not yet exist:
             data_out, SV_0 = data_prepare(i_step, solution, i_ext)
         
-    """ Now run the CV experiment:"""
-    # Set up the array of times and potentials for the sweep:
+    """ Run the CV experiment:"""
+    # Set up the array of times and potentials for the CV:
     potentials, times = setup_cycles(params['simulation'])
 
     # Save the array of potentials and times to the 'params' input:
@@ -130,7 +142,6 @@ def run(SV_0, an, sep, ca, algvars, params):
 
     # Append the current data array to any preexisting data, for output.  
     # If this is the first step, create the output data array.
-
     if i_step: # data_out already exists:
         data_out, SV_0 = data_prepare(i_step, solution, i_ext, data_out)
     else: # data_out does not yet exist:
@@ -139,21 +150,23 @@ def run(SV_0, an, sep, ca, algvars, params):
     return data_out
 
 def setup_cycles(params):
-    # Set preliminary parameters for the anode voltage sweep function
-    # Upper and lower voltage bounds
+    """
+    Creates two arrays, one of cell potentials (V) and one of the corresponding times (s) for each potentia, to describe the CV sweep.  These arrays are interpolated by the residual function.  The points should include the initial potential, the final potential, and any points where the potential hits one of the upper and lower limits."""
+
+    # Read out upper and lower voltage bounds
     phi_bounds = np.array((params['lower-cutoff'], params['upper-cutoff']))
 
-    # Sweep rate [V/s]
+    # Read out the sweep rate, and convert units as necessary to (V/s)
     R = read_sweep_rate(params['sweep-rate'])
 
-    # Time for one complete sweep between bounds:
+    # Time for one complete sweep between the upper and lower bounds:
     dt_sweep = (phi_bounds[1] - phi_bounds[0])/R
 
     # Direction of the initial sweep: positive-going or negative-going?
     if params['initial-sweep'] == 'positive':
-        sweep_0 = 1
+        direction = 1
     elif params['initial-sweep'] == 'negative':
-        sweep_0 = -1
+        direction = -1
 
     # Initial potential:
     if params['initial-potential'] == 'ocv':
@@ -162,19 +175,28 @@ def setup_cycles(params):
         phi_0 = params["initial-potential"]
 
     # Find the first time where the potential hits one of the limits:
-    t_limit_0 = -sweep_0*(phi_0 - phi_bounds[int(0.5*(1. + sweep_0))])/R
+    t_limit_0 = -direction*(phi_0 - phi_bounds[int(0.5*(1. + direction))])/R
 
-    # Make an array of times when the voltage limits are hit:
+    # Make an array containing all of the times when the voltage limits are hit:
     t_events = np.arange(t_limit_0, 
         t_limit_0 + dt_sweep*(2.*params["n_cycles"])+1, 
         dt_sweep)
+    
+    # Calculate the CV end time (s): 
     t_final = t_limit_0 + dt_sweep*(2.*params["n_cycles"])
+
+    # Concatenate all times into a single array:
     times = np.concatenate((np.array([0.]), t_events, np.array([t_final]),))
     
+    # Initialize the array of potentials:
     potentials = np.zeros_like(times)
+
+    # Load the initial potential:
     potentials[0] = phi_0
 
-    direction = sweep_0
+    # Use the sweep rate, sweep direction, and the `times` array to determine 
+    # the other potentials.  Each time a voltage limit is hit, the sweep 
+    # changes direction.
     for i, t in enumerate(times[1:]):
         potentials[i+1] = potentials[i] + direction*(t - times[i])*R
         direction *= -1
@@ -182,7 +204,9 @@ def setup_cycles(params):
     return potentials, times
 
 def read_sweep_rate(input):
-
+    """ 
+    Reads out the user-supplied sweep rate and converts the units, as necessary, to V/s.
+    """
     # The input provides both the sweep rate and its units:
     R, units = input.split()
 
@@ -191,19 +215,49 @@ def read_sweep_rate(input):
     
     # Read the units and convert to V/s as necessary:
     V_units, t_units = units.split("/")
-    if V_units=="mV":
-        R *= 0.001
-    elif V_units=="uA":
-        R *= 1e-6
 
-    if t_units=="min":
+    # Potential units:
+    if V_units=="V":
+        pass
+    elif V_units=="mV":
+        R *= 0.001
+    elif V_units=="uV":
+        R *= 1e-6
+    else:
+        raise Exception("Please supply sweep rate potential units as V, mV," 
+        + " or uV.")
+
+    # Time units:
+    if t_units=="s":
+        pass
+    elif t_units=="min":
         R /= 60
     elif t_units=="ms":
         R *= 1000
     elif t_units=="us":
         R *= 1e6
+    else:
+        raise Exception("Please supply sweep rate time units as min, s, "
+        + "ms, or us.")
 
     return R
+
+def residual(t, SV, SVdot, resid, inputs):
+    """
+    Call the individual component residual functions, which implement 
+    governing equations to solve for the state at any given time step. 
+    Nothing is returned by this function. It merely needs to set the value of 
+    'resid':
+    """
+    an, sep, ca, params = inputs
+
+    # Call residual functions for anode, separator, and cathode. Assemble them 
+    # into a single residual vector 'resid':
+    resid[an.SVptr['electrode']] = an.residual(t, SV, SVdot, sep, ca, params)
+
+    resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
+    
+    resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
 def calc_current(solution, sep, ed, params):
     """
@@ -217,8 +271,9 @@ def calc_current(solution, sep, ed, params):
     return i_ext
 
 def data_prepare(i_step, solution, i_ext, data_out=None):
-    # Append the current data array to any preexisting data, for output.  
-    # If this is the first step, create the output data array.
+    """
+    Concatenate the simulation results (time steps, external currents, and state vectors) into a single data stack, and appends this to existing data from any previous steps.
+    """
     if i_step: # Not the first step. 'data_out' already exists:
         # Stack the times, the current at each time step, and the solution 
         # vector at each time step into a single data array.
@@ -242,23 +297,6 @@ def data_prepare(i_step, solution, i_ext, data_out=None):
 
     return data_out, SV_0
 
-def residual(t, SV, SVdot, resid, inputs):
-    """
-    Call the individual component residual functions, which implement 
-    governing equations to solve for the state at any given time step. 
-    Nothing is returned by this function. It merely needs to set the value of 
-    'resid':
-    """
-    an, sep, ca, params = inputs
-
-    # Call residual functions for anode, separator, and cathode. Assemble them 
-    # into a single residual vector 'resid':
-    resid[an.SVptr['electrode']] = an.residual(t, SV, SVdot, sep, ca, params)
-
-    resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
-    
-    resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
-
 def output(solution, an, sep, ca, params):
     """
     Prepare and save any output data to the correct location. Prepare, 
@@ -268,8 +306,12 @@ def output(solution, an, sep, ca, params):
     import matplotlib.pyplot as plt 
     from matplotlib.ticker import FormatStrFormatter
 
-    # Re-read the time steps for the CV cycles: points where 
+    # Re-read the time steps for the CV cycles: points where the potential hits 
+    # voltage limits.  The function also retrns the potentials, but these are 
+    # not required, here.
     _, times = setup_cycles(params['simulation'])
+
+    # Find the step numbers where each cycle begins:
     indices, n_cycles = sort_cycles(solution, times)
 
     # Calculate cell potential:   
@@ -350,6 +392,9 @@ def output(solution, an, sep, ca, params):
         plt.show()
 
 def sort_cycles(solution, times):
+    """
+    Finds the step number (index) for the beginning of each CV cycle.
+    """
     n_cycles = ceil(len(times)/2)
     indices = np.zeros((n_cycles+1,), dtype=int)
 
