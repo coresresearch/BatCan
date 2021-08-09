@@ -21,11 +21,11 @@ class electrode():
         # Import relevant Cantera objects.
         self.gas_obj = ct.Solution(input_file, inputs['gas-phase'])
         self.elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
-        self.air_elyte_obj = ct.Interface(input_file, inputs['elyte-iphase'], [gas_obj, elyte_obj])
+        self.air_elyte_obj = ct.Interface(input_file, inputs['elyte-iphase'], [self.gas_obj, self.elyte_obj])
         self.bulk_obj = ct.Solution(input_file, inputs['bulk-phase'])
         self.product_obj = ct.Solution(input_file, inputs['product-phase'])
-        self.surf_obj = ct.Interface(input_file, inputs['surf-phase'], 
-            [bulk_obj, elyte_obj])
+        self.surf_obj = ct.Interface(input_file, inputs['surf-iphase'], 
+            [self.product_obj, self.elyte_obj, self.bulk_obj])
 
         # Anode or cathode? Positive external current delivers positive charge 
         # to the anode, and removes positive charge from the cathode.
@@ -92,7 +92,7 @@ class electrode():
         #Conc = self.bulk_obj[inputs['stored-ion']['name']].concentrations[0]
         
         self.capacity = (inputs['stored-species']['charge']*ct.faraday
-                 *inputs['eps_elyte'])*inputs['thickness']/(3600
+                 *self.eps_elyte)*inputs['thickness']/(3600
                  *inputs['stored-species']['MW']) 
 
         # Return Cantera object composition to original value:
@@ -116,7 +116,7 @@ class electrode():
 
         self.elyte_obj.TP = params['T'], params['P']
         self.surf_obj.TP = params['T'], params['P']
-        self.conductor_obj.TP = params['T'], params['P']
+        #self.conductor_obj.TP = params['T'], params['P']
 
         # Set up pointers to specific variables in the solution vector:
         self.SVptr = {}
@@ -197,7 +197,7 @@ class electrode():
 
         # Set electric potentials for Cantera objects:
         self.bulk_obj.electric_potential = phi_ed
-        self.conductor_obj.electric_potential = phi_ed
+        #self.conductor_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
 
         sdot_electron = self.surf_obj.get_net_production_rates(self.bulk_obj)
@@ -254,7 +254,7 @@ class electrode():
         sdot_cath = self.surf_obj.get_net_production_rates(self.product_obj)
         # available interface area on carbon particle
         A_int_avail = self.A_init - self.eps_oxide/self.th_oxide
-        dEpsOxide_dt =  A_int_avail * np.dot(sdot_cath * self.product_obj.molar_volume)
+        dEpsOxide_dt =  A_int_avail * sdot_cath['Li2O2[cathode]'] * 19.861904761904753514 #np.dot(sdot_cath * self.product_obj.molar_volume) particularly the molar volume portion doesn't work... I feel like we talked about this before...
         resid[SVptr['eps oxide']] = (SVdot_loc[SVptr['eps oxide']] - dEpsOxide_dt)
 
         return resid

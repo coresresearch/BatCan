@@ -30,17 +30,32 @@ cell-description:
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 2.91 # Initial electric potential, V // Yin, 2017
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
+    transport:
+      mobile-ion:  'Li+[elyt]'
+      model: 'dilute-solution'
+      diffusion-coefficients: # Species names must match those in the phase 
+      #definition, below: # fix diffusion coefficients later...
+        - species: 'C10H22O5[elyt]'
+          D_k: 1e-15
+        - species: 'Li+[elyt]'
+          D_k: 2e-11
+        - species: 'TFSI-[elyt]'
+          D_k: 2e-13
+        - species: 'O2(e)'
+          D_k: 2e-13
+        - species: 'Li2O2[elyt]'
+          D_k: 2e-13
   cathode:
     class: 'nucleation_single_particle'
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
     bulk-phase: 'conductor' # Cantera phase name
-    surf-iphase: 'cathode_surf' # Cantera phase name
+    surf-iphase: 'cathode-surf' # Cantera phase name
     product-phase: 'li-oxide'
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 50e-6 # anode thickness, m
-    r_p: 6e-6 # Particle radius, m
+    r_p: 6e-6 # Carbon Particle radius, m
     d_part: 1.5e-6 #Oxide diameter, m
     th_oxide: 850e-9 #oxide thickness, m
     phi_0: 2.95 # Initial electric potential, V
@@ -71,6 +86,9 @@ parameters:
     phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value
     phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
     species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+    equilibrate: 
+      enable: True # Start with a hold at open circuit?
+      time: 100 # If true, how long is the hold, s
 
 # Cantera inputs:
 description: |-
@@ -136,18 +154,17 @@ phases:
   
 - name: electrolyte
   thermo: ideal-condensed
-  elements: [Li, P, F, C, H, O, E]
-  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'TFSI-[elyt]', O2(e), LiO2]
+  elements: [Li, F, N, S, C, H, O, E]
+  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'TFSI-[elyt]', 'O2(e)', 'Li2O2[elyt]']
   state:
-    X: {'C10H22O5[elyt]': 0.85464, 'TFSI-[elyt]': 0.07268,
-      'PF6-[elyt]': 0.07268, 'O2(e)': 0.0, 'LiO2': 0.0} 
+    X: {'C10H22O5[elyt]': 0.85464, 'TFSI-[elyt]': 0.14536, 'O2(e)': 1e-9, 'Li2O2[elyt]': 1e-9} 
   standard-concentration-basis: unity
 
 - name: air-elyte-interface
   thermo: ideal-surface
   species: [(dummy)]
   kinetics: surface
-  reactions: [air_electrolyte-reactions]
+  reactions: [air-electrolyte-reactions]
   site-density: 0.01 mol/cm^2
 
 - name: oxygen
@@ -159,9 +176,11 @@ phases:
 
 - name: conductor
   thermo: electron-cloud
-  elements: [C]
-  species: ['C[cathode]']
-  standard-concentration-basis: unity
+  elements: [E]
+  species: [electron]
+  state:
+    X: {electron: 1.0}
+  density: 1.0 kg/m^3
 
 - name: cathode-surf
   thermo: ideal-surface
@@ -262,8 +281,8 @@ species:
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
     
-- name: LiO2[elyt]
-  composition: {Li: 1, O: 6}
+- name: Li2O2[elyt]
+  composition: {Li: 2, O: 2}
   thermo:
     model: constant-cp
     h0: 0.0 J/mol
@@ -311,33 +330,6 @@ species:
     polarizability: 1.6
     rotational-relaxation: 3.8
 
-- name: Cat[cathode]
-  composition: {Mn: 1, O: 2}
-  thermo:
-    model: constant-cp
-    h0: 0.0 kJ/mol
-    s0: 0.0 J/mol/K
-  note: |-
-    MnO2, MW: 
-    Molar enthalpy and entropy set to zero (dummy entries because chemical
-    potential is set to zero for a "metal" phase)
-
-- name: C[cathode]
-  composition: {C: 1}
-  thermo:
-    model: constant-cp
-    h0: 0.0 kJ/mol
-    s0: 0.0 J/mol/K
-  equation-of-state:
-    model: constant-volume
-    molar-volume: 18.983716075156575 cm^3/mol
-  note: |-
-    Vacancy in the cobalt oxide, MW: 90.9320 g/mol.
-    Note this species includes the cobalt oxide host matrix.
-    Molar enthalpy and entropy are set to 0 because this is the reference species
-    for this phase.
-    Density of LCO: 
-
 - name: Li2O2[cathode]
   composition: {Li: 2, O: 2}
   thermo:
@@ -373,7 +365,7 @@ air-electrolyte-reactions:
   exchange-current-density-formulation: true
   beta: 0.5
 
-"""Citations"""
+#"""Citations"""
 #Chen, J.; et al., ACS Omega, vol. 4, no. 20708-20714, 2019, DOI: 10.1021/acsomega.9b02941.
 
 #Haynes, W.M.; CRC handbook of chemistry and physics, 2016, 97th Edition / Boca Raton, Florida: CRC Press.
