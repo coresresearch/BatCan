@@ -283,9 +283,9 @@ class electrode():
 
     def output(self, axs, solution, ax_offset):
         """Plot the intercalation fraction vs. time"""
-        #C_k_an = solution[3 + self.SV_offset + self.SVptr['C_k_elyte'][0],:]
-        #axs[ax_offset].plot(solution[0,:]/3600, C_k_an)
-        #axs[ax_offset].set_ylabel(self.name+' Li \n(kmol/m$^3$)')
-        #axs[ax_offset].set(xlabel='Time (h)')
+        C_k_an = solution[3 + self.SV_offset]
+        axs[ax_offset].plot(solution[0,:]/3600, C_k_an)
+        axs[ax_offset].set_ylabel(self.name+' Li \n(kmol/m$^3$)')
+        axs[ax_offset].set(xlabel='Time (h)')
 
-        #return axs
+        return axs
