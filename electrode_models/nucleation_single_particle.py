@@ -104,7 +104,7 @@ class electrode():
         self.n_vars = 3 + self.elyte_obj.n_species
 
         # This model produces one plot, for the intercalation concentration.
-        # self.n_plots = 1
+        self.n_plots = 0
 
         # Set Cantera object state:
         self.bulk_obj.electric_potential = inputs['phi_0']
@@ -254,8 +254,8 @@ class electrode():
         sdot_cath = self.surf_obj.get_net_production_rates(self.product_obj)
         # available interface area on carbon particle
         A_int_avail = self.A_init - self.eps_oxide/self.th_oxide
-        dEpsOxide_dt =  A_int_avail * sdot_cath['Li2O2[cathode]'] * 19.861904761904753514 #np.dot(sdot_cath * self.product_obj.molar_volume) particularly the molar volume portion doesn't work... I feel like we talked about this before...
-        resid[SVptr['eps oxide']] = (SVdot_loc[SVptr['eps oxide']] - dEpsOxide_dt)
+        dEpsOxide_dt =  A_int_avail * np.dot(sdot_cath, self.product_obj.partial_molar_volumes) #sdot_cath * 19.861904761904753514 #np.dot(sdot_cath * self.product_obj.molar_volume) particularly the molar volume portion doesn't work... I feel like we talked about this before...
+        resid[SVptr['eps_oxide']] = (SVdot_loc[SVptr['eps_oxide']] - dEpsOxide_dt)
 
         return resid
         
@@ -283,9 +283,9 @@ class electrode():
 
     def output(self, axs, solution, ax_offset):
         """Plot the intercalation fraction vs. time"""
-        C_k_an = solution[3 + self.SV_offset + self.SVptr['C_k_elyte'][0],:]
-        axs[ax_offset].plot(solution[0,:]/3600, C_k_an)
-        axs[ax_offset].set_ylabel(self.name+' Li \n(kmol/m$^3$)')
-        axs[ax_offset].set(xlabel='Time (h)')
+        #C_k_an = solution[3 + self.SV_offset + self.SVptr['C_k_elyte'][0],:]
+        #axs[ax_offset].plot(solution[0,:]/3600, C_k_an)
+        #axs[ax_offset].set_ylabel(self.name+' Li \n(kmol/m$^3$)')
+        #axs[ax_offset].set(xlabel='Time (h)')
 
-        return axs
+        #return axs
