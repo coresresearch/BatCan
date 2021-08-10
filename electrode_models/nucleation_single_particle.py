@@ -146,10 +146,10 @@ class electrode():
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
         SV[self.SVptr['eps_oxide']] = self.eps_oxide 
         SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations
-
+        
         return SV
 
-    def residual(self, SV, SVdot, sep, counter, params):
+    def residual(self, t, SV, SVdot, sep, counter, params):
         """
         Define the residual for the state of the nucleation and growth electrode.
 
@@ -209,7 +209,7 @@ class electrode():
         # Calculate the electrolyte species fluxes and associated ionic current 
         # at the boundary with the separator:
         N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T']) #?
-
+        
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
             resid[[SVptr['phi_ed'][0]]] = SV_loc[SVptr['phi_ed'][0]]

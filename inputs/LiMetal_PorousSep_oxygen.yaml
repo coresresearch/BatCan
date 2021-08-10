@@ -20,7 +20,7 @@ cell-description:
     minimum-thickness: 1e-9 # minimum anode thickness. 
     phi_0: 0. # Initial electric potential, V
     A_surf_ratio: 1.0 # Interface area per unit geometric area
-    C_dl: 6e3 #F/m2
+    C_dl: 6e-3 #F/m2
     dy_elyte: 2e-6
   separator:
     class: 'porous_separator'
@@ -60,7 +60,7 @@ cell-description:
     th_oxide: 850e-9 #oxide thickness, m
     phi_0: 2.95 # Initial electric potential, V
     eps_solid: 0.65 # Solid phase volume fraction, -
-    C_dl: 6e3 #F/m2
+    C_dl: 6e-3 #F/m2
     Minrad: 1e-10 #m
     Maxrad: 1e-6 #m
     buckets: 200 #number
@@ -80,7 +80,7 @@ parameters:
     type: 'CC_cycle' # Constant current cycling
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    C-rate: 10.0 # input C-rate
+    C-rate: 0.1 # input C-rate
     n_cycles: 2 # Number of cycles. Currently must be 0.5 or an int.
     first-step: 'discharge'  # Start with charge or discharge?
     phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value
@@ -157,7 +157,7 @@ phases:
   elements: [Li, F, N, S, C, H, O, E]
   species: ['C10H22O5[elyt]', 'Li+[elyt]', 'TFSI-[elyt]', 'O2(e)', 'Li2O2[elyt]']
   state:
-    X: {'C10H22O5[elyt]': 0.85464, 'TFSI-[elyt]': 0.14536, 'O2(e)': 1e-9, 'Li2O2[elyt]': 1e-9} 
+    X: {'C10H22O5[elyt]': 0.85464, 'Li+[elyt]': 0.14536, 'TFSI-[elyt]': 0.14536, 'O2(e)': 1E-9, 'Li2O2[elyt]': 1E-9} 
   standard-concentration-basis: unity
 
 - name: air-elyte-interface

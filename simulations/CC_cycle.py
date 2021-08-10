@@ -198,8 +198,6 @@ def residual(t, SV, SVdot, resid, inputs):
     
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
-    print(params['algvars'], resid[8])
-
 def output(solution, an, sep, ca, params):
     """
     Prepare and save any output data to the correct location. Prepare, 

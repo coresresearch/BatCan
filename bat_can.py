@@ -55,7 +55,7 @@ def bat_can(input = None):
         'cathode', parameters, offset= an.n_vars+sep.n_vars*sep.n_points)
 
     # Check to see if the cathode object needs to adjust the separator 
-    # properties:
+    # properties:    
     sep = ca.adjust_separator(sep)
 
     # Initialize the solution vector:
