@@ -1,0 +1,371 @@
+#===============================================================================
+#  input_template.yaml
+#
+#  User inputs for bat-can model creation and running.
+#===============================================================================
+
+cell-description:
+  anode:
+    class: 'dense_electrode'
+    bulk-phase: 'lithium_metal' # Cantera phase name
+    surf-phase: 'lithium_electrolyte' # Cantera phase name
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    conductor-phase: 'electron' # Cantera phase name
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li(b)
+      charge: 1
+    mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
+    thickness: 1e-6 # anode thickness, m
+    minimum-thickness: 1e-9 # minimum anode thickness. 
+    phi_0: 0. # Initial electric potential, V
+    A_surf_ratio: 1.0 # Interface area per unit geometric area
+    C_dl: 6e-3 #F/m2
+    dy_elyte: 2e-6
+  separator:
+    class: 'ionic_resistor'
+    thickness: 20e-6 # separator thickness, m
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    sigma_io: 1.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
+    phi_0: 2.96 # Initial electric potential, V
+    eps_electrolyte: 0.65 # Electrolyte volume fraction, -
+  cathode:
+    class: 'conversion_electrode'
+    host-phase: 'carbon' # Cantera phase name
+    surf-phase: 'carbon_electrolyte' # Cantera phase name
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    conversion-phases:
+      - bulk-name: "sulfur" # Cantera phase name
+        surf-name: "sulfur_surf" # Cantera name for surface phase
+        min-vol-frac: 1E-05
+      - bulk-name: "lithium_sulfide" # Cantera phase name
+        surf-name: "lithium_sulfide_surf" # Cantera name for surface phase
+        min-vol-frac: 1E-05
+    initial-state: # Determine initial state of electrode
+      method: "porosity" 
+      eps_init:
+        - phase: sulfur
+          value: 0.12
+        - phase: lithium_sulfide
+          value: 1E-10
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      phase: "lithium_sulfide"
+      name: Li2S(s)
+      charge: 2 # How many moles of charge per mole of species?
+      n_phase: 1 # What is the index of this phase in the 'conversion-phases' list above (starting with zero)?
+    mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
+    thickness: 50e-6 # anode thickness, m
+    n_points: 1 # number of spatially-discretized volumes
+    r_p: 6e-6 # Particle radius, m
+    phi_0: 4.125 # Initial electric potential, V
+    eps_solid: 0.65 # Solid phase volume fraction, -
+    X_0: 'Li[cathode]:0.97, V[cathode]:0.03' # Initial active material mole fractions string.
+    C_dl: 6e-3 #F/m2
+
+# Simulation parameters:
+parameters:
+  T: 60 # C
+  P: 101325 # Pa
+  # Describe what to do with the results:
+  outputs:
+    show-plots: True # Do you want the plots shown and saved, or just saved?
+  # Describe simulation type, parameters, etc.
+  simulation:
+    type: 'potential_hold' # Constant current cycling
+    steps: #Sequence of potential holds
+    - potential: 3.75 # V, cell potential for the hold.
+      time: 600 # s, time for the hold.
+    - potential: 3.25 # V, cell potential for the hold.
+      time: 1200 # s, time for the hold.
+    - potential: 2.75 # V, cell potential for the hold.
+      time: 1800 # s, time for the hold.
+    - potential: 2.25 # V, cell potential for the hold.
+      time: 2400 # s, time for the hold.
+    - potential: 1.255 # V, cell potential for the hold.
+      time: 3600 # s, time for the hold.
+    equilibrate: 
+      enable: True # Begin with a hold at i_ext = 0?
+      time: 100 # If true, how long is the hold, s
+    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+
+# Cantera inputs:
+description: |-
+  This is an implementation of the Li-S model used by Jonathan P. Neidhardt
+    et al (DOI: 10.1149/2.023209jes)
+
+phases:
+
+- name: lithium_metal
+  thermo: ideal-condensed
+  species: ['Li(b)']
+  density: 0.534 g/cm^3
+  state:
+    T: 300.0
+    P: 1 atm
+
+# The carbon is inert here, and is just a source of electrons:
+- name: carbon
+  thermo: electron-cloud
+  elements: [E]
+  species: [electron]
+  state:
+    T: 300.0
+    P: 1 atm
+    X: {electron: 1.0}
+  density: 2260 kg/m^3
+  
+- name: sulfur
+  thermo: fixed-stoichiometry
+  species: [S8(s)]
+  density: 2.07e3 kg/m^3
+  state:
+    T: 300.0 K
+    P: 1 atm
+
+- name: lithium_sulfide
+  thermo: fixed-stoichiometry
+  species: [Li2S(s)]
+  density: 1640 kg/m^3
+  state:
+    T: 300.0 K
+    P: 1 atm
+
+- name: electrolyte
+  thermo: ideal-condensed
+  elements: [Li, C, F, N, H, O, E, S]
+  species: [TEGDME(e), Li+(e), TFSI-(e), S8(e), S8-(e), S6-(e), S4-(e),
+            S2-(e), S-(e)]
+  state:
+    T: 300.0
+    P: 1 atm
+    X: {TEGDME(e): 0.66, Li+(e): 0.17, TFSI-(e): 0.17, S8-(e): 0.0,
+      S6-(e): 0.0, S4-(e): 0.0, S2-(e): 0.0, S-(e): 0.0}
+  standard-concentration-basis: unity
+
+- name: electron
+  thermo: electron-cloud
+  elements: [E]
+  species: [electron]
+  state:
+    X: {electron: 1.0}
+  density: 1.0 kg/m^3
+
+- name: lithium_electrolyte
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [lithium_electrolyte-reactions]
+  site-density: 0.01 mol/cm^2
+
+- name: sulfur_surf
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [sulfur-elyte-reactions]
+  state:
+    T: 300.0 K
+    P: 1 atm
+
+- name: lithium_sulfide_surf
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [lithium-sulfide-elyte-reactions]
+  state:
+    T: 300.0 K
+    P: 1 atm
+  site-density: 3.48e-2
+  
+- name: carbon_electrolyte
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [carbon-elyte-reactions]
+  site-density: 0.01 mol/cm^2
+
+species:
+- name: Li(b)
+  composition: {Li: 1}
+  thermo:
+    model: constant-cp
+    h0: 19.50 kJ/mol
+    s0: 29.1 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 12.998 cm^3/mol
+
+- name: Li2S(s)
+  composition: {Li: 2, S: 1}
+  thermo:
+    model: constant-cp
+    h0: -576.875 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 27.5 cm^3/mol
+    
+- name: Li+(e)
+  composition: {Li: 1, E: -1}
+  thermo:
+    model: constant-cp
+    h0: -278.49 kJ/mol
+    s0: 13.4 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 5.508297619047619 cm^3/mol
+  note: |-
+    Lithium ion, MW: 6.940455 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
+    Chemistry", Wiley-VCH (2006)
+
+- name: TFSI-(e)
+  composition: {C: 2, F: 6, S: 2, O: 4, N: 1, E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 147.4 cm^3/mol
+
+- name: TEGDME(e)
+  composition: {C: 10, H: 22, O: 5}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 220.1 cm^3/mol
+
+- name: S8(s)
+  composition: {S: 8}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 123.90338 cm^3/mol
+
+- name: S8(e)
+  composition: {S: 8}
+  thermo:
+    model: constant-cp
+    h0: 10.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 123.90338 cm^3/mol
+
+- name: S8-(e)
+  composition: {S: 8, E: 2}
+  thermo:
+    model: constant-cp
+    h0: -454.292 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 86.156 cm^3/mol
+
+- name: S6-(e)
+  composition: {S: 6, E: 2}
+  thermo:
+    model: constant-cp
+    h0: -454.3265 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 78.703 cm^3/mol
+
+- name: S4-(e)
+  composition: {S: 4, E: 2}
+  thermo:
+    model: constant-cp
+    h0: -447.9322 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 67.581 cm^3/mol
+
+- name: S2-(e)
+  composition: {S: 2, E: 2}
+  thermo:
+    model: constant-cp
+    h0: -422.116 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 59.678 cm^3/mol
+
+- name: S-(e)
+  composition: {S: 1, E: 2}
+  thermo:
+    model: constant-cp
+    h0: -406.29 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 49.197 cm^3/mol
+
+- name: electron
+  composition: {E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: |-
+    Electron, MW: 0.000545 g/mol
+    Molar enthalpy and entropy set to zero (dummy entries because chemical
+    potential is set to zero for a "metal" phase)
+
+- name: (dummy)
+  composition: {}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: Dummy species (needed for defining the interfaces)
+
+lithium_electrolyte-reactions:
+- equation: Li(b) <=> Li+(e) + electron
+  id: lithium_faradaic_reaction
+  rate-constant: {A: 6.0e+09, b: 0.0, Ea: 0.0}
+  beta: 0.5
+
+carbon-elyte-reactions:
+- equation: 0.5 S8(e) + electron <=> 0.5 S8-(e)
+  id: sulfur_reduction_1
+  rate-constant: {A: 7.725e13, b: 0.0, Ea: 0.0}
+  beta: 0.5
+
+- equation: 1.5 S8-(e) + electron <=> 2 S6-(e)
+  id: sulfur_reduction_2
+  rate-constant: {A: 4.331e16, b: 0.0, Ea: 0.0}
+  beta: 0.5
+
+- equation: S6-(e) + electron <=> 1.5 S4-(e)
+  id: sulfur_reduction_3
+  rate-constant: {A: 3.193e14, b: 0.0, Ea: 0.0}
+  beta: 0.5
+
+- equation: 0.5 S4-(e) + electron <=> S2-(e)
+  id: sulfur_reduction_4
+  rate-constant: {A: 2.375e11, b: 0.0, Ea: 0.0}
+  beta: 0.5
+
+- equation: 0.5 S2-(e) + electron <=> S-(e)
+  id: sulfur_reduction_4
+  rate-constant: {A: 4.655e12, b: 0.0, Ea: 0.0}
+  beta: 0.5
+  
+sulfur-elyte-reactions:
+- equation: S8(s) <=> S8(e)
+  id: sulfur_dissolution
+  rate-constant: {A: 1.9e-2, b: 0.0, Ea: 0.0}
+
+lithium-sulfide-elyte-reactions:
+- equation: 2 Li+(e) + S-(e) <=> Li2S(s)
+  id: sulfur_reduction_6
+  rate-constant: {A: 2.75e-5, b: 0.0, Ea: 0.0}

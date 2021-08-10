@@ -49,7 +49,6 @@ def bat_can(input = None):
     
     # Check to see if the anode object needs to adjust the separator properties:
     sep = an.adjust_separator(sep)
-    
     ca_module = importlib.import_module('electrode_models.' 
         + ca_inputs['class'])
     ca = ca_module.electrode(input, ca_inputs, sep_inputs, an_inputs, 
