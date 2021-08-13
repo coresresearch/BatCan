@@ -1,7 +1,7 @@
 """
-    single_particle_electrode.py
+    metal_air_single_particle.py
 
-    Class file for nucleation and growth (HNG) electrode methods
+    Class file for metal air electrode methods
 """
 
 import cantera as ct
@@ -9,7 +9,7 @@ import numpy as np
 
 class electrode(): 
     """
-    Create an electrode object representing the nucleation and growth electrode.
+    Create an electrode object representing the metal air electrode.
     """
 
     def __init__(self, input_file, inputs, sep_inputs, counter_inputs,    
@@ -22,10 +22,10 @@ class electrode():
         self.gas_obj = ct.Solution(input_file, inputs['gas-phase'])
         self.elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
         self.air_elyte_obj = ct.Interface(input_file, inputs['elyte-iphase'], [self.gas_obj, self.elyte_obj])
-        self.bulk_obj = ct.Solution(input_file, inputs['bulk-phase'])
+        self.host_obj = ct.Solution(input_file, inputs['host-phase'])
         self.product_obj = ct.Solution(input_file, inputs['product-phase'])
         self.surf_obj = ct.Interface(input_file, inputs['surf-iphase'], 
-            [self.product_obj, self.elyte_obj, self.bulk_obj])
+            [self.product_obj, self.elyte_obj, self.host_obj])
 
         # Anode or cathode? Positive external current delivers positive charge 
         # to the anode, and removes positive charge from the cathode.
@@ -45,37 +45,33 @@ class electrode():
         self.dy = inputs['thickness']
         self.dyInv = 1/self.dy
 
-        self.eps_solid = inputs['eps_solid']
-        self.eps_elyte = 1 - self.eps_solid
-        self.eps_oxide = 0
-        
-        self.V_part = 4./3. * np.pi * (inputs['r_p']/ 2)**3  # particle volume [m3]
-        self.A_part = 4. * np.pi * (inputs['r_p'] / 2)**2    # particle surface area [m2]
-        self.A_init = self.eps_solid * self.A_part / self.V_part 
-        self.th_oxide= inputs['th_oxide']
-        self.A_oxide = np.pi* inputs['d_part']**2/4.
-        self.V_oxide = 2./3. * np.pi* (inputs['d_part']/2.)**2 * self.th_oxide
+        # Phase volume fractions
+        self.eps_host = inputs['eps_host']
+        self.eps_oxide_int =inputs['eps_oxide']
+        self.eps_elyte_int = 1 - self.eps_host - self.eps_oxide_int
+
+        # This calculation assumes spherical particles of a single radius, with 
+        # no overlap.
+        # Electrode-electrolyte interface area, per unit geometric area.
+        self.r_host = inputs['r_host']
+        self.th_oxide = inputs['th_oxide']
+        self.V_host = 4./3. * np.pi * (self.r_host / 2)**3  # carbon or host volume [m3]
+        self.A_host = 4. * np.pi * (self.r_host / 2)**2    # carbon or host surface area [m2]
+        self.A_init = self.eps_host * self.A_host / self.V_host 
+        self.A_oxide = np.pi* inputs['d_oxide']**2/4.   # oxide area
+        self.V_oxide = 2./3. * np.pi* (inputs['d_oxide']/2.)**2 * self.th_oxide #oxide volume
 
         # For some models, the elyte thickness is different from that of the 
         # electrode, so we specify is separately:
         self.dy_elyte = self.dy
 
-        # Phase volume fractions
-        self.eps_solid = inputs['eps_solid']
-        self.eps_elyte = 1 - self.eps_solid
-        self.eps_oxide = 0
-
-        # Electrode-electrolyte interface area, per unit geometric area.
-        # This calculation assumes spherical particles of a single radius, with 
-        # no overlap.
-        self.A_surf_ratio = (3*self.eps_solid*self.dy/inputs['r_p'])
 
         # Inverse double layer capacitance, per unit interfacial area.
         self.C_dl_Inv = 1/inputs['C_dl']
 
         # Microstructure-based transport scaling factor, based on Bruggeman 
         # coefficient of -0.5:
-        self.elyte_microstructure = self.eps_elyte**1.5
+        self.elyte_microstructure = self.eps_elyte_int**1.5 # where would we use this?
         
         # SV_offset specifies the index of the first SV variable for the 
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
@@ -83,37 +79,20 @@ class electrode():
 
         # Determine the electrode capacity (Ah/m2)
 
-        # Max concentration of stored ion (intercalated Li)
-        # Save initial X
-        #X_o = self.bulk_obj.X 
-        # Set object concentration to fully lithiated:
-        #self.bulk_obj.X = inputs['stored-ion']['name']+':1.0' 
-        # Concentration of stored Li, per unit volume of intercalation phase:
-        #Conc = self.bulk_obj[inputs['stored-ion']['name']].concentrations[0]
+        # Max voume concentration of the oxide (all elyte has been replaced by oxide)
         
         self.capacity = (inputs['stored-species']['charge']*ct.faraday
-                 *self.eps_elyte)*inputs['thickness']/(3600
+                 *self.eps_elyte_int)*inputs['thickness']/(3600
                  *inputs['stored-species']['MW']) 
 
-        # Return Cantera object composition to original value:
-        #self.bulk_obj.X = X_o
-        
-        # Number of state variables: electrode potential, electrolyte, porosity 
-        # potential, electrode composition (n_species), electrolyte composition 
-        # (n_species)
+        # Number of state variables: electrode potential, electrolyte composition, oxide volume fraction 
         self.n_vars = 3 + self.elyte_obj.n_species
 
-        # This model produces one plot, for the intercalation concentration.
+        # This model produces zero plots, but might someday.
         self.n_plots = 0
 
         # Set Cantera object state:
-        self.bulk_obj.electric_potential = inputs['phi_0']
-        # If the user provided an initial composition, use that, here:
-        if 'X_0' in inputs:
-            self.bulk_obj.TPX = (params['T'], params['P'], inputs['X_0'])
-        else:
-            self.bulk_obj.TP = params['T'], params['P']
-
+        self.host_obj.TP = params['T'], params['P']
         self.elyte_obj.TP = params['T'], params['P']
         self.surf_obj.TP = params['T'], params['P']
         #self.conductor_obj.TP = params['T'], params['P']
@@ -144,14 +123,14 @@ class electrode():
         # Load intial state variables:
         SV[self.SVptr['phi_ed']] = inputs['phi_0']
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
-        SV[self.SVptr['eps_oxide']] = self.eps_oxide 
+        SV[self.SVptr['eps_oxide']] = self.eps_oxide_int
         SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations
         
         return SV
 
     def residual(self, t, SV, SVdot, sep, counter, params):
         """
-        Define the residual for the state of the nucleation and growth electrode.
+        Define the residual for the state of the metal air electrode.
 
         This is an array of differential and algebraic governing equations, one for each state variable in the anode (anode plus a thin layer of electrolyte + separator).
 
@@ -189,18 +168,15 @@ class electrode():
         # Read the electrode and electrolyte electric potential:
         phi_ed = SV_loc[SVptr['phi_ed']]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
-
-        # Read out electrode bulk composition; set the Cantra object:
-        #C_k_ed = SV_loc[SVptr['C_k_ed']] # Molar density (kmol/m3 of phase)
-        #X_k_ed = C_k_ed/sum(C_k_ed) # Mole fraction
-        #self.bulk_obj.X = X_k_ed
+        eps_oxide = SV_loc[SVptr['eps_oxide']]
+        eps_elyte = 1 - eps_oxide - self.eps_host
 
         # Set electric potentials for Cantera objects:
-        self.bulk_obj.electric_potential = phi_ed
+        self.host_obj.electric_potential = phi_ed
         #self.conductor_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
 
-        sdot_electron = self.surf_obj.get_net_production_rates(self.bulk_obj)
+        sdot_electron = self.surf_obj.get_net_production_rates(self.host_obj)
         
         # Faradaic current density is positive when electrons are consumed 
         # (Li transferred to the electrode)
@@ -226,17 +202,13 @@ class electrode():
 
         # Double layer current has the same sign as i_Far, and is based on 
         # charge balance in the electrolyte phase:
-        i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
+        A_int_avail = self.A_init - eps_oxide/self.th_oxide
+        A_surf_ratio = A_int_avail*self.dy
+        i_dl = self.i_ext_flag*i_io/A_surf_ratio - i_Far
 
         # Differential equation for the double layer potential:
         resid[SVptr['phi_dl']] = \
             SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv
-
-        # species production in electrode active material:
-        #sdot_k_ed = self.surf_obj.get_net_production_rates(self.bulk_obj)
-
-        #resid[SVptr['C_k_ed']] = (SVdot_loc[SVptr['C_k_ed']] 
-        #    - self.A_surf_ratio *  sdot_k_ed * self.dyInv / self.eps_solid)
 
         # Molar production rate of electrode species (kmol/m2/s).
         sdot_elyte = self.surf_obj.get_net_production_rates(self.elyte_obj)
@@ -247,14 +219,14 @@ class electrode():
             
         # Change in electrolyte species concentration per unit time:
         dCk_elyte_dt = \
-            ((sdot_elyte * self.A_surf_ratio + self.i_ext_flag * N_k_sep)
-            * self.dyInv / self.eps_elyte) # first term is reaction second term is seperater?
+            ((sdot_elyte *  A_surf_ratio + self.i_ext_flag * N_k_sep)
+            * self.dyInv / eps_elyte) # first term is reaction second term is seperater?
         resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
         #molar production rate of 
         sdot_cath = self.surf_obj.get_net_production_rates(self.product_obj)
         # available interface area on carbon particle
-        A_int_avail = self.A_init - self.eps_oxide/self.th_oxide
-        dEpsOxide_dt =  A_int_avail * np.dot(sdot_cath, self.product_obj.partial_molar_volumes) #sdot_cath * 19.861904761904753514 #np.dot(sdot_cath * self.product_obj.molar_volume) particularly the molar volume portion doesn't work... I feel like we talked about this before...
+        
+        dEpsOxide_dt =  A_int_avail * np.dot(sdot_cath, self.product_obj.partial_molar_volumes) 
         resid[SVptr['eps_oxide']] = (SVdot_loc[SVptr['eps_oxide']] - dEpsOxide_dt)
 
         return resid
@@ -289,3 +261,6 @@ class electrode():
         axs[ax_offset].set(xlabel='Time (h)')
 
         return axs
+
+#Official Soundtrack:
+    #Jimmy Eat World - Chase the Light

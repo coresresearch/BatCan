@@ -46,20 +46,21 @@ cell-description:
         - species: 'Li2O2[elyt]'
           D_k: 2e-13
   cathode:
-    class: 'nucleation_single_particle'
+    class: 'metal_air_single_particle'
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
-    bulk-phase: 'conductor' # Cantera phase name
+    host-phase: 'conductor' # Cantera phase name
     surf-iphase: 'cathode-surf' # Cantera phase name
     product-phase: 'li-oxide'
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 50e-6 # anode thickness, m
-    r_p: 6e-6 # Carbon Particle radius, m
-    d_part: 1.5e-6 #Oxide diameter, m
+    r_host: 6e-6 # Carbon Particle radius, m
+    d_oxide: 1.5e-6 #Oxide diameter, m
     th_oxide: 850e-9 #oxide thickness, m
     phi_0: 2.95 # Initial electric potential, V
-    eps_solid: 0.65 # Solid phase volume fraction, -
+    eps_host: 0.65 # Solid phase volume fraction of carbon -
+    eps_oxide: 0.00 # solid phase volume fraction of Li2O2 -
     C_dl: 6e-3 #F/m2
     Minrad: 1e-10 #m
     Maxrad: 1e-6 #m
