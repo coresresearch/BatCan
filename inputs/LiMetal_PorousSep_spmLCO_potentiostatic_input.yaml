@@ -71,7 +71,7 @@ parameters:
     type: 'potential_hold' # Constant current cycling
     steps:
     - potential: 4.85 # V, cell potential for the hold.
-      time: 28800 # s, time for the hold.
+      time: 0.01 # s, time for the hold.
     equilibrate: 
       enable: False # Begin with a hold at i_ext = 0?
       time: 100 # If true, how long is the hold, s

@@ -137,8 +137,8 @@ class electrode():
         self.conductor_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
         
-        # Multiplier on the electrode removal reaction. Quickly goes to zero, for 
-        # thicknesses below a user-specified minimum:
+        # Multiplier on the electrode removal reaction. Quickly goes to zero, 
+        # for thicknesses below a user-specified minimum:
         mult = tanh(SV_loc[SVptr['thickness']]/self.min_thickness)
 
         # Molar production rate of electrons in the 'conductor' phase. Electrons are created when lithium is consumed. We scale the the electron creation rate, then, by our multiplier.  When the anode thickness is below the minimum, the electron creation rate goes quickly to zero, but the electron destruction rate is unaffected:
@@ -226,8 +226,8 @@ class electrode():
         # ['C_k_elyte'][j] accesses the pointer array:
         self.SVptr['C_k_elyte'].shape = (1, self.elyte_obj.n_species)
 
-        # A pointer to where the SV variables for this electrode are, within the 
-        # overall solution vector for the entire problem:
+        # A pointer to where the SV variables for this electrode are, within 
+        # the overall solution vector for the entire problem:
         self.SVptr['electrode'] = np.arange(self.SV_offset, 
             self.SV_offset+self.n_vars)
 
