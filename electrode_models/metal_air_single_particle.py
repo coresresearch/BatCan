@@ -57,7 +57,7 @@ class electrode():
         self.th_oxide = inputs['th_oxide']
         self.V_host = 4./3. * np.pi * (self.r_host / 2)**3  # carbon or host volume [m3]
         self.A_host = 4. * np.pi * (self.r_host / 2)**2    # carbon or host surface area [m2]
-        self.A_init = self.eps_host * self.A_host / self.V_host 
+        self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of interface / m3 of total volume [m-1]
         self.A_oxide = np.pi* inputs['d_oxide']**2/4.   # oxide area
         self.V_oxide = 2./3. * np.pi* (inputs['d_oxide']/2.)**2 * self.th_oxide #oxide volume
 
@@ -176,11 +176,17 @@ class electrode():
         #self.conductor_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
 
-        sdot_electron = self.surf_obj.get_net_production_rates(self.host_obj)
+        self.elyte_microstructure = eps_elyte**1.5
+
+        ck_elyte = SV_loc[SVptr['C_k_elyte']]
+        
+        self.elyte_obj.X = ck_elyte
+
+        sdot_electron = self.surf_obj.get_net_production_rates(self.host_obj) #kmol m-2 s-2
         
         # Faradaic current density is positive when electrons are consumed 
         # (Li transferred to the electrode)
-        i_Far = -(ct.faraday * sdot_electron)
+        i_Far = -(ct.faraday * sdot_electron) #[A m-2 of host electrolyte interface]
         
         # Calculate the electrolyte species fluxes and associated ionic current 
         # at the boundary with the separator:
@@ -202,31 +208,32 @@ class electrode():
 
         # Double layer current has the same sign as i_Far, and is based on 
         # charge balance in the electrolyte phase:
-        A_int_avail = self.A_init - eps_oxide/self.th_oxide
-        A_surf_ratio = A_int_avail*self.dy
-        i_dl = self.i_ext_flag*i_io/A_surf_ratio - i_Far
+        A_avail = self.A_init - eps_oxide/self.th_oxide  #m2 interface/ m3 total volume [m-1]
+        A_surf_ratio = A_avail*self.dy # m2 interface / m2 total area [-]
+        i_dl = self.i_ext_flag*i_io/A_surf_ratio - i_Far #does this need to be changed? #units of i_io?? A m-2 surface area
 
         # Differential equation for the double layer potential:
         resid[SVptr['phi_dl']] = \
             SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv
 
-        # Molar production rate of electrode species (kmol/m2/s).
-        sdot_elyte = self.surf_obj.get_net_production_rates(self.elyte_obj)
+        # Molar production rate of electrode species (kmol/m2/s). Should be seperate on the discretization.
+        sdot_elyte_c = self.surf_obj.get_net_production_rates(self.elyte_obj) 
+        sdot_elyte_o = self.air_elyte_obj.get_net_production_rates(self.elyte_obj)
         
         # Double layer current removes Li from the electrolyte.  Subtract this 
         # from sdot_electrolyte:
-        #sdot_elyte[self.index_Li] -= i_dl / ct.faraday # ? I don't think this is necessary, because the reaction is in the get net production rates
+        sdot_elyte_c[self.index_Li] -= i_dl / ct.faraday 
             
         # Change in electrolyte species concentration per unit time:
         dCk_elyte_dt = \
-            ((sdot_elyte *  A_surf_ratio + self.i_ext_flag * N_k_sep)
-            * self.dyInv / eps_elyte) # first term is reaction second term is seperater?
+            ((sdot_elyte_c * A_surf_ratio + sdot_elyte_o*eps_elyte + self.i_ext_flag * N_k_sep) 
+            * self.dyInv / eps_elyte) # first term is reaction second term is seperater? 
         resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
         #molar production rate of 
         sdot_cath = self.surf_obj.get_net_production_rates(self.product_obj)
         # available interface area on carbon particle
         
-        dEpsOxide_dt =  A_int_avail * np.dot(sdot_cath, self.product_obj.partial_molar_volumes) 
+        dEpsOxide_dt =  A_avail * np.dot(sdot_cath, self.product_obj.partial_molar_volumes) 
         resid[SVptr['eps_oxide']] = (SVdot_loc[SVptr['eps_oxide']] - dEpsOxide_dt)
 
         return resid
@@ -263,4 +270,4 @@ class electrode():
         return axs
 
 #Official Soundtrack:
-    #Jimmy Eat World - Chase the Light
+    #Jimmy Eat World - Chase the Light + Invented
