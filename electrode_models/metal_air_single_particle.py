@@ -44,7 +44,7 @@ class electrode():
         # Electrode thickness and inverse thickness:
         self.dy = inputs['thickness']
         self.dyInv = 1/self.dy
-        self.N_y = inputs['n-points']
+        self.N_y = inputs['n-points'] # change to n-points
 
         # Phase volume fractions
         self.eps_host = inputs['eps_host']
@@ -88,6 +88,7 @@ class electrode():
 
         # Number of state variables: electrode potential, electrolyte composition, oxide volume fraction 
         self.n_vars = 3 + self.elyte_obj.n_species
+        self.n_vars_tot = self.N_y*self.n_vars
 
         # This model produces zero plots, but might someday.
         self.n_plots = 0
@@ -100,18 +101,18 @@ class electrode():
 
         # Set up pointers to specific variables in the solution vector:
         self.SVptr = {}
-        self.SVptr['phi_ed'] = np.array([0])
-        self.SVptr['phi_dl'] = np.array([1])
-        self.SVptr['eps_oxide'] = np.array([2])
-        self.SVptr['C_k_elyte'] = np.arange(3, 3 + self.elyte_obj.n_species)
-        
-        # There is only one node, but give the pointer a shape so that SVptr
-        # ['C_k_elyte'][j] accesses the pointer array:
-        self.SVptr['C_k_elyte'].shape = (1,self.elyte_obj.n_species)
+        self.SVptr['phi_ed'] = np.arange(0, self.n_vars_tot, self.n_vars)
+        self.SVptr['phi_dl'] = np.arange(1, self.n_vars_tot, self.n_vars)
+        self.SVptr['eps_oxide'] = np.arange(2, self.n_vars_tot, self.n_vars)
+        self.SVptr['C_k_elyte'] = np.ndarray(shape=(self.N_y, 
+            self.elyte_obj.n_species), dtype='int')       
+        for i in range(self.N_y):
+            self.SVptr['C_k_elyte'][i,:] = range(3 + i*self.n_vars, 
+                3 + i*self.n_vars + self.elyte_obj.n_species)
 
         # A pointer to where the SV variables for this electrode are, within the 
         # overall solution vector for the entire problem:
-        self.SVptr['electrode'] = np.arange(offset, offset+self.n_vars)
+        self.SVptr['electrode'] = np.arange(offset, offset+self.n_vars_tot)
 
         # Save the indices of any algebraic variables:
         self.algvars = offset + self.SVptr['phi_ed'][:]
@@ -119,9 +120,9 @@ class electrode():
     def initialize(self, inputs, sep_inputs):
 
         # Initialize the solution vector for the electrode domain:
-        SV = np.zeros([self.n_vars][self.N_y + 1])
+        SV = np.zeros(self.n_vars*self.N_y)
 
-        # Load intial state variables:
+        # Load intial state variables: Change it later
         SV[self.SVptr['phi_ed']] = inputs['phi_0']
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
         SV[self.SVptr['eps_oxide']] = self.eps_oxide_int
@@ -157,7 +158,6 @@ class electrode():
             - counter: the object representing the electrode counter to the current electrode
             - params: dict of battery simulation parameters.
         """
-        
         # Initialize the residual:
         resid = np.zeros((self.n_vars,))
 
@@ -166,62 +166,67 @@ class electrode():
         SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
         #Creation of temporary 
-        dSVdt = np.zeros_like(SV_loc)
-        i_io = np.zeros(self.N_y+1) # why is it N_y + 1 when the last node is N_y -1?
-        i_el = np.zeros(self.N_y+1)
-        J_k_elyte = np.zeros(self.N_y+1)
+        dSVdt = np.zeros_like(SV_loc) # maybe change this
+        i_io = np.zeros(self.N_y+1) #
+        i_el = np.zeros(self.N_y + 1)
+        N_k_elyte = np.zeros_like(SV_loc[SVptr['C_k_elyte']]) # Change switch to N_K
         
-        
-        # Look at node adjacent to air/cathode interface:
-        j = 0
-        i_el[0]= params['i_ext']
-
-        N_k_sep, i_io[j] = sep.electrode_boundary_flux(SV, self, params['T'])    
-
-        J_k_elyte[self.N_y+1] = N_k_sep/self.dyInv # question: is this right?
+        N_k_sep, i_io_sep = sep.electrode_boundary_flux(SV, self, params['T']) 
+        j_index = np.arange(0,self.N_y+1, 1)
 
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
             resid[[SVptr['phi_ed'][0]]] = SV_loc[SVptr['phi_ed'][0]]
-            
+            j_index = j_index[::-1]
         elif self.name=='cathode':
             # For the cathode, the potential of the cathode must be such that 
             # the electrolyte electric potential (calculated as phi_ca + 
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
-                resid[SVptr['phi_ed']] = i_io[0] - params['i_ext']
+                resid[SVptr['phi_ed'][0]] = i_io[0] - params['i_ext']
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
-      
-        
-        phi_ed = SV_loc[SVptr['phi_ed']]
-        phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]] #question: Theory check: does each j have a dl? Ys because of the carbon right?  
-        # Set electric potentials and concentration for Cantera objects:  
-        self.host_obj.electric_potential = phi_ed
+
+        # Look at node adjacent to sep interface 
+        j = 0 #j = j_index[0]
+
+        i_io[j] = i_io_sep   
+        N_k_elyte[j,:] = N_k_sep # question: is this right?
+
+        phi_elyte, eps_oxide, eps_elyte, N_k_elyte[j+1,:], i_io[j+1] = self.mass_fluxes(self, SV_loc, SVptr, params, j)
         self.elyte_obj.electric_potential = phi_elyte
 
         ck_elyte = SV_loc[SVptr['C_k_elyte'][j]]
         self.elyte_obj.X = ck_elyte
+        #change in volume fraction
+        A_avail = self.A_init - eps_oxide/self.th_oxide
+        A_surf_ratio = A_avail*self.dy
+        sdot_cath = self.surf_obj.get_net_production_rates(self.product_obj)
+        dSVdt[SVptr['eps_oxide'][j]] =  A_avail * np.dot(sdot_cath, self.product_obj.partial_molar_volumes)  
 
-
-        eps_oxide =  SV_loc[SVptr['esp_oxide'][j]]
-        eps_elyte = 1 - eps_oxide - self.eps_host        
-
-
-        sdot_elyte_o = self.air_elyte_obj.get_net_production_rates(self.elyte_obj)
-        dCk_elyte_dt = sdot_elyte_o*eps_elyte
+        #Change in potential
+        sdot_electron = self.surf_obj.get_net_production_rates(self.host_obj)
+        i_Far = -(ct.faraday * sdot_electron)
+        i_dl = self.i_ext_flag*(i_io[j] - i_io[j+1])/A_surf_ratio - i_Far
+        dSVdt[SVptr['phi_dl'][j]] = - i_dl*self.C_dl_Inv
+        #change in concentration
+        sdot_elyte_c = self.surf_obj.get_net_production_rates(self.elyte_obj) 
+        sdot_elyte_c[self.index_Li] -= i_dl / ct.faraday 
         
-        dSVdt[SVptr['C_k_elyte'][j]] = dCk_elyte_dt #question Amy's code doesn't have deps_oxide for j=0, why?
-
-        for j in range(self.N_y -1):
-            phi_elyte, eps_oxide, eps_elyte, J_k_elyte[j+1], i_io[j + 1] = mass_fluxes(self, SV_loc, SVptr, params, j)
+        dSVdt[SVptr['C_k_elyte'][j]] = (-N_k_elyte[j] + N_k_elyte[j+1]) + sdot_elyte_c * A_surf_ratio 
+        
+        for j in j_index[1:-1]:
+            SV_loc[[SVptr['phi_ed'][j]]] = SV_loc[[SVptr['phi_ed'][0]]]
+            phi_elyte, eps_oxide, eps_elyte, N_k_elyte[j+1,:], i_io[j+1] = self.mass_fluxes(self, SV_loc, SVptr, params, j)
             #volume fractions
-            self.elyte_microstructure = eps_elyte**1.5
+            self.elyte_obj.electric_potential = phi_elyte
 
-            #Question: We want to do self. host_object.electric_potential = phi elyte, etc for all of these steps right? right?
-            phi_elyte, eps_oxide, eps_elyte, J_k_elyte[j+1], i_io[j + 1] = mass_fluxes(self, SV_loc, SVptr, params, j)
-                    
+            ck_elyte = SV_loc[SVptr['C_k_elyte'][j]]
+            self.elyte_obj.X = ck_elyte
+            
+            self.elyte_microstructure = eps_elyte**1.5
+                                        
             #Calculation of change in volume fraction
             A_avail = self.A_init - eps_oxide/self.th_oxide
             A_surf_ratio = A_avail*self.dy
@@ -239,18 +244,11 @@ class electrode():
             sdot_elyte_c = self.surf_obj.get_net_production_rates(self.elyte_obj) 
             sdot_elyte_c[self.index_Li] -= i_dl / ct.faraday 
             
-            dSVdt[SVptr['C_k_elyte'][j]] = (-J_k_elyte[j-1] + J_k_elyte[j+1])*self.dyInv + (sdot_elyte_c * A_surf_ratio + sdot_elyte_o*eps_elyte + self.i_ext_flag * J_k_elyte[self.N_y+1]) * self.dyInv / eps_elyte
+            dSVdt[SVptr['C_k_elyte'][j]] = (-N_k_elyte[j] + N_k_elyte[j+1]) + (sdot_elyte_c * A_surf_ratio ) * self.dyInv / eps_elyte
 
-            # residual formulas
-            resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - dSVdt[SVptr['phi_dl']])
-            resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] - dSVdt[SVptr['C_k_elyte']])
-            resid[SVptr['eps_oxide']] = (SVdot_loc[SVptr['eps_oxide']] - dSVdt[SVptr['eps_oxide']])
-                   
+                       
         j = self.N_y-1 
-
-        #Question: We want to do self. host_object.electric_potential = phi elyte, etc for all of these steps right? right?
-        phi_elyte, eps_oxide, eps_elyte, J_k_elyte[j+1], i_io[j + 1] = mass_fluxes(self, SV_loc, SVptr, params, j)
-                
+ 
         #Calculation of change in volume fraction
         A_avail = self.A_init - eps_oxide/self.th_oxide
         A_surf_ratio = A_avail*self.dy
@@ -260,15 +258,16 @@ class electrode():
         #caluculate double layer 
         sdot_electron = self.surf_obj.get_net_production_rates(self.host_obj)
         i_Far = -(ct.faraday * sdot_electron)
-        i_io[j] =  params['i_ext']
+        i_io[j+1] =  params['i_ext']
         i_dl = self.i_ext_flag*(i_io[j] - i_io[j+1])/A_surf_ratio - i_Far
         dSVdt[SVptr['phi_dl'][j]] = - i_dl*self.C_dl_Inv
 
         #calculate change in concentration
         sdot_elyte_c = self.surf_obj.get_net_production_rates(self.elyte_obj) 
         sdot_elyte_c[self.index_Li] -= i_dl / ct.faraday 
+        sdot_elyte_o =  self.air_elyte_obj.get_net_production_rates(self.elyte_obj)
         
-        dSVdt[SVptr['C_k_elyte'][j]] = (-J_k_elyte[j-1] + J_k_elyte[j+1])*self.dyInv + (sdot_elyte_c * A_surf_ratio + sdot_elyte_o*eps_elyte + self.i_ext_flag * J_k_elyte[self.N_y+1]) * self.dyInv / eps_elyte
+        dSVdt[SVptr['C_k_elyte'][j]] = -N_k_elyte[j-1] + (sdot_elyte_c * A_surf_ratio + sdot_elyte_o*eps_elyte)
 
         # residual formulas
         resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']] - dSVdt[SVptr['phi_dl']])
@@ -325,20 +324,19 @@ class electrode():
         phi_ed = SV_loc[SVptr['phi_ed']]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
 
-
         phi_ed = SV_loc[SVptr['phi_ed']]
-        phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j+1]]
+        phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j-1]]
         #convert from mol/m3 to kg/m3
-        rho_k = SV_loc[SVptr['C_k_elyte'][j]] / self.elyte_obj.molecular_weights
-        rho_k_next = SV_loc[SVptr['C_k_elyte'][j+1]]/self.elyte_obj.molecular_weights #Question shouldn't j+l be seperator
+        rho_k = SV_loc[SVptr['C_k_elyte'][j]] 
+        rho_k_next = SV_loc[SVptr['C_k_elyte'][j-1]]
        
         eps_oxide = SV_loc[SVptr['eps_oxide'][j]]
         eps_elyte = 1 - eps_oxide - self.eps_host
-        eps_oxide_next =  SV_loc[SVptr['eps_oxide'][j+1]]
+        eps_oxide_next =  SV_loc[SVptr['eps_oxide'][j-1]]
         eps_elyte_next = 1 - eps_oxide_next - self.eps_host
        # Take averages to find interface values.  Eventually this should be 
        # weighted by the volume dimensions:
-        rho_k_avg = (C_k + C_k_next)/2.
+        rho_k_avg = (rho_k + rho_k_next)/2.
         eps_avg = (eps_elyte+eps_elyte_next)/2.
         
 
@@ -351,9 +349,8 @@ class electrode():
                 + D_k_mig*(phi_elyte - phi_elyte_next))*self.dyInv
 
         i_io = np.dot(N_k, self.elyte_obj.charges)*ct.faraday
-        J_k = N_k*self.elyte_obj.molecular_weights
 
-        return  phi_elyte, eps_oxide, eps_elyte, J_k, i_io
+        return  phi_elyte, eps_oxide, eps_elyte, N_k, i_io
 
 #Official Soundtrack:
     #Jimmy Eat World - Chase the Light + Invented
