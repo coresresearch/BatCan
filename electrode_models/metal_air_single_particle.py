@@ -159,14 +159,14 @@ class electrode():
             - params: dict of battery simulation parameters.
         """
         # Initialize the residual:
-        resid = np.zeros((self.n_vars,))
+        resid = np.zeros((self.n_vars_tot,))
 
         # Save local copies of the solution vectors, pointers for this electrode:
         SVptr = self.SVptr
         SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
         #Creation of temporary 
-        dSVdt = np.zeros_like(SV_loc) # maybe change this
+        dSVdt = np.zeros_like(SVdot_loc) # maybe change this
         i_io = np.zeros(self.N_y+1) #
         i_el = np.zeros(self.N_y + 1)
         N_k_elyte = np.zeros_like(SV_loc[SVptr['C_k_elyte']]) # Change switch to N_K
@@ -194,7 +194,7 @@ class electrode():
         i_io[j] = i_io_sep   
         N_k_elyte[j,:] = N_k_sep # question: is this right?
 
-        phi_elyte, eps_oxide, eps_elyte, N_k_elyte[j+1,:], i_io[j+1] = self.mass_fluxes(self, SV_loc, SVptr, params, j)
+        phi_elyte, eps_oxide, eps_elyte, N_k_elyte[j+1,:], i_io[j+1] = self.mass_fluxes(SV_loc, SVptr, params, j)
         self.elyte_obj.electric_potential = phi_elyte
 
         ck_elyte = SV_loc[SVptr['C_k_elyte'][j]]
@@ -216,9 +216,9 @@ class electrode():
         
         dSVdt[SVptr['C_k_elyte'][j]] = (-N_k_elyte[j] + N_k_elyte[j+1]) + sdot_elyte_c * A_surf_ratio 
         
-        for j in j_index[1:-1]:
+        for j in j_index[1:-2]:
             SV_loc[[SVptr['phi_ed'][j]]] = SV_loc[[SVptr['phi_ed'][0]]]
-            phi_elyte, eps_oxide, eps_elyte, N_k_elyte[j+1,:], i_io[j+1] = self.mass_fluxes(self, SV_loc, SVptr, params, j)
+            phi_elyte, eps_oxide, eps_elyte, N_k_elyte[j+1,:], i_io[j+1] = self.mass_fluxes(SV_loc, SVptr, params, j)
             #volume fractions
             self.elyte_obj.electric_potential = phi_elyte
 
@@ -313,19 +313,20 @@ class electrode():
 
     def mass_fluxes(self, SV_loc, SVptr, params, j):
         
-        #FIX: Actual diffusion coefficients
+        #FIX: Actual diffusion  Question: best way to pull this 
         D_k = {}
         D_k['Li+[elyt])'] = 4e-11          # bulk diff coeff Li+ in elyte (m2/s)
         D_k['TFSI-[elyt]'] = 4e-13         # bulk diff coeff PF6- in elyte (m2/s)
         D_k['O2(e)'] = 7e-12           # bulk diff coeff O2 in elyte (m2/s)
-        D_k['C10H22O5[elyt]'] = 1           # EC diffusion is fast
-        D_k['Li2O2[elyt]'] = 1           # EC diffusion is fast
+        D_k['C10H22O5[elyt]'] = 1.           # EC diffusion is fast
+        D_k['Li2O2[elyt]'] = 1.           # EC diffusion is fast
 
-        phi_ed = SV_loc[SVptr['phi_ed']]
+        D_k_temp = np.array([1.11e-10, 6.98e-11, 8.79e-11, 4.26e-11, 2e-13])
+        phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
 
-        phi_ed = SV_loc[SVptr['phi_ed']]
-        phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j-1]]
+        phi_ed_next = SV_loc[SVptr['phi_ed'][j]]
+        phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j-1]]
         #convert from mol/m3 to kg/m3
         rho_k = SV_loc[SVptr['C_k_elyte'][j]] 
         rho_k_next = SV_loc[SVptr['C_k_elyte'][j-1]]
@@ -338,15 +339,14 @@ class electrode():
        # weighted by the volume dimensions:
         rho_k_avg = (rho_k + rho_k_next)/2.
         eps_avg = (eps_elyte+eps_elyte_next)/2.
-        
 
-        D_k_elyte = D_k*eps_avg
+        D_k_elyte = D_k_temp *eps_avg
         D_k_mig = D_k_elyte*self.elyte_obj.charges*ct.faraday/(ct.gas_constant*params['T'])*rho_k_avg#Question: easiest way to access this from yaml file
         #Question: is that right for cantera charages?
-        
+
         #Question: is this a rate? or is this a concentration?  Re: Amy's code
-        N_k = (D_k_elyte*(rho_k/eps_elyte- rho_k_next/eps_elyte_next) 
-                + D_k_mig*(phi_elyte - phi_elyte_next))*self.dyInv
+        
+        N_k = (D_k_elyte*(rho_k/eps_elyte- rho_k_next/eps_elyte_next) + D_k_mig*(phi_elyte - phi_elyte_next))*self.dyInv
 
         i_io = np.dot(N_k, self.elyte_obj.charges)*ct.faraday
 
