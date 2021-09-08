@@ -36,15 +36,15 @@ cell-description:
       diffusion-coefficients: # Species names must match those in the phase 
       #definition, below: # fix diffusion coefficients later...
         - species: 'C10H22O5[elyt]'
-          D_k: 1e-15
+          D_k: 1.11e-10 # m2 S-1 // Saito, 2017
         - species: 'Li+[elyt]'
-          D_k: 2e-11
+          D_k: 6.98e-11 # m2 S-1 // Saito, 2017
         - species: 'TFSI-[elyt]'
-          D_k: 2e-13
+          D_k: 8.79e-11 # m2 S-1 // Saito, 2017
         - species: 'O2(e)'
-          D_k: 2e-13
+          D_k: 4.26e-11 # m2 s-1 // Gittleson, 2017
         - species: 'Li2O2[elyt]'
-          D_k: 2e-13
+          D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'metal_air_single_particle'
     n-points: 10
@@ -62,7 +62,7 @@ cell-description:
     phi_0: 2.95 # Initial electric potential, V
     eps_host: 0.65 # Solid phase volume fraction of carbon -
     eps_oxide: 0.00 # solid phase volume fraction of Li2O2 -
-    C_dl: 6e-3 #F/m2
+    C_dl: 6e-3 #F/m2 Question: should I change this??
     Minrad: 1e-10 #m
     Maxrad: 1e-6 #m
     buckets: 200 #number
@@ -99,7 +99,7 @@ description: |-
   This file includes a full set of thermodynamic and kinetic parameters of a
   lithium-oxygen battery, in particular:
   - Active materials: Li2O2 and Li (li metal)
-  - Organic electrolyte: TEGDME with 1M LiPF6 # should be switched to TEGDME
+  - Organic electrolyte: TEGDME with 1M LiPF6 
   - Interfaces: LCO/electrolyte and Li/electrolyte
   - Cathode: The cathode is comprised of catalyst, carbon, (will binder be a later addition.)
   - Charge-transfer reactions at the two interfaces
@@ -134,7 +134,7 @@ phases:
 - name: lithium_metal
   thermo: ideal-condensed
   species: ['Li[metal]']
-  density: 0.534 g/cm^3
+  density: 0.534 g/cm^3 #verified
   state:
     T: 300.0
     P: 1 atm
@@ -152,7 +152,7 @@ phases:
   species: [(dummy)]
   kinetics: surface
   reactions: [lithium_electrolyte-reactions]
-  site-density: 0.01 mol/cm^2
+  site-density: 0.01 mol/cm^2  #Question: should I change this??
   
 - name: electrolyte
   thermo: ideal-condensed
@@ -198,7 +198,7 @@ phases:
   composition: {Li: 2, O: 2}
   thermo: fixed-stoichiometry
   species: ['Li2O2[cathode]']
-  density: 2140 kg/m^3
+  density: 2310 kg/m^3 # https://pubchem.ncbi.nlm.nih.gov/compound/Lithium-peroxide-_Li2_O2#section=Physical-Description
   state: 
     T: 300.0
     P: 1 atm
@@ -208,11 +208,11 @@ species:
   composition: {Li: 1}
   thermo:
     model: constant-cp
-    h0: 19.50 kJ/mol
-    s0: 29.1 J/mol/K
+    h0: 19.50 kJ/mol # Question: unverified - source?
+    s0: 29.1 J/mol/K # verified NIST webbook
   equation-of-state:
     model: constant-volume
-    molar-volume: 12.998 cm^3/mol
+    molar-volume: 12.998 cm^3/mol #verified
 
 - name: electron
   composition: {E: 1}
@@ -237,11 +237,11 @@ species:
   composition: {C: 10, H: 22, O: 5}
   thermo:
     model: constant-cp
-    h0: 0.0 J/mol
-    s0: 0.0 J/mol/K
+    h0: 1134.6 J/mol # https://www.atamanchemicals.com/tetraethylene-glycol-dimethyl-ether_u24765/
+    s0: 0.0 J/mol/K # unknown
   equation-of-state:
     model: constant-volume
-    molar-volume: 226.24380574826557222 cm^3/mol
+    molar-volume: 226.24380574826557222 cm^3/mol 
   note: |-
     tetraethylene glycol dimethyl ether, MW: 228.28 g/mol
     Density of tetraethylene glycol dimethyl ether: 1009 kg/m3 (used to calculate species molar volume
@@ -260,10 +260,10 @@ species:
   equation-of-state:
     model: constant-volume
     molar-volume: 5.508297619047619 cm^3/mol
-  note: |-
+  note: |- #Question: why is this using the density of electrolyte
     Lithium ion, MW: 6.940455 g/mol
     Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
-    as molecular weight (MW)/density)
+    as molecular weight (MW)/density) 
     Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
     Chemistry", Wiley-VCH (2006)
 
@@ -276,7 +276,7 @@ species:
   equation-of-state:
     model: constant-volume
     molar-volume: 115.05138492063492 cm^3/mol
-  note: |-
+  note: |- #Question: why is this using the density of electrolyte
     bis(trifluoromethylsulphonyl)imide ion, MW: 144.964745 g/mol
     Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
     as molecular weight (MW)/density)
@@ -287,13 +287,13 @@ species:
   composition: {Li: 2, O: 2}
   thermo:
     model: constant-cp
-    h0: 0.0 J/mol
-    s0: 0.0 J/mol/K
+    h0: 0.0 J/mol # Question: should I put this here https
+    s0: 0.0 J/mol/K 
   equation-of-state:
     model: constant-volume
     molar-volume: 19.344262295081968261 cm^3/mol
   note: |-
-    Hexafluorophosphate ion, MW: 38.94 g/mol
+    Li2O2 particle, MW: 38.94 g/mol
     Density of electrolyte: 2013 kg/m3 (used to calculate species molar volume
     as molecular weight (MW)/density)
     https://www.chemspider.com/Chemical-Structure.145811.html
@@ -336,7 +336,7 @@ species:
   composition: {Li: 2, O: 2}
   thermo:
     model: constant-cp
-    h0: -634.3 kJ/mol
+    h0: -634.3 kJ/mol #Haynes, 2016
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
@@ -369,6 +369,8 @@ air-electrolyte-reactions:
 
 #"""Citations"""
 #Chen, J.; et al., ACS Omega, vol. 4, no. 20708-20714, 2019, DOI: 10.1021/acsomega.9b02941.
+
+#Gittleson, F; et al, Energy Environ. Sci., 2017,10, 1167-1179, DOI: 10.1039/C6EE02915A.
 
 #Haynes, W.M.; CRC handbook of chemistry and physics, 2016, 97th Edition / Boca Raton, Florida: CRC Press.
 
