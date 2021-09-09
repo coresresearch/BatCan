@@ -25,7 +25,7 @@ cell-description:
   separator:
     class: 'porous_separator'
     thickness: 20e-6  # separator thickness, m
-    n_points: 5       # Number of finite volumes to discretize
+    n_points: 3       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 2.67 # Initial electric potential, V // Yin, 2017
@@ -46,8 +46,13 @@ cell-description:
         - species: 'Li2O2[elyt]'
           D_k: 2e-13 # can't find (assume low?)
   cathode:
+<<<<<<< HEAD
     class: 'metal_air_single_particle_workshop'
     n-points: 10
+=======
+    class: 'metal_air_single_particle'
+    n-points: 2
+>>>>>>> fa945956a (Minor updates to algebraic constraints.)
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -59,7 +64,7 @@ cell-description:
     r_host: 6e-6 # Carbon Particle radius, m
     d_oxide: 1.5e-6 #Oxide diameter, m
     th_oxide: 850e-9 #oxide thickness, m
-    phi_0: 2.95 # Initial electric potential, V
+    phi_0: 3.255 # Initial electric potential, V
     eps_host: 0.65 # Solid phase volume fraction of carbon -
     eps_oxide: 0.00 # solid phase volume fraction of Li2O2 -
     C_dl: 6e-3 #F/m2 Question: should I change this??
@@ -89,7 +94,7 @@ parameters:
     phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
     species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
     equilibrate: 
-      enable: True # Start with a hold at open circuit?
+      enable: False # Start with a hold at open circuit?
       time: 100 # If true, how long is the hold, s
 
 # Cantera inputs:
@@ -350,13 +355,17 @@ species:
 lithium_electrolyte-reactions:
 - equation: Li[metal] <=> Li+[elyt] + electron
   id: lithium_faradaic_reaction
-  rate-constant: {A: 6.0e+09, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 6.0e-09, b: 0.0, Ea: 0.0} #{A: 6.0e+09, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 cathode-surf-reactions:
 - equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]  # Reaction 1
   id: cathode_reaction
+<<<<<<< HEAD
   rate-constant: {A: 5.629e+7, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+=======
+  rate-constant: {A: 5.629e-11, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction {A: 5.629e+11, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+>>>>>>> fa945956a (Minor updates to algebraic constraints.)
   exchange-current-density-formulation: true
   beta: 0.5
 
