@@ -36,17 +36,17 @@ cell-description:
       diffusion-coefficients: # Species names must match those in the phase 
       #definition, below: # fix diffusion coefficients later...
         - species: 'C10H22O5[elyt]'
-          DC_k: 1.11e-10 # m2 S-1 // Saito, 2017
+          D_k: 1.11e-10 # m2 S-1 // Saito, 2017
         - species: 'Li+[elyt]'
           D_k: 6.98e-11 # m2 S-1 // Saito, 2017
         - species: 'TFSI-[elyt]'
           D_k: 8.79e-11 # m2 S-1 // Saito, 2017
         - species: 'O2(e)'
           D_k: 4.26e-11 # m2 s-1 // Gittleson, 2017
-        - species: 'Li2O2[elyt]'
+        - species: 'LiO2[elyt]'
           D_k: 2e-13 # can't find (assume low?)
   cathode:
-    class: 'metal_air_single_particle_ud'
+    class: 'metal_air_HNG_2'
     n-points: 10
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
@@ -55,6 +55,7 @@ cell-description:
     surf-iphase: 'cathode-surf' # Cantera phase name
     product-phase: 'li-oxide'
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+    reactive-ion:  'LiO2[elyt]'
     thickness: 50e-6 # anode thickness, m
     r_host: 6e-6 # Carbon Particle radius, m
     d_oxide: 1.5e-6 #Oxide diameter, m
@@ -66,6 +67,14 @@ cell-description:
     Minrad: 1e-10 #m
     Maxrad: 1e-6 #m
     buckets: 200 #number
+    C_Li_Sat: 0.1 #mol/m3
+    C_LiO2_Sat: 0.1 #mol/m3
+    Gamma_surf: 7.7E-2 #J m-2 //  surface energy of the newly formed crystal phase// Danner (2019) - should be replaced for LiS system
+    contact-angle: 30 # degrees// Contact angle // Danner (2019) - should be replaced for LiS system
+    k_surf: 1E-4 
+    k_surf_des: 1E-8
+    sig_surf: 0.75     
+    DLi:  1.2E-9 #m2 -s-1 // diffusion ceofficient // Yin (2017)
     stored-species: # Details on the stored species. Used for capacity calc.
       name: Li2O2[cathode]
       charge: 2
@@ -157,9 +166,9 @@ phases:
 - name: electrolyte
   thermo: ideal-condensed
   elements: [Li, F, N, S, C, H, O, E]
-  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'TFSI-[elyt]', 'O2(e)', 'Li2O2[elyt]']
+  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'TFSI-[elyt]', 'O2(e)', 'LiO2[elyt]']
   state:
-    X: {'C10H22O5[elyt]': 0.85464, 'Li+[elyt]': 0.14536, 'TFSI-[elyt]': 0.14536, 'O2(e)': 1E-9, 'Li2O2[elyt]': 1E-9} 
+    X: {'C10H22O5[elyt]': 0.85464, 'Li+[elyt]': 0.14536, 'TFSI-[elyt]': 0.14536, 'O2(e)': 1E-9, 'LiO2[elyt]': 1E-9} 
   standard-concentration-basis: unity
 
 - name: air-elyte-interface
@@ -282,6 +291,23 @@ species:
     as molecular weight (MW)/density)
     Molar enthalpy and entropy set to zero (dummy entries as this species does
     not participate in chemical reactions)
+
+- name: LiO2[elyt]
+  composition: {Li: 1, O: 2}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol # Question: should I put this here https
+    s0: 0.0 J/mol/K 
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 19.344262295081968261 cm^3/mol
+  note: |-
+    Li2O2 particle, MW: 29.88 g/mol
+    Density of electrolyte: 2013 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    https://www.chemspider.com/Chemical-Structure.145811.html
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
     
 - name: Li2O2[elyt]
   composition: {Li: 2, O: 2}
@@ -354,9 +380,9 @@ lithium_electrolyte-reactions:
   beta: 0.5
 
 cathode-surf-reactions:
-- equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]  # Reaction 1
+- equation:  Li+[elyt] + O2(e) + 1 electron <=> LiO2[elyt]  # Reaction 1
   id: cathode_reaction
-  rate-constant: {A: 5.629e+11, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+  rate-constant: {A: 5.629e-20, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
   exchange-current-density-formulation: true
   beta: 0.5
 
