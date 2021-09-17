@@ -62,9 +62,6 @@ class electrode():
         self.A_host = 4. * np.pi * (self.r_host / 2.)**2    # carbon or host surface area [m2]
         self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of interface / m3 of total volume [m-1]
         
-        # self.A_oxide = np.pi* inputs['d_oxide']**2/4.   # oxide area
-        # self.V_oxide = 2./3. * np.pi* (inputs['d_oxide']/2.)**2 * self.th_oxide #oxide volume
-
         # inputs for nucleation:
         self.c_li_sat = inputs['C_Li_Sat']
         self.c_liO2_sat = inputs['C_LiO2_Sat']
@@ -183,7 +180,7 @@ class electrode():
         dhistogram_dt = np.zeros_like(SV[SVptr['histogram']])
         Histogram = SV_loc[SVptr['histogram']] #nucleations m-2
 
-        eps_oxide = self.eps_oxide_int + np.sum(Histogram*self.radius**3*math.pi*2./3.)*self.dyInv
+        eps_oxide = self.eps_oxide_int + np.sum(Histogram*(self.radius**3*math.pi*2./3.))*self.dyInv
         eps_elyte = 1 - eps_oxide - self.eps_host
         # Set electric potentials for Cantera objects:
         self.host_obj.electric_potential = phi_ed
@@ -245,9 +242,8 @@ class electrode():
         Z = math.sqrt(Del_G_Crit/(self.phi*3*math.pi*ct.boltzmann*params['T']*N_crit)) # - // Zeldovich factor #forgot how to fix, DeCaluwe should commit his code
         V_crit = 4./3.*math.pi*r_crit**3. # m3 // Critical volume
         N_sites = A_surf_ratio/(math.pi*r_crit**2) # number of nucleation sites #m-2 [total area]
-        
-        #nucleations/s
-        k_nuc= self.d_li*(a_d**-2)
+         
+        k_nuc= self.d_li*(a_d**-2)  #nucleations/s
 
         DN_Dt = k_nuc*N_sites*Z*math.exp(-Del_G_Crit/(ct.boltzmann*params['T'])) #nuc/m2
         #calculate for loop to get Histogram
@@ -279,7 +275,7 @@ class electrode():
         sdot_elyte_c[self.index_LiO2] -= i_dl / ct.faraday - DN_Dt*V_crit/V - 2.*np.sum(dhistogram_dt*Dr_dt*self.radius
             *self.radius)*np.pi/V
             
-        # Change in electrolyte species concentration per unit time (mol m-2 s-1):
+        # Change in electrolyte species concentration per unit time (mol m-3 s-1):
         dCk_elyte_dt = \
             ((sdot_elyte_c * A_surf_ratio + sdot_elyte_o*eps_elyte + self.i_ext_flag * N_k_sep) 
             * self.dyInv / eps_elyte) # first term is reaction second term is seperater? 
