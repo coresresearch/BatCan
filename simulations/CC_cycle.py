@@ -46,8 +46,8 @@ def run(SV_0, an, sep, ca, algvars, params):
                 ['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-8, 'atol':1e-11, 
-            'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-5, 'atol':1e-10, 
+            'algebraic_vars_idx':algvars, 'first_step_size':1e-15, 
             'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
