@@ -102,6 +102,7 @@ class electrode():
         self.SVptr['phi_dl'] = np.array([1])
         self.SVptr['eps_oxide'] = np.array([2])
         self.SVptr['C_k_elyte'] = np.arange(3, 3 + self.elyte_obj.n_species)
+        self.SVptr['histogram'] = np.arange(2 + self.elyte_obj.n_species, 2 + self.elyte_obj.n_species + self.n_bins +1)
         
         # There is only one node, but give the pointer a shape so that SVptr
         # ['C_k_elyte'][j] accesses the pointer array:
@@ -124,7 +125,7 @@ class electrode():
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
         SV[self.SVptr['eps_oxide']] = self.eps_oxide_int
         SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations
-        
+        SV[self.SVptr['histogram']] = np.zeros_like(self.radius)
         return SV
 
     def residual(self, t, SV, SVdot, sep, counter, params):
