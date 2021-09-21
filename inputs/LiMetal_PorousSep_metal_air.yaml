@@ -28,7 +28,7 @@ cell-description:
     n_points: 5       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
-    phi_0: 2.91 # Initial electric potential, V // Yin, 2017
+    phi_0: 2.67 # Initial electric potential, V // Yin, 2017
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
     transport:
       mobile-ion:  'Li+[elyt]'
@@ -36,7 +36,7 @@ cell-description:
       diffusion-coefficients: # Species names must match those in the phase 
       #definition, below: # fix diffusion coefficients later...
         - species: 'C10H22O5[elyt]'
-          DC_k: 1.11e-10 # m2 S-1 // Saito, 2017
+          D_k: 1.11e-10 # m2 S-1 // Saito, 2017
         - species: 'Li+[elyt]'
           D_k: 6.98e-11 # m2 S-1 // Saito, 2017
         - species: 'TFSI-[elyt]'
@@ -46,7 +46,7 @@ cell-description:
         - species: 'Li2O2[elyt]'
           D_k: 2e-13 # can't find (assume low?)
   cathode:
-    class: 'metal_air_single_particle_ud'
+    class: 'metal_air_single_particle_workshop'
     n-points: 10
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
@@ -356,14 +356,14 @@ lithium_electrolyte-reactions:
 cathode-surf-reactions:
 - equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]  # Reaction 1
   id: cathode_reaction
-  rate-constant: {A: 5.629e+11, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+  rate-constant: {A: 5.629e+7, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
   exchange-current-density-formulation: true
   beta: 0.5
 
 air-electrolyte-reactions:
 - equation: O2(g) <=> O2(e)  # Reaction 2
   id: cathode_gas_reaction
-  rate-constant: {A: 5.95e2, b: 0.0, Ea: 0 kJ/mol}
+  rate-constant: {A: 5.95, b: 0.0, Ea: 0 kJ/mol}
   exchange-current-density-formulation: true
   beta: 0.5
 

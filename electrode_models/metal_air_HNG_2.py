@@ -98,7 +98,7 @@ class electrode():
                  *self.product_obj[inputs['stored-species']['name']].partial_molar_volumes[0]) 
 
         # Number of state variables: electrode potential, electrolyte composition, oxide volume fraction 
-        self.n_vars = 3 + self.elyte_obj.n_species + self.n_bins + 1
+        self.n_vars = 2 + self.elyte_obj.n_species + self.n_bins + 1
 
         # This model produces zero plots, but might someday.
         self.n_plots = 0
@@ -225,14 +225,14 @@ class electrode():
         
         # Double layer current has the same sign as i_Far, and is based on 
         # charge balance in the electrolyte phase:
-        A_avail = self.A_init - np.sum(Histogram*self.radius)  #m2 interface/ m3 total volume [m-1]
+        A_avail = self.A_init #- np.sum(Histogram*self.radius)  #m2 interface/ m3 total volume [m-1]
         A_surf_ratio = A_avail*self.dy # m2 interface / m2 total area [-]
         i_dl = self.i_ext_flag*i_io/A_surf_ratio - i_Far #does this need to be changed? #units of i_io?? A m-2 surface area
         
         #preliminary 
         V = 1.98E-5  # 1.98E-5 #m3 mol-1 // molar volume// Yin (2017) so we just get the array from self.product_phase.molar_volume
         a_d = (ck_elyte[self.index_LiO2]*ct.avogadro)**(-1./3.) # length scale of diffusion
-        r_crit = 2.*self.gamma_surf*V/(ct.gas_constant*params['T']*math.log(ck_elyte[self.index_LiO2]/self.c_liO2_sat*ck_elyte[self.index_Li]/self.c_li_sat))  # m // critical radius
+        r_crit = 1E-10 # 2.*self.gamma_surf*V/(ct.gas_constant*params['T']*math.log(ck_elyte[self.index_LiO2]/self.c_liO2_sat*ck_elyte[self.index_Li]/self.c_li_sat))  # m // critical radius
         #there's something about using cantera here for molar volume but I'm not sure
         N_crit = 4./3.*math.pi*r_crit**3.*ct.avogadro/V # number of molecules in the critical nucleus of size
         Del_G_Crit = self.phi*4./3.*math.pi*self.gamma_surf*r_crit**2. # J mol-1 // energy barrier of the nucleation
@@ -245,14 +245,16 @@ class electrode():
          
         k_nuc= self.d_li*(a_d**-2)  #nucleations/s
 
-        DN_Dt = k_nuc*N_sites*Z*math.exp(-Del_G_Crit/(ct.boltzmann*params['T'])) #nuc/m2
+        DN_Dt = 1E-13*k_nuc*N_sites*Z*math.exp(-Del_G_Crit/(ct.boltzmann*params['T'])) #nuc/m2
+        print(DN_Dt)
+        #DN_Dt = DN_Dt*math.exp(2.*0.5*8.854E-12*2.91/(ct.boltzmann*params['T']))*math.exp(0.5*8.854E-12*phi_elyte/(ct.boltzmann*params['T']))
         #calculate for loop to get Histogram
         for i, r in enumerate(self.radius):
-            if r > r_crit:
-                dhistogram_dt[i] += DN_Dt
-                break
+                if r > r_crit:
+                    dhistogram_dt[i] += DN_Dt
+                    break    
         for i, N in enumerate(Histogram):
-            Dr_dt[i] = self.d_li*V*(ck_elyte[self.index_LiO2]- self.c_li_sat)*(ck_elyte[self.index_LiO2]
+            Dr_dt[i] =  self.d_li*V*(ck_elyte[self.index_LiO2]- self.c_li_sat)*(ck_elyte[self.index_LiO2]
                 -self.c_liO2_sat)/(self.radius[i]+self.d_li/self.k_surf)- math.pi*self.radius[i]**2*N*self.gamma_surf*self.k_surf_des
             dNdt_radii = Dr_dt[i]/self.bin_width*N
             if dNdt_radii <0:
@@ -269,15 +271,19 @@ class electrode():
 
         
         # Double layer current removes Li from the electrolyte.  Subtract this 
-        # from sdot_electrolyte:
+        # from sdot_electrolyte: kmol m-2 s-2
         sdot_elyte_c[self.index_Li] -= i_dl / ct.faraday - DN_Dt*V_crit/V - 2.*np.sum(dhistogram_dt*Dr_dt*self.radius
             *self.radius)*np.pi/V
         sdot_elyte_c[self.index_LiO2] -= i_dl / ct.faraday - DN_Dt*V_crit/V - 2.*np.sum(dhistogram_dt*Dr_dt*self.radius
             *self.radius)*np.pi/V
             
+<<<<<<< HEAD
         # Change in electrolyte species concentration per unit time (mol m-3 s-1):
+=======
+        # Change in electrolyte species concentration per unit time (kmol m-2 electrolyte area s-1):
+>>>>>>> 903853f (Semi-functional code (runs undersome conditions))
         dCk_elyte_dt = \
-            ((sdot_elyte_c * A_surf_ratio + sdot_elyte_o*eps_elyte + self.i_ext_flag * N_k_sep) 
+            ((sdot_elyte_c + sdot_elyte_o + self.i_ext_flag * N_k_sep) 
             * self.dyInv / eps_elyte) # first term is reaction second term is seperater? 
         resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
         #molar production rate of 
