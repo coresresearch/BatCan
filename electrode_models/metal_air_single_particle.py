@@ -5,6 +5,7 @@
 """
 
 import cantera as ct
+from math import tanh
 import numpy as np
 
 class electrode(): 
@@ -90,6 +91,9 @@ class electrode():
                 * self.eps_elyte_init * inputs['thickness']
                 / (3600 * v_molar_prod))
                  
+        # Minimum volume fraction for the product phase, below which product 
+        # phase consumption reaction shut off:
+        self.product_phase_min = inputs['product-phase-min']
         # Number of state variables: electrode potential, electrolyte composition, oxide volume fraction 
         self.n_vars = 3 + self.elyte_obj.n_species
         self.n_vars_tot = self.N_y*self.n_vars
@@ -181,6 +185,15 @@ class electrode():
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte = SV_loc[SVptr['C_k_elyte']]
         eps_product = SV_loc[SVptr['eps_product']]
+        
+        # Set Cantera object properties:
+        self.host_obj.electric_potential = phi_ed
+        self.elyte_obj.electric_potential = phi_elyte
+        self.elyte_obj.X = c_k_elyte
+
+        # Set microstructure multiplier for effective diffusivities
+        eps_elyte = 1. - eps_product - self.eps_host
+        self.elyte_microstructure = eps_elyte**1.5
 
         # Read electrolyte fluxes at the separator boundary:
         N_k_sep, i_io_sep = sep.electrode_boundary_flux(SV, self, params['T']) 
@@ -198,12 +211,6 @@ class electrode():
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
-
-        
-        # Set Cantera object properties:
-        self.host_obj.electric_potential = phi_ed
-        self.elyte_obj.electric_potential = phi_elyte
-        self.elyte_obj.X = c_k_elyte
         
         # Calculate available surface area (m2 interface per m3 electrode):
         A_avail = self.A_init - eps_product/self.th_oxide
@@ -215,15 +222,22 @@ class electrode():
         sdot_elyte_air = \
             self.gas_elyte_obj.get_net_production_rates(self.elyte_obj)
 
+        # Multiplier to scale phase destruction rates.  As eps_product drops 
+        # below the user-specified minimum, any reactions that consume the 
+        # phase have their rates quickly go to zero:
+        mult = tanh(eps_product / self.product_phase_min)
+
         # Chemical production rate of the product phase: (mol/m2 interface/s)
-        sdot_product = self.surf_obj.get_net_production_rates(self.product_obj)
-        dEps_dt = (A_avail 
-            * np.dot(sdot_product, self.product_obj.partial_molar_volumes))
+        sdot_product = (self.surf_obj.get_creation_rates(self.product_obj)
+            - mult * self.surf_obj.get_destruction_rates(self.product_obj))
+      
         # Rate of change of the product phase volume fraction:
-        resid[SVptr['eps_product']] = SVdot_loc[SVptr['eps_product']] - dEps_dt
+        resid[SVptr['eps_product']] = (SVdot_loc[SVptr['eps_product']] 
+            - A_avail * np.dot(sdot_product, self.product_obj.partial_molar_volumes))
 
         # Production rate of the electron (moles / m2 interface / s)
-        sdot_electron = self.surf_obj.get_net_production_rates(self.host_obj)
+        sdot_electron = (mult * self.surf_obj.get_creation_rates(self.host_obj)
+            - self.surf_obj.get_destruction_rates(self.host_obj))
 
         # Positive Faradaic current corresponds to positive charge created in 
         # the electrode:
@@ -233,11 +247,13 @@ class electrode():
         i_dl = self.i_ext_flag*(i_io_sep)/A_surf_ratio - i_Far
         resid[SVptr['phi_dl']] = SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv
         #change in concentration
-        sdot_elyte_c = self.surf_obj.get_net_production_rates(self.elyte_obj) 
-        sdot_elyte_c[self.index_Li] -= i_dl / ct.faraday 
+        sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
+            - self.surf_obj.get_destruction_rates(self.elyte_obj))
+        sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
         
+        # print(sdot_product, sdot_elyte_host)
         resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] 
-            - (N_k_sep + sdot_elyte_air + sdot_elyte_c * A_surf_ratio) 
+            - (N_k_sep + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)
             
         return resid
@@ -270,17 +286,21 @@ class electrode():
         eps_product_ptr = (2 + self.SV_offset + self.SVptr['eps_product'][0])
         
         axs[ax_offset].plot(solution[0,:]/3600, solution[eps_product_ptr, :])
-        axs[ax_offset].set_ylabel(self.name+' Product Volume \n Fraction')
+        axs[ax_offset].set_ylabel(self.name+' product \n volume fraction')
 
         for name in self.plot_species:
             species_ptr = self.elyte_obj.species_index(name)
             C_k_elyte_ptr = (2 + self.SV_offset 
                 + self.SVptr['C_k_elyte'][0, species_ptr])
-            axs[ax_offset+1].plot(solution[0,:]/3600, solution[C_k_elyte_ptr,:])
+            axs[ax_offset+1].plot(solution[0,:]/3600, 
+                1000*solution[C_k_elyte_ptr,:])
 
+        axs[ax_offset+1].legend(self.plot_species)
+        axs[ax_offset+1].set_ylabel('Elyte Species Conc. \n (mol m$^{-3}$)')
         return axs
 
 #Official Soundtrack:
+    #Cursive - Happy Hollow
     #Japancakes - If I Could See Dallas
     #Jimmy Eat World - Chase the Light + Invented
     #Lay - Lit
