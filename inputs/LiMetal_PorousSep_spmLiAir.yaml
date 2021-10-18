@@ -47,7 +47,7 @@ cell-description:
           D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'metal_air_single_particle'
-    n-points: 1
+    n-points: 3
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
