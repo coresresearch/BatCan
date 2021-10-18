@@ -43,9 +43,9 @@ class electrode():
         self.index_Li = self.elyte_obj.species_index(inputs['mobile-ion'])
 
         # Electrode thickness and inverse thickness:
-        self.dy = inputs['thickness']
-        self.dyInv = 1/self.dy
         self.N_y = inputs['n-points'] # change to n-points
+        self.dy = inputs['thickness']/self.N_y
+        self.dyInv = 1/self.dy
 
         # Phase volume fractions
         self.eps_host = inputs['eps_host']
@@ -178,50 +178,62 @@ class electrode():
         SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
         dSVdt = np.zeros_like(SVdot_loc) # maybe change this
+        N_k = np.zeros_like(SV_loc[SVptr['C_k_elyte']])
         
+        j = 0
         # Read out properties:
-        phi_ed = SV_loc[SVptr['phi_ed']]
-        phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
+        phi_ed = SV_loc[SVptr['phi_ed'][j]]
+        phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
         # print('phi_elyte = ', phi_elyte)
-        c_k_elyte = SV_loc[SVptr['C_k_elyte']]
-        eps_product = SV_loc[SVptr['eps_product']]
-        
-        # Set Cantera object properties:
+        c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
+        eps_product = SV_loc[SVptr['eps_product'][j]]
+         # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
         self.elyte_obj.X = c_k_elyte
-
         # Set microstructure multiplier for effective diffusivities
         eps_elyte = 1. - eps_product - self.eps_host
         self.elyte_microstructure = eps_elyte**1.5
-
         # Read electrolyte fluxes at the separator boundary:
-        N_k_sep, i_io_sep = sep.electrode_boundary_flux(SV, self, params['T']) 
+        N_k_sep, i_io_sep = sep.electrode_boundary_flux(SV, self, params['T'])
+               
+        #calculate flux out    
+        FoRT = ct.faraday/ct.gas_constant/self.elyte_obj.T  
+        phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
+        phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j+1]]
+        # print('phi_elyte = ', phi_elyte)
+        c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
+        eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
+        eps_elyte_next = 1. - eps_product_next- self.eps_host
         
+        #FIX: Actual diffusion  Question: best way to pull this 
+        D_k_temp = np.array([1.11e-10, 6.98e-11, 8.79e-11, 4.26e-11, 2e-13])
+        C_k_elyte_int = 0.5*(c_k_elyte + c_k_elyte_next)
+        eps_int = 0.5*(eps_elyte + eps_elyte_next)
+        D_k_elyte = D_k_temp*eps_int**(1.5)
+        D_k_elyte_mig = D_k_elyte*self.elyte_obj.charges*FoRT*C_k_elyte_int
+
+        N_k[j] = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
+            D_k_elyte_mig*(phi_elyte - phi_elyte_next))*self.dyInv
+
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
-            resid[[SVptr['phi_ed'][0]]] = phi_ed
+            resid[[SVptr['phi_ed'][j]]] = phi_ed
 
         elif self.name=='cathode':
             # For the cathode, the potential of the cathode must be such that 
             # the electrolyte electric potential (calculated as phi_ca + 
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
-                resid[SVptr['phi_ed']] = i_io_sep - params['i_ext']
+                resid[SVptr['phi_ed'][j]] = i_io_sep - params['i_ext']
             elif params['boundary'] == 'potential':                  
-                resid[SVptr['phi_ed']] = (SV_loc[SVptr['phi_ed']] 
+                resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
         
         # Calculate available surface area (m2 interface per m3 electrode):
         A_avail = self.A_init - eps_product/self.th_oxide
         # Convert to m2 interface per m2 geometric area:
         A_surf_ratio = A_avail*self.dy
-
-        # Molar production rate of electrolyte species at the electrolyte-air 
-        # interface (kmol / m2 of interface / s)
-        sdot_elyte_air = \
-            self.gas_elyte_obj.get_net_production_rates(self.elyte_obj)
-
         # Multiplier to scale phase destruction rates.  As eps_product drops 
         # below the user-specified minimum, any reactions that consume the 
         # phase have their rates quickly go to zero:
@@ -232,7 +244,7 @@ class electrode():
             - mult * self.surf_obj.get_destruction_rates(self.product_obj))
       
         # Rate of change of the product phase volume fraction:
-        resid[SVptr['eps_product']] = (SVdot_loc[SVptr['eps_product']] 
+        resid[SVptr['eps_product'][j]] = (SVdot_loc[SVptr['eps_product'][j]] 
             - A_avail * np.dot(sdot_product, self.product_obj.partial_molar_volumes))
 
         # Production rate of the electron (moles / m2 interface / s)
@@ -245,17 +257,161 @@ class electrode():
 
         # Double layer current has the same sign as i_Far
         i_dl = self.i_ext_flag*(i_io_sep)/A_surf_ratio - i_Far
-        resid[SVptr['phi_dl']] = SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv
+        resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
         #change in concentration
         sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
             - self.surf_obj.get_destruction_rates(self.elyte_obj))
         sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
         
         # print(sdot_product, sdot_elyte_host)
-        resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] 
-            - (N_k_sep + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
+        resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
+            - (N_k_sep - N_k[j] + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)
-            
+        j = 1
+                # Read out properties:
+        phi_ed = SV_loc[SVptr['phi_ed'][j]]
+        phi_elyte = phi_elyte_next
+        # print('phi_elyte = ', phi_elyte)
+        c_k_elyte = c_k_elyte_next
+        eps_product = eps_product_next
+         # Set Cantera object properties:
+        self.host_obj.electric_potential = phi_ed
+        self.elyte_obj.electric_potential = phi_elyte
+        self.elyte_obj.X = c_k_elyte
+        # Set microstructure multiplier for effective diffusivities
+        eps_elyte = eps_elyte_next
+    
+        #calculate flux out    
+        FoRT = ct.faraday/ct.gas_constant/self.elyte_obj.T  
+        phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j+1]]
+        # print('phi_elyte = ', phi_elyte)
+        c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
+        eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
+        eps_elyte_next = 1. - eps_product_next- self.eps_host
+        
+        C_k_elyte_int = 0.5*(c_k_elyte + c_k_elyte_next)
+        eps_int = 0.5*(eps_elyte + eps_elyte_next)
+        D_k_elyte = D_k_temp*eps_int**(1.5)
+        D_k_elyte_mig = D_k_elyte*self.elyte_obj.charges*FoRT*C_k_elyte_int
+
+        N_k[j] = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
+            D_k_elyte_mig*(phi_elyte - phi_elyte_next))*self.dyInv
+
+        if self.name=='anode':
+            # The electric potential of the anode = 0 V.
+            resid[[SVptr['phi_ed'][j]]] = phi_ed
+
+        elif self.name=='cathode':
+            # For the cathode, the potential of the cathode must be such that 
+            # the electrolyte electric potential (calculated as phi_ca + 
+            # dphi_dl) produces the correct ionic current between the separator # and cathode:
+            if params['boundary'] == 'current':
+                resid[SVptr['phi_ed'][j]] = i_io_sep - params['i_ext']
+            elif params['boundary'] == 'potential':                  
+                resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
+                    - params['potential']) 
+        
+        # Calculate available surface area (m2 interface per m3 electrode):
+        A_avail = self.A_init - eps_product/self.th_oxide
+        # Convert to m2 interface per m2 geometric area:
+        A_surf_ratio = A_avail*self.dy
+        # Multiplier to scale phase destruction rates.  As eps_product drops 
+        # below the user-specified minimum, any reactions that consume the 
+        # phase have their rates quickly go to zero:
+        mult = tanh(eps_product / self.product_phase_min)
+
+        # Chemical production rate of the product phase: (mol/m2 interface/s)
+        sdot_product = (self.surf_obj.get_creation_rates(self.product_obj)
+            - mult * self.surf_obj.get_destruction_rates(self.product_obj))
+      
+        # Rate of change of the product phase volume fraction:
+        resid[SVptr['eps_product'][j]] = (SVdot_loc[SVptr['eps_product'][j]] 
+            - A_avail * np.dot(sdot_product, self.product_obj.partial_molar_volumes))
+
+        # Production rate of the electron (moles / m2 interface / s)
+        sdot_electron = (mult * self.surf_obj.get_creation_rates(self.host_obj)
+            - self.surf_obj.get_destruction_rates(self.host_obj))
+
+        # Positive Faradaic current corresponds to positive charge created in 
+        # the electrode:
+        i_Far = -(ct.faraday * sdot_electron)
+
+        # Double layer current has the same sign as i_Far
+        i_dl = self.i_ext_flag*(i_io_sep)/A_surf_ratio - i_Far
+        resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
+        #change in concentration
+        sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
+            - self.surf_obj.get_destruction_rates(self.elyte_obj))
+        sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
+
+        resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
+            - (N_k[j-1] - N_k[j] + sdot_elyte_host * A_surf_ratio) 
+            * self.dyInv)
+        j = 2
+        phi_ed = SV_loc[SVptr['phi_ed'][j]]
+        phi_elyte = phi_elyte_next
+        # print('phi_elyte = ', phi_elyte)
+        c_k_elyte = c_k_elyte_next
+        eps_product = eps_product_next
+         # Set Cantera object properties:
+        self.host_obj.electric_potential = phi_ed
+        self.elyte_obj.electric_potential = phi_elyte
+        self.elyte_obj.X = c_k_elyte
+        # Set microstructure multiplier for effective diffusivities
+        eps_elyte = eps_elyte_next
+        # Molar production rate of electrolyte species at the electrolyte-air 
+        # interface (kmol / m2 of interface / s) 
+        if self.name=='anode':
+            # The electric potential of the anode = 0 V.
+            resid[[SVptr['phi_ed'][j]]] = phi_ed
+
+        elif self.name=='cathode':
+            # For the cathode, the potential of the cathode must be such that 
+            # the electrolyte electric potential (calculated as phi_ca + 
+            # dphi_dl) produces the correct ionic current between the separator # and cathode:
+            if params['boundary'] == 'current':
+                resid[SVptr['phi_ed'][j]] = i_io_sep - params['i_ext']
+            elif params['boundary'] == 'potential':                  
+                resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
+                    - params['potential']) 
+        
+        # Calculate available surface area (m2 interface per m3 electrode):
+        A_avail = self.A_init - eps_product/self.th_oxide
+        # Convert to m2 interface per m2 geometric area:
+        A_surf_ratio = A_avail*self.dy
+        # Multiplier to scale phase destruction rates.  As eps_product drops 
+        # below the user-specified minimum, any reactions that consume the 
+        # phase have their rates quickly go to zero:
+        mult = tanh(eps_product / self.product_phase_min)
+
+        # Chemical production rate of the product phase: (mol/m2 interface/s)
+        sdot_product = (self.surf_obj.get_creation_rates(self.product_obj)
+            - mult * self.surf_obj.get_destruction_rates(self.product_obj))
+      
+        # Rate of change of the product phase volume fraction:
+        resid[SVptr['eps_product'][j]] = (SVdot_loc[SVptr['eps_product'][j]] 
+            - A_avail * np.dot(sdot_product, self.product_obj.partial_molar_volumes))
+
+        # Production rate of the electron (moles / m2 interface / s)
+        sdot_electron = (mult * self.surf_obj.get_creation_rates(self.host_obj)
+            - self.surf_obj.get_destruction_rates(self.host_obj))
+
+        # Positive Faradaic current corresponds to positive charge created in 
+        # the electrode:
+        i_Far = -(ct.faraday * sdot_electron)
+
+        # Double layer current has the same sign as i_Far
+        i_dl = self.i_ext_flag*(i_io_sep)/A_surf_ratio - i_Far
+        resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
+        #change in concentration
+        sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
+            - self.surf_obj.get_destruction_rates(self.elyte_obj))
+        sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
+        sdot_elyte_air = \
+            self.gas_elyte_obj.get_net_production_rates(self.elyte_obj) 
+        resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
+            - (N_k[j-1] + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
+            * self.dyInv)
         return resid
         
     def voltage_lim(self, SV, val):
