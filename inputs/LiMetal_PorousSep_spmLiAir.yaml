@@ -54,7 +54,7 @@ cell-description:
     host-phase: 'conductor' # Cantera phase name
     surf-iphase: 'cathode-surf' # Cantera phase name
     product-phase: 'li-oxide'
-    product-phase-min: 1e-3 # Minimum volume fraction for product phase
+    product-phase-min: 1e-6 # Minimum volume fraction for product phase
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 50e-6 # anode thickness, m
     r_host: 6e-6 # Carbon Particle radius, m
