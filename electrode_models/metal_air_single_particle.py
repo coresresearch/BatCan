@@ -135,10 +135,10 @@ class electrode():
         SV = np.zeros(self.n_vars_tot)
 
         # Load intial state variables: Change it later
-        SV[self.SVptr['phi_ed']] = inputs['phi_0']
-        SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
-        SV[self.SVptr['eps_product']] = self.eps_product_init
-        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations
+        SV[self.SVptr['phi_ed']] = inputs['phi_0'] #v
+        SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0'] #V
+        SV[self.SVptr['eps_product']] = self.eps_product_init #Volume Fraction
+        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations #
         
         return SV
 
@@ -177,9 +177,7 @@ class electrode():
         SVptr = self.SVptr
         SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
-        dSVdt = np.zeros_like(SVdot_loc) # maybe change this
-        N_k = np.zeros_like(SV_loc[SVptr['C_k_elyte']])
-        
+       
         j = 0
         # Read out properties:
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
@@ -200,20 +198,20 @@ class electrode():
         #calculate flux out    
         FoRT = ct.faraday/ct.gas_constant/self.elyte_obj.T  
         phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
-        phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j+1]]
+        phi_elyte_next = phi_ed_next +SV_loc[SVptr['phi_dl'][j+1]]
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
         eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
         eps_elyte_next = 1. - eps_product_next- self.eps_host
         
         #FIX: Actual diffusion  Question: best way to pull this 
-        D_k_temp = np.array([1.11e-10, 6.98e-11, 8.79e-11, 4.26e-11, 2e-13])
+        D_k_temp = np.array([1.11e-10, 6.98e-11, 8.79e-11, 4.26e-11, 2e-13]) #sep.D_k?
         C_k_elyte_int = 0.5*(c_k_elyte + c_k_elyte_next)
         eps_int = 0.5*(eps_elyte + eps_elyte_next)
         D_k_elyte = D_k_temp*eps_int**(1.5)
-        D_k_elyte_mig = D_k_elyte*self.elyte_obj.charges*FoRT*C_k_elyte_int
+        D_k_elyte_mig = D_k_elyte*self.elyte_obj.charges*FoRT*C_k_elyte_int/eps_int #changed this?
 
-        N_k[j] = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
+        N_k = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
             D_k_elyte_mig*(phi_elyte - phi_elyte_next))*self.dyInv
 
         if self.name=='anode':
@@ -265,11 +263,11 @@ class electrode():
         
         # print(sdot_product, sdot_elyte_host)
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
-            - (N_k_sep - N_k[j] + sdot_elyte_host * A_surf_ratio) 
+            - (N_k_sep - N_k + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)
         j = 1
                 # Read out properties:
-        phi_ed = SV_loc[SVptr['phi_ed'][j]]
+        phi_ed = phi_ed_next
         phi_elyte = phi_elyte_next
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte = c_k_elyte_next
@@ -280,9 +278,12 @@ class electrode():
         self.elyte_obj.X = c_k_elyte
         # Set microstructure multiplier for effective diffusivities
         eps_elyte = eps_elyte_next
+
+        N_k_int = N_k
     
         #calculate flux out    
         FoRT = ct.faraday/ct.gas_constant/self.elyte_obj.T  
+        phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
         phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j+1]]
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
@@ -294,7 +295,7 @@ class electrode():
         D_k_elyte = D_k_temp*eps_int**(1.5)
         D_k_elyte_mig = D_k_elyte*self.elyte_obj.charges*FoRT*C_k_elyte_int
 
-        N_k[j] = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
+        N_k = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
             D_k_elyte_mig*(phi_elyte - phi_elyte_next))*self.dyInv
 
         if self.name=='anode':
@@ -345,10 +346,10 @@ class electrode():
         sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
 
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
-            - (N_k[j-1] - N_k[j] + sdot_elyte_host * A_surf_ratio) 
+            - (N_k_int - N_k + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)
         j = 2
-        phi_ed = SV_loc[SVptr['phi_ed'][j]]
+        phi_ed = phi_ed_next
         phi_elyte = phi_elyte_next
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte = c_k_elyte_next
@@ -410,7 +411,7 @@ class electrode():
         sdot_elyte_air = \
             self.gas_elyte_obj.get_net_production_rates(self.elyte_obj) 
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
-            - (N_k[j-1] + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
+            - (N_k + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)
         return resid
         
