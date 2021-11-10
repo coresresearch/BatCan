@@ -52,6 +52,7 @@ class electrode():
         self.eps_product_init =inputs['eps_product']
         self.eps_elyte_init = 1 - self.eps_host - self.eps_product_init
 
+        self.sigma_el =inputs['sigma_el']
         # This calculation assumes spherical particles of a single radius, with 
         # no overlap.
         # Electrode-electrolyte interface area, per unit geometric area.
@@ -175,6 +176,8 @@ class electrode():
 
         # Save local copies of the solution vectors, pointers for this electrode:
         SVptr = self.SVptr
+        temp = int(self.SVptr['phi_ed'][:])
+        print("SVptr: ",temp)
         SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
        
@@ -194,9 +197,8 @@ class electrode():
         self.elyte_microstructure = eps_elyte**1.5
         # Read electrolyte fluxes at the separator boundary:
         N_k_sep, i_io_sep = sep.electrode_boundary_flux(SV, self, params['T'])
-               
+    
         #calculate flux out    
-        FoRT = ct.faraday/ct.gas_constant/self.elyte_obj.T  
         phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
         phi_elyte_next = phi_ed_next +SV_loc[SVptr['phi_dl'][j+1]]
         # print('phi_elyte = ', phi_elyte)
@@ -204,15 +206,16 @@ class electrode():
         eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
         eps_elyte_next = 1. - eps_product_next- self.eps_host
         
-        #FIX: Actual diffusion  Question: best way to pull this 
-        D_k_temp = np.array([1.11e-10, 6.98e-11, 8.79e-11, 4.26e-11, 2e-13]) #sep.D_k?
-        C_k_elyte_int = 0.5*(c_k_elyte + c_k_elyte_next)
-        eps_int = 0.5*(eps_elyte + eps_elyte_next)
-        D_k_elyte = D_k_temp*eps_int**(1.5)
-        D_k_elyte_mig = D_k_elyte*self.elyte_obj.charges*FoRT*C_k_elyte_int/eps_int #changed this?
+        state_1 = {'C_k': c_k_elyte, 'phi':phi_elyte, 'T':self.elyte_obj.T, 'dy':self.dy, 
+            'microstructure':eps_elyte}
+        state_2 = {'C_k': c_k_elyte_next, 'phi':phi_elyte_next, 'T':self.elyte_obj.T, 'dy':self.dy, 
+            'microstructure':eps_elyte_next}
 
-        N_k = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
-            D_k_elyte_mig*(phi_elyte - phi_elyte_next))*self.dyInv
+        # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
+        N_k, i_io = sep.elyte_transport(state_1, state_2,sep)
+        N_k *= -self.i_ext_flag
+        i_io *= -self.i_ext_flag
+        i_el_int = -(self.i_ext_flag * self.sigma_el*(phi_ed - phi_ed_next)*self.dyInv)
 
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
@@ -223,7 +226,7 @@ class electrode():
             # the electrolyte electric potential (calculated as phi_ca + 
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
-                resid[SVptr['phi_ed'][j]] = i_io_sep - params['i_ext']
+                resid[SVptr['phi_ed'][j]] = i_io_sep - i_io + i_el_int
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
@@ -254,7 +257,7 @@ class electrode():
         i_Far = -(ct.faraday * sdot_electron)
 
         # Double layer current has the same sign as i_Far
-        i_dl = self.i_ext_flag*(i_io_sep)/A_surf_ratio - i_Far
+        i_dl = self.i_ext_flag*(i_io_sep-i_io)/A_surf_ratio - i_Far
         resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
         #change in concentration
         sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
@@ -264,7 +267,7 @@ class electrode():
         # print(sdot_product, sdot_elyte_host)
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k_sep - N_k + sdot_elyte_host * A_surf_ratio) 
-            * self.dyInv)
+            * self.dyInv)/eps_elyte
         j = 1
                 # Read out properties:
         phi_ed = phi_ed_next
@@ -280,9 +283,10 @@ class electrode():
         eps_elyte = eps_elyte_next
 
         N_k_int = N_k
+        i_io_int = i_io
+        i_el = i_el_int
     
-        #calculate flux out    
-        FoRT = ct.faraday/ct.gas_constant/self.elyte_obj.T  
+        #calculate flux out
         phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
         phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j+1]]
         # print('phi_elyte = ', phi_elyte)
@@ -290,13 +294,16 @@ class electrode():
         eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
         eps_elyte_next = 1. - eps_product_next- self.eps_host
         
-        C_k_elyte_int = 0.5*(c_k_elyte + c_k_elyte_next)
-        eps_int = 0.5*(eps_elyte + eps_elyte_next)
-        D_k_elyte = D_k_temp*eps_int**(1.5)
-        D_k_elyte_mig = D_k_elyte*self.elyte_obj.charges*FoRT*C_k_elyte_int
+        state_1 = {'C_k': c_k_elyte, 'phi':phi_elyte, 'T':self.elyte_obj.T, 'dy':self.dy, 
+            'microstructure':eps_elyte}
+        state_2 = {'C_k': c_k_elyte_next, 'phi':phi_elyte_next, 'T':self.elyte_obj.T, 'dy':self.dy, 
+            'microstructure':eps_elyte_next}
 
-        N_k = (D_k_elyte*(c_k_elyte/eps_elyte - c_k_elyte_next/eps_elyte_next)+ \
-            D_k_elyte_mig*(phi_elyte - phi_elyte_next))*self.dyInv
+        # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
+        N_k, i_io = sep.elyte_transport(state_1, state_2, sep)
+        i_el_int = -(self.i_ext_flag * self.sigma_el*(phi_ed - phi_ed_next)*self.dyInv)
+        N_k *= -self.i_ext_flag
+        i_io *= -self.i_ext_flag
 
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
@@ -307,7 +314,7 @@ class electrode():
             # the electrolyte electric potential (calculated as phi_ca + 
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
-                resid[SVptr['phi_ed'][j]] = i_io_sep - params['i_ext']
+                resid[SVptr['phi_ed'][j]] = i_io - i_io_int + i_el_int - i_el
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
@@ -338,7 +345,8 @@ class electrode():
         i_Far = -(ct.faraday * sdot_electron)
 
         # Double layer current has the same sign as i_Far
-        i_dl = self.i_ext_flag*(i_io_sep)/A_surf_ratio - i_Far
+        i_dl = self.i_ext_flag*(i_io_int - i_io)/A_surf_ratio - i_Far
+        print("i_dl", type(i_dl), i_dl)
         resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
         #change in concentration
         sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
@@ -347,13 +355,16 @@ class electrode():
 
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k_int - N_k + sdot_elyte_host * A_surf_ratio) 
-            * self.dyInv)
+            * self.dyInv)/eps_elyte
         j = 2
         phi_ed = phi_ed_next
         phi_elyte = phi_elyte_next
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte = c_k_elyte_next
         eps_product = eps_product_next
+
+        i_el = i_el_int
+        i_el_int = params['i_ext']
          # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
@@ -371,7 +382,7 @@ class electrode():
             # the electrolyte electric potential (calculated as phi_ca + 
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
-                resid[SVptr['phi_ed'][j]] = i_io_sep - params['i_ext']
+                resid[SVptr['phi_ed'][j]] =  i_io - i_io_int + i_el_int - i_el
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
@@ -402,7 +413,7 @@ class electrode():
         i_Far = -(ct.faraday * sdot_electron)
 
         # Double layer current has the same sign as i_Far
-        i_dl = self.i_ext_flag*(i_io_sep)/A_surf_ratio - i_Far
+        i_dl = self.i_ext_flag*(i_io)/A_surf_ratio - i_Far
         resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
         #change in concentration
         sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
@@ -412,7 +423,7 @@ class electrode():
             self.gas_elyte_obj.get_net_production_rates(self.elyte_obj) 
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
-            * self.dyInv)
+            * self.dyInv)/eps_elyte
         return resid
         
     def voltage_lim(self, SV, val):
