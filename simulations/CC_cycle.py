@@ -46,7 +46,7 @@ def run(SV_0, an, sep, ca, algvars, params):
                 ['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-2, 'atol':1e-4, 
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-4, 'atol':1e-6, 
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
             'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
@@ -221,7 +221,7 @@ def output(solution, an, sep, ca, params):
     
     fig.set_size_inches((4.0,1.8*n_plots))
     # Calculate cell potential:   
-    phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][:])
+    phi_ptr = 2+ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
  
     # Axis 1: Current vs. capacity
     axs[0].plot(solution[0,:]/3600, 1000*solution[1,:]/10000)
