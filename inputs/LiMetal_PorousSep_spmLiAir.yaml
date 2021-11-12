@@ -82,15 +82,15 @@ parameters:
     type: 'CC_cycle' # Constant current cycling
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    C-rate: 0.001 # input C-rate
-    n_cycles: 1 # Number of cycles. Currently must be 0.5 or an int.
+    C-rate: 0.00001 # input C-rate
+    n_cycles: 0.01 # Number of cycles. 
     first-step: 'discharge'  # Start with charge or discharge?
     phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
     phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
     species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
     equilibrate: 
       enable: True # Start with a hold at open circuit?
-      time: 50 # If true, how long is the hold, s
+      time: 5 # If true, how long is the hold, s
 
 # Cantera inputs:
 description: |-
@@ -356,14 +356,14 @@ lithium_electrolyte-reactions:
 cathode-surf-reactions:
 - equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]  # Reaction 1
   id: cathode_reaction
-  rate-constant: {A: 5.629e-26, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+  rate-constant: {A: 5.629e-10, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
   exchange-current-density-formulation: true
   beta: 0.5
 
 air-electrolyte-reactions:
 - equation: O2(g) <=> O2(e)  # Reaction 2
   id: cathode_gas_reaction
-  rate-constant: {A: 5.95e-26, b: 0.0, Ea: 0 kJ/mol}
+  rate-constant: {A: 5.95e-1, b: 0.0, Ea: 0 kJ/mol}
   exchange-current-density-formulation: true
   beta: 0.5
 
