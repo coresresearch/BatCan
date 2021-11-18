@@ -28,7 +28,7 @@ cell-description:
     n_points: 3       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
-    phi_0: 2.67 # Initial electric potential, V // Yin, 2017
+    phi_0: 2.91 # Initial electric potential, V // Yin, 2017
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
     transport:
       mobile-ion:  'Li+[elyt]'
@@ -60,7 +60,7 @@ cell-description:
     r_host: 6e-6 # Carbon Particle radius, m
     d_oxide: 1.5e-6 #Oxide diameter, m
     th_oxide: 850e-9 #oxide thickness, m
-    phi_0: 3.255 # Initial electric potential, V
+    phi_0: 2.95 # Initial electric potential, V
     sigma_el: 1.0E1 #electrical ondutivity of the host
     eps_host: 0.65 # Solid phase volume fraction of carbon -
     eps_product: 0.00 # solid phase volume fraction of Li2O2 -
@@ -83,7 +83,7 @@ parameters:
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
     C-rate: 0.00001 # input C-rate
-    n_cycles: 0.01 # Number of cycles. 
+    n_cycles: 2 # Number of cycles. 
     first-step: 'discharge'  # Start with charge or discharge?
     phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
     phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
@@ -356,14 +356,14 @@ lithium_electrolyte-reactions:
 cathode-surf-reactions:
 - equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]  # Reaction 1
   id: cathode_reaction
-  rate-constant: {A: 5.629e-10, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+  rate-constant: {A: 5.629e+6, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
   exchange-current-density-formulation: true
   beta: 0.5
 
 air-electrolyte-reactions:
 - equation: O2(g) <=> O2(e)  # Reaction 2
   id: cathode_gas_reaction
-  rate-constant: {A: 5.95e-1, b: 0.0, Ea: 0 kJ/mol}
+  rate-constant: {A: 5.95, b: 0.0, Ea: 0 kJ/mol}
   exchange-current-density-formulation: true
   beta: 0.5
 

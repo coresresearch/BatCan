@@ -198,12 +198,9 @@ class electrode():
         # Read electrolyte fluxes at the separator boundary:
         N_k_sep, i_io_sep = sep.electrode_boundary_flux(SV, self, params['T'])
 
-        print("i_io_sep", i_io_sep )
-        print("N_K_sep", N_k_sep)
-
         #calculate flux out    
         phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
-        phi_elyte_next = phi_ed_next +SV_loc[SVptr['phi_dl'][j+1]]
+        phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j+1]]
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
         eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
@@ -227,7 +224,7 @@ class electrode():
             # the electrolyte electric potential (calculated as phi_ca + 
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
-                resid[SVptr['phi_ed'][j]] = i_io_sep - i_io + i_el
+                resid[SVptr['phi_ed'][j]] = i_io_sep - i_io - i_el
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
@@ -290,7 +287,7 @@ class electrode():
     
         #calculate flux out
         phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
-        phi_elyte_next = phi_ed + SV_loc[SVptr['phi_dl'][j+1]]
+        phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j+1]]
         # print('phi_elyte = ', phi_elyte)
         c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
         eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
@@ -304,8 +301,6 @@ class electrode():
         # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
         N_k, i_io = sep.elyte_transport(state_1, state_2, sep)
         i_el = (self.i_ext_flag * self.sigma_el*(phi_ed - phi_ed_next)*self.dyInv)
-        print("N_k", N_k )
-        print("N_k_int", N_k_int )
         print("i_io", i_io )
         print("i_io_int", i_io_int )
 
@@ -386,7 +381,7 @@ class electrode():
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
                 i_el = params['i_ext']
-                resid[SVptr['phi_ed'][j]] =  i_io_int - i_io + i_el_int - i_el 
+                resid[SVptr['phi_ed'][j]] =  i_io + i_el_int - i_el 
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
@@ -429,7 +424,7 @@ class electrode():
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)/eps_elyte
-        print("resid", resid[SVptr['phi_dl']])
+        print("resid", resid)
         return resid
         
     def voltage_lim(self, SV, val):
