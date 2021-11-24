@@ -1,5 +1,5 @@
 """
-    metal_air_single_particle.py
+    metal_air_discret.py
 
     Class file for metal air electrode methods
 """
@@ -99,7 +99,7 @@ class electrode():
         self.n_vars = 3 + self.elyte_obj.n_species
         self.n_vars_tot = self.N_y*self.n_vars
 
-        # This model produces zero plots, but might someday.
+        # Specify the number of plots
         self.n_plots = 2
 
         # Store any extra species to be ploted
@@ -182,13 +182,10 @@ class electrode():
         j = 0
         # Read out properties:
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
-        print("phi_ed", phi_ed)
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
-        print("phi_elyte", phi_elyte)
-        # print('phi_elyte = ', phi_elyte)
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
         eps_product = SV_loc[SVptr['eps_product'][j]]
-         # Set Cantera object properties:
+        # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
         self.elyte_obj.X = c_k_elyte
@@ -201,7 +198,6 @@ class electrode():
         #calculate flux out    
         phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
         phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j+1]]
-        # print('phi_elyte = ', phi_elyte)
         c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
         eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
         eps_elyte_next = 1. - eps_product_next- self.eps_host
@@ -212,7 +208,7 @@ class electrode():
             'microstructure':eps_elyte_next**1.5}
 
         # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
-        N_k, i_io = sep.elyte_transport(state_1, state_2,sep)
+        N_k, i_io = sep.elyte_transport(state_1, state_2, sep)
         i_el = (self.i_ext_flag * self.sigma_el*(phi_ed - phi_ed_next)*self.dyInv)
 
         if self.name=='anode':
@@ -262,18 +258,17 @@ class electrode():
             - self.surf_obj.get_destruction_rates(self.elyte_obj))
         sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
         
-        # print(sdot_product, sdot_elyte_host)
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k_sep - N_k + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)/eps_elyte
+        
         j = 1
-                # Read out properties:
+        # Read out properties:
         phi_ed = phi_ed_next
         phi_elyte = phi_elyte_next
-        # print('phi_elyte = ', phi_elyte)
         c_k_elyte = c_k_elyte_next
         eps_product = eps_product_next
-         # Set Cantera object properties:
+        # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
         self.elyte_obj.X = c_k_elyte
@@ -288,7 +283,6 @@ class electrode():
         #calculate flux out
         phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
         phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j+1]]
-        # print('phi_elyte = ', phi_elyte)
         c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j+1]]
         eps_product_next = SV_loc[SVptr['eps_product'][j+1]]
         eps_elyte_next = 1. - eps_product_next- self.eps_host
@@ -301,8 +295,6 @@ class electrode():
         # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
         N_k, i_io = sep.elyte_transport(state_1, state_2, sep)
         i_el = (self.i_ext_flag * self.sigma_el*(phi_ed - phi_ed_next)*self.dyInv)
-        print("i_io", i_io )
-        print("i_io_int", i_io_int )
 
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
@@ -354,16 +346,16 @@ class electrode():
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k_int - N_k + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)/eps_elyte
+        
         j = 2
         phi_ed = phi_ed_next
         phi_elyte = phi_elyte_next
-        # print('phi_elyte = ', phi_elyte)
         c_k_elyte = c_k_elyte_next
         eps_product = eps_product_next
 
         i_el_int = i_el
 
-         # Set Cantera object properties:
+        # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
         self.elyte_obj.X = c_k_elyte
@@ -413,7 +405,6 @@ class electrode():
 
         # Double layer current has the same sign as i_Far
         i_dl = self.i_ext_flag*(i_io)/A_surf_ratio - i_Far
-        print("i_dl", i_dl)
         resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
         #change in concentration
         sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
@@ -424,7 +415,6 @@ class electrode():
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)/eps_elyte
-        print("resid", resid)
         return resid
         
     def voltage_lim(self, SV, val):

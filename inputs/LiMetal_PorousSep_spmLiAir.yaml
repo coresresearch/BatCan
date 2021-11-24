@@ -46,7 +46,7 @@ cell-description:
         - species: 'Li2O2[elyt]'
           D_k: 2e-13 # can't find (assume low?)
   cathode:
-    class: 'metal_air_single_particle'
+    class: 'metal_air_discret'
     n-points: 3
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
