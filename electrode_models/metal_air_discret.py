@@ -186,6 +186,7 @@ class electrode():
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
         eps_product = SV_loc[SVptr['eps_product'][j]]
+
         # Set Cantera object properties:
         # self.host_obj.electric_potential = phi_ed
         # self.elyte_obj.electric_potential = phi_elyte
@@ -421,7 +422,7 @@ class electrode():
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
             - (N_k + sdot_elyte_air + sdot_elyte_host * A_surf_ratio) 
             * self.dyInv)/eps_elyte
-        print(resid)
+
         return resid
         
     def voltage_lim(self, SV, val):
