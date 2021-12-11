@@ -25,7 +25,7 @@ cell-description:
   separator:
     class: 'porous_separator'
     thickness: 20e-6  # separator thickness, m
-    n_points: 3       # Number of finite volumes to discretize
+    n_points: 5       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 2.91 # Initial electric potential, V // Yin, 2017
@@ -46,8 +46,8 @@ cell-description:
         - species: 'Li2O2[elyt]'
           D_k: 2e-13 # can't find (assume low?)
   cathode:
-    class: 'metal_air_discret'
-    n-points: 3
+    class: 'air_electrode'
+    n-points: 10
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -83,7 +83,7 @@ parameters:
     # Specify only one of i_ext or C-rate. The other should be null:
     i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
     C-rate: 0.00001 # input C-rate
-    n_cycles: 2 # Number of cycles. 
+    n_cycles: 0.5 # Number of cycles. 
     first-step: 'discharge'  # Start with charge or discharge?
     phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
     phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value

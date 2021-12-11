@@ -1,7 +1,7 @@
 """
-    metal_air_discret.py
+    air_electrode.py
 
-    Class file for metal air electrode methods
+    Class file for air electrode methods
 """
 
 import cantera as ct
@@ -10,7 +10,7 @@ import numpy as np
 
 class electrode(): 
     """
-    Create an electrode object representing the metal air electrode.
+    Create an electrode object representing the air electrode.
     """
 
     def __init__(self, input_file, inputs, sep_inputs, counter_inputs,    
@@ -22,19 +22,30 @@ class electrode():
         # Import relevant Cantera objects.
         self.gas_obj = ct.Solution(input_file, inputs['gas-phase'])
         self.elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
-        self.gas_elyte_obj = ct.Interface(input_file, inputs['elyte-iphase'], [self.gas_obj, self.elyte_obj])
+        self.gas_elyte_obj = ct.Interface(input_file, inputs['elyte-iphase'],   
+            [self.gas_obj, self.elyte_obj])
         self.host_obj = ct.Solution(input_file, inputs['host-phase'])
         self.product_obj = ct.Solution(input_file, inputs['product-phase'])
         self.surf_obj = ct.Interface(input_file, inputs['surf-iphase'], 
             [self.product_obj, self.elyte_obj, self.host_obj])
 
+
+        # Electrode thickness and inverse thickness:
+        self.n_y = inputs['n-points'] 
+        self.dy = inputs['thickness']/self.n_y
+        self.dyInv = 1/self.dy
+
         # Anode or cathode? Positive external current delivers positive charge 
-        # to the anode, and removes positive charge from the cathode.
+        # to the anode, and removes positive charge from the cathode. For the 
+        # cathode, the first node is at the separator (j=0), whereas the last 
+        # node has j=0.
         self.name = electrode_name
         if self.name=='anode':
             self.i_ext_flag = -1
+            self.nodes = list(range(self.n_y-1,-1,-1))
         elif self.name=='cathode':
             self.i_ext_flag = 1
+            self.nodes = list(range(self.n_y))
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
@@ -42,33 +53,25 @@ class electrode():
         # electrolyte phase:
         self.index_Li = self.elyte_obj.species_index(inputs['mobile-ion'])
 
-        # Electrode thickness and inverse thickness:
-        self.N_y = inputs['n-points'] # change to n-points
-        self.Nodes = list(range(self.N_y))
-        self.dy = inputs['thickness']/self.N_y
-        self.dyInv = 1/self.dy
-
         # Phase volume fractions
         self.eps_host = inputs['eps_host']
         self.eps_product_init =inputs['eps_product']
         self.eps_elyte_init = 1 - self.eps_host - self.eps_product_init
 
         self.sigma_el =inputs['sigma_el']
-        # This calculation assumes spherical particles of a single radius, with 
-        # no overlap.
-        # Electrode-electrolyte interface area, per unit geometric area.
+        # The following calculations assume spherical particles of a single 
+        # radius, with no overlap.
         self.r_host = inputs['r_host']
         self.th_oxide = inputs['th_oxide']
-        self.V_host = 4./3. * np.pi * (self.r_host / 2)**3  # carbon or host volume [m3]
-        self.A_host = 4. * np.pi * (self.r_host / 2)**2    # carbon or host surface area [m2]
-        self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of interface / m3 of total volume [m-1]
-        self.A_oxide = np.pi* inputs['d_oxide']**2/4.   # oxide area
-        self.V_oxide = 2./3. * np.pi* (inputs['d_oxide']/2.)**2 * self.th_oxide #oxide volume
+        self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
+        self.A_host = 4. * np.pi * (self.r_host / 2)**2 # Surface area of a single carbon / host particle [m2]
+        self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
+        self.A_oxide = np.pi* inputs['d_oxide']**2/4.   # host-electrolyte interface area blocked by a single oxide/product particle [m2]
+        self.V_oxide = 2./3. * np.pi* (inputs['d_oxide']/2.)**2 * self.th_oxide # volume of a single oxide/product particle
 
         # For some models, the elyte thickness is different from that of the 
-        # electrode, so we specify is separately:
+        # electrode, so we specify it separately:
         self.dy_elyte = self.dy
-        self.dy_elyte_node = self.dy_elyte/self.N_y
 
         # Inverse double layer capacitance, per unit interfacial area.
         self.C_dl_Inv = 1/inputs['C_dl']
@@ -94,13 +97,16 @@ class electrode():
                 / (3600 * v_molar_prod))
                  
         # Minimum volume fraction for the product phase, below which product 
-        # phase consumption reaction shut off:
+        #   phase consumption reaction shut off:
         self.product_phase_min = inputs['product-phase-min']
-        # Number of state variables: electrode potential, electrolyte composition, oxide volume fraction 
+        # Number of state variables: electrode potential, double layer 
+        #   potential, electrolyte composition, oxide volume fraction 
         self.n_vars = 3 + self.elyte_obj.n_species
-        self.n_vars_tot = self.N_y*self.n_vars
+        self.n_vars_tot = self.n_y*self.n_vars
 
         # Specify the number of plots
+        #   1 - Elyte species concentrations for select species
+        #   2 - Cathode produce phase volume fraction
         self.n_plots = 2
 
         # Store any extra species to be ploted
@@ -111,21 +117,20 @@ class electrode():
         self.host_obj.TP = params['T'], params['P']
         self.elyte_obj.TP = params['T'], params['P']
         self.surf_obj.TP = params['T'], params['P']
-        #self.conductor_obj.TP = params['T'], params['P']
 
-        # Set up pointers to specific variables in the solution vector:
+        # Set up pointers to the variables in the solution vector:
         self.SVptr = {}
         self.SVptr['phi_ed'] = np.arange(0, self.n_vars_tot, self.n_vars)
         self.SVptr['phi_dl'] = np.arange(1, self.n_vars_tot, self.n_vars)
         self.SVptr['eps_product'] = np.arange(2, self.n_vars_tot, self.n_vars)
-        self.SVptr['C_k_elyte'] = np.ndarray(shape=(self.N_y, 
+        self.SVptr['C_k_elyte'] = np.ndarray(shape=(self.n_y, 
             self.elyte_obj.n_species), dtype='int')       
-        for i in range(self.N_y):
+        for i in range(self.n_y):
             self.SVptr['C_k_elyte'][i,:] = range(3 + i*self.n_vars, 
                 3 + i*self.n_vars + self.elyte_obj.n_species)
 
-        # A pointer to where the SV variables for this electrode are, within the 
-        # overall solution vector for the entire problem:
+        # A pointer to where the SV variables for this electrode are, within 
+        # the overall solution vector for the entire problem:
         self.SVptr['electrode'] = np.arange(offset, offset+self.n_vars_tot)
 
         # Save the indices of any algebraic variables:
@@ -137,10 +142,10 @@ class electrode():
         SV = np.zeros(self.n_vars_tot)
 
         # Load intial state variables: Change it later
-        SV[self.SVptr['phi_ed']] = inputs['phi_0'] #v
+        SV[self.SVptr['phi_ed']] = inputs['phi_0'] # V
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0'] #V
         SV[self.SVptr['eps_product']] = self.eps_product_init #Volume Fraction
-        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations #
+        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations # kmol/m3
         
         return SV
 
@@ -175,12 +180,15 @@ class electrode():
         # Initialize the residual:
         resid = np.zeros((self.n_vars_tot,))
 
-        # Save local copies of the solution vectors, pointers for this electrode:
+        # Save local copies of the solution vectors, pointers for this 
+        #   electrode:
         SVptr = self.SVptr
         SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
        
-        j = 0
+        # Start at the separator boundary:
+        j = self.nodes[0]
+
         # Read out properties:
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
@@ -194,8 +202,11 @@ class electrode():
         # # Set microstructure multiplier for effective diffusivities
         eps_elyte = 1. - eps_product - self.eps_host
         # self.elyte_microstructure = eps_elyte**1.5
-        # Read electrolyte fluxes at the separator boundary:
-        N_k_int, i_io_int = sep.electrode_boundary_flux(SV, self, params['T']) #N_k_sep, i_io_sep
+
+        # Read electrolyte fluxes at the separator boundary.  No matter the 
+        # electrode, flux to the electrode is positive:
+        N_k_in, i_io_in = (-self.i_ext_flag*X for X in sep.electrode_boundary_flux(SV, self, params['T']))
+            
 
         # #calculate flux out    
         # phi_ed_next = SV_loc[SVptr['phi_ed'][j+1]]
@@ -212,7 +223,7 @@ class electrode():
         # # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
         # N_k, i_io = sep.elyte_transport(state_1, state_2, sep)
         # i_el = (self.i_ext_flag * self.sigma_el*(phi_ed - phi_ed_next)*self.dyInv)
-        i_el_int = 0
+        i_el_in = 0
 
         # if self.name=='anode':
         #     # The electric potential of the anode = 0 V.
@@ -265,8 +276,8 @@ class electrode():
         #     - (N_k_sep - N_k + sdot_elyte_host * A_surf_ratio) 
         #     * self.dyInv)/eps_elyte
         
-        for node in self.Nodes[0:-1]:
-            j = node
+        for j in self.nodes[:-1]:
+            
             # Set Cantera object properties:
             self.host_obj.electric_potential = phi_ed
             self.elyte_obj.electric_potential = phi_elyte
@@ -299,7 +310,7 @@ class electrode():
                 # the electrolyte electric potential (calculated as phi_ca + 
                 # dphi_dl) produces the correct ionic current between the separator # and cathode:
                 if params['boundary'] == 'current':
-                    resid[SVptr['phi_ed'][j]] =  i_io_int - i_io + i_el_int - i_el 
+                    resid[SVptr['phi_ed'][j]] =  i_io_in - i_io + i_el_in - i_el 
                 elif params['boundary'] == 'potential':                  
                     resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                         - params['potential']) 
@@ -330,7 +341,7 @@ class electrode():
             i_Far = -(ct.faraday * sdot_electron)
 
             # Double layer current has the same sign as i_Far
-            i_dl = self.i_ext_flag*(i_io_int - i_io)/A_surf_ratio - i_Far
+            i_dl = self.i_ext_flag*(i_io_in - i_io)/A_surf_ratio - i_Far
             resid[SVptr['phi_dl'][j]] = SVdot_loc[SVptr['phi_dl'][j]] - i_dl*self.C_dl_Inv
             #change in concentration
             sdot_elyte_host = (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
@@ -338,7 +349,7 @@ class electrode():
             sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
 
             resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
-                - (N_k_int - N_k + sdot_elyte_host * A_surf_ratio) 
+                - (N_k_in - N_k + sdot_elyte_host * A_surf_ratio) 
                 * self.dyInv)/eps_elyte
             
             # Read out properties for next loop:
@@ -348,19 +359,19 @@ class electrode():
             eps_product = eps_product_next
             eps_elyte = eps_elyte_next
 
-            N_k_int = N_k
+            N_k_in = N_k
             
-            i_io_int = i_io
-            i_el_int = i_el
+            i_io_in = i_io
+            i_el_in = i_el
 
-        j = self.N_y-1
+        j = self.n_y-1
         
         phi_ed = phi_ed_next
         phi_elyte = phi_elyte_next
         c_k_elyte = c_k_elyte_next
         eps_product = eps_product_next
 
-        i_el_int = i_el
+        i_el_in = i_el
 
         # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
@@ -380,7 +391,7 @@ class electrode():
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
                 i_el = params['i_ext']
-                resid[SVptr['phi_ed'][j]] =  i_io + i_el_int - i_el 
+                resid[SVptr['phi_ed'][j]] =  i_io + i_el_in - i_el 
             elif params['boundary'] == 'potential':                  
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']] 
                     - params['potential']) 
