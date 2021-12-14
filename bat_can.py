@@ -16,18 +16,23 @@ from bat_can_init import initialize
 def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
-        input = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
+        input_file = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
     else:
         if input[-5:] == '.yaml':
-            input  = 'inputs/'+input
+            input_file  = 'inputs/'+input
+
+            # Strip the file extension:
+            input = input[:-4]
         else:
-            input = 'inputs/'+input+'.yaml'
+            input_file = 'inputs/'+input+'.yaml'
 
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
-    an_inputs, sep_inputs, ca_inputs, parameters = initialize(input)
+    an_inputs, sep_inputs, ca_inputs, parameters = initialize(input_file)
 
+    # Save name of input file, without path or extension:
+    parameters['input'] = input
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
@@ -39,19 +44,19 @@ def bat_can(input = None):
     # import single_particle_electrode as an_module_0
     an_module = importlib.import_module('electrode_models.' 
         + an_inputs['class'])
-    an = an_module.electrode(input, an_inputs, sep_inputs, ca_inputs, 
+    an = an_module.electrode(input_file, an_inputs, sep_inputs, ca_inputs, 
             'anode', parameters, offset=0)
     
     sep_module = importlib.import_module('separator_models.' 
         + sep_inputs['class'])
-    sep = sep_module.separator(input, sep_inputs, parameters, 
+    sep = sep_module.separator(input_file, sep_inputs, parameters, 
             offset=an.n_vars)
     
     # Check to see if the anode object needs to adjust the separator properties:
     sep = an.adjust_separator(sep)
     ca_module = importlib.import_module('electrode_models.' 
         + ca_inputs['class'])
-    ca = ca_module.electrode(input, ca_inputs, sep_inputs, an_inputs, 
+    ca = ca_module.electrode(input_file, ca_inputs, sep_inputs, an_inputs, 
         'cathode', parameters, offset= an.n_vars+sep.n_vars*sep.n_points)
 
     # Check to see if the cathode object needs to adjust the separator 
@@ -73,16 +78,16 @@ def bat_can(input = None):
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:
-    model = importlib.import_module('.'+parameters['simulation']['type'], 
-            package='simulations')
+    for sim in parameters['simulations']:
+        model = importlib.import_module('.'+sim['type'], package='simulations')
 
-    solution = model.run(SV_0, an, sep, ca, algvars, parameters)
+        solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
 
-    #===========================================================================
-    #   CREATE FIGURES AND SAVE ALL OUTPUTS
-    #===========================================================================
-    # Call any output routines related to the simulation type:
-    model.output(solution, an, sep, ca, parameters)
+        #=======================================================================
+        #   CREATE FIGURES AND SAVE ALL OUTPUTS
+        #=======================================================================
+        # Call any output routines related to the simulation type:
+        model.output(solution, an, sep, ca, parameters, sim)
 
 
 #===========================================================================
