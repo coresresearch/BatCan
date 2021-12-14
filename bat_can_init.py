@@ -71,9 +71,6 @@ def initialize(input_file=None):
     else:
         raise ValueError('Please specify simulation parameters.')
 
-    # If no specification is given on whether to show plots, assume 'True'
-    if 'outputs' not in parameters:
-        parameters['outputs'] = {'show-plots': True}
 
     return anode_inputs, sep_inputs, cathode_inputs, parameters
     

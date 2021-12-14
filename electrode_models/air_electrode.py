@@ -398,7 +398,7 @@ class electrode():
             eps_product_ptr = 2 + self.SV_offset + self.SVptr['eps_product'][j]
             axs[ax_offset].plot(solution[0,:]/3600, 
                 solution[eps_product_ptr, :])
-                
+
         axs[ax_offset].set_ylabel(self.name+' product \n volume fraction')
 
         for name in self.plot_species:
@@ -414,6 +414,7 @@ class electrode():
         return axs
 
 #Official Soundtrack:
+    #Passion Pit - Gossamer
     #CHVRCHES - Every Open Eye
     #Cursive - Happy Hollow
     #Japancakes - If I Could See Dallas

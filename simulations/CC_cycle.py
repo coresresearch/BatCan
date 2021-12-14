@@ -17,13 +17,13 @@ import numpy as np
 from scikits.odes.dae import dae
 from math import floor
 
-def run(SV_0, an, sep, ca, algvars, params):
+def run(SV_0, an, sep, ca, algvars, params, sim):
     """ 
     Run the simulation
     """
     # Determine the current to run at, and the time to fully charge/discharge. 
     # 'calc_current' is defined below.
-    current, t_final = calc_current(params['simulation'], an, ca)
+    current, t_final = calc_current(sim, an, ca)
 
     # Store the location of all algebraic variables.
     params['algvars'] = algvars
@@ -34,16 +34,13 @@ def run(SV_0, an, sep, ca, algvars, params):
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
     # current for each step.
-    steps, currents, times = setup_cycles(params['simulation'], current, 
-        t_final)
+    steps, currents, times = setup_cycles(sim, current, t_final)
 
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
     def terminate_check(t, SV, SVdot, return_val, inputs):
-        return_val[0] = ca.voltage_lim(SV, params['simulation']
-                ['phi-cutoff-lower'])
-        return_val[1] = ca.voltage_lim(SV, params['simulation']
-                ['phi-cutoff-upper'])
+        return_val[0] = ca.voltage_lim(SV, sim['phi-cutoff-lower'])
+        return_val[1] = ca.voltage_lim(SV, sim['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-4, 'atol':1e-6, 
@@ -198,13 +195,15 @@ def residual(t, SV, SVdot, resid, inputs):
     
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
-def output(solution, an, sep, ca, params):
+def output(solution, an, sep, ca, params, sim):
     """
     Prepare and save any output data to the correct location. Prepare, 
     create, and save any figures relevant to constant-current cycling.
     """
     #TODO #17
     import matplotlib.pyplot as plt 
+    from datetime import datetime   
+    import os 
 
     # Temporary flag for Li metal anode:
     i_Li = 0
@@ -249,6 +248,24 @@ def output(solution, an, sep, ca, params):
     fig.tight_layout()
     
     # Save figure:
-    plt.savefig('output.pdf')
-    if params['outputs']['show-plots']:
+
+    # If no specification is given on whether to show plots, assume 'True'
+    if 'outputs' not in sim:
+        plt.savefig('output.pdf')
         plt.show()
+    else:
+        if 'show-plots' not in sim['outputs']:
+            plt.show()
+        elif sim['outputs']['show-plots']:
+            plt.show()
+
+        now = datetime.now()
+        dt =  now.strftime("%Y%m%d_%H%M")
+        if sim['outputs']['savename']:
+            filename = ('outputs/'+sim['outputs']['savename']+'_'+params['input']+'_'+dt)
+            os.makedirs(filename)
+            print(filename)
+            np.savetxt(filename+'/output.csv', solution, delimiter=',')
+            plt.savefig(filename+'/summary.pdf')
+    
+    
