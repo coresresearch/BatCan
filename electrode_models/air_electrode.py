@@ -392,10 +392,11 @@ class electrode():
         # Return the separator class object, unaltered:
         return sep
 
-    def output(self, axs, solution, ax_offset):
+    def output(self, axs, solution, SV_offset, ax_offset):
         """Plot the intercalation fraction vs. time"""
         for j in np.arange(self.n_points):
-            eps_product_ptr = 2 + self.SV_offset + self.SVptr['eps_product'][j]
+            eps_product_ptr = (SV_offset + self.SV_offset 
+                + self.SVptr['eps_product'][j])
             axs[ax_offset].plot(solution[0,:]/3600, 
                 solution[eps_product_ptr, :])
 
@@ -404,7 +405,7 @@ class electrode():
         for name in self.plot_species:
             species_ptr = self.elyte_obj.species_index(name)
             for j in np.arange(self.n_points):
-                C_k_elyte_ptr = (2 + self.SV_offset 
+                C_k_elyte_ptr = (SV_offset + self.SV_offset 
                     + self.SVptr['C_k_elyte'][j, species_ptr])
                 axs[ax_offset+1].plot(solution[0,:]/3600, 
                     1000*solution[C_k_elyte_ptr,:])

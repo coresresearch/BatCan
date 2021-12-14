@@ -52,16 +52,17 @@ parameters:
   # Describe what to do with the results:
   outputs:
     show-plots: True # Do you want the plots shown and saved, or just saved?
+    savename: 'Test'
   # Describe simulation type, parameters, etc.
-  simulation:
-    type: 'potential_hold' # Constant current cycling
-    steps: #Sequence of potential holds
-    - potential: 5.25 # V, cell potential for the hold.
-      time: 1E-9 # s, time for the hold.
-    equilibrate: 
-      enable: False # Begin with a hold at i_ext = 0?
-      time: 100 # If true, how long is the hold, s
-    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+  simulations:
+    - type: 'potential_hold' # Constant current cycling
+      steps: #Sequence of potential holds
+      - potential: 5.25 # V, cell potential for the hold.
+        time: 1E-9 # s, time for the hold.
+      equilibrate: 
+        enable: False # Begin with a hold at i_ext = 0?
+        time: 100 # If true, how long is the hold, s
+      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
 
 # Cantera inputs:
 description: |-

@@ -82,8 +82,8 @@ parameters:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 0.00025 # input C-rate
-      n_cycles: 0.5 # Number of cycles. 
+      C-rate: 0.00005 # input C-rate
+      n_cycles: 1.5 # Number of cycles. 
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
