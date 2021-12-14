@@ -31,8 +31,8 @@ class electrode():
 
 
         # Electrode thickness and inverse thickness:
-        self.n_y = inputs['n-points'] 
-        self.dy = inputs['thickness']/self.n_y
+        self.n_points = inputs['n-points'] 
+        self.dy = inputs['thickness']/self.n_points
         self.dyInv = 1/self.dy
 
         # Anode or cathode? Positive external current delivers positive charge 
@@ -42,10 +42,10 @@ class electrode():
         self.name = electrode_name
         if self.name=='anode':
             self.i_ext_flag = -1
-            self.nodes = list(range(self.n_y-1,-1,-1))
+            self.nodes = list(range(self.n_points-1,-1,-1))
         elif self.name=='cathode':
             self.i_ext_flag = 1
-            self.nodes = list(range(self.n_y))
+            self.nodes = list(range(self.n_points))
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
@@ -102,7 +102,7 @@ class electrode():
         # Number of state variables: electrode potential, double layer 
         #   potential, electrolyte composition, oxide volume fraction 
         self.n_vars = 3 + self.elyte_obj.n_species
-        self.n_vars_tot = self.n_y*self.n_vars
+        self.n_vars_tot = self.n_points*self.n_vars
 
         # Specify the number of plots
         #   1 - Elyte species concentrations for select species
@@ -123,9 +123,9 @@ class electrode():
         self.SVptr['phi_ed'] = np.arange(0, self.n_vars_tot, self.n_vars)
         self.SVptr['phi_dl'] = np.arange(1, self.n_vars_tot, self.n_vars)
         self.SVptr['eps_product'] = np.arange(2, self.n_vars_tot, self.n_vars)
-        self.SVptr['C_k_elyte'] = np.ndarray(shape=(self.n_y, 
+        self.SVptr['C_k_elyte'] = np.ndarray(shape=(self.n_points, 
             self.elyte_obj.n_species), dtype='int')       
-        for i in range(self.n_y):
+        for i in range(self.n_points):
             self.SVptr['C_k_elyte'][i,:] = range(3 + i*self.n_vars, 
                 3 + i*self.n_vars + self.elyte_obj.n_species)
 
@@ -298,7 +298,7 @@ class electrode():
             i_io_in = i_io_out
             i_el_in = i_el_out
 
-        j = self.n_y-1
+        j = self.n_points-1
         
         phi_ed = phi_ed_next
         phi_elyte = phi_elyte_next
@@ -394,17 +394,20 @@ class electrode():
 
     def output(self, axs, solution, ax_offset):
         """Plot the intercalation fraction vs. time"""
-        eps_product_ptr = (2 + self.SV_offset + self.SVptr['eps_product'][0])
-        
-        axs[ax_offset].plot(solution[0,:]/3600, solution[eps_product_ptr, :])
+        for j in np.arange(self.n_points):
+            eps_product_ptr = 2 + self.SV_offset + self.SVptr['eps_product'][j]
+            axs[ax_offset].plot(solution[0,:]/3600, 
+                solution[eps_product_ptr, :])
+                
         axs[ax_offset].set_ylabel(self.name+' product \n volume fraction')
 
         for name in self.plot_species:
             species_ptr = self.elyte_obj.species_index(name)
-            C_k_elyte_ptr = (2 + self.SV_offset 
-                + self.SVptr['C_k_elyte'][0, species_ptr])
-            axs[ax_offset+1].plot(solution[0,:]/3600, 
-                1000*solution[C_k_elyte_ptr,:])
+            for j in np.arange(self.n_points):
+                C_k_elyte_ptr = (2 + self.SV_offset 
+                    + self.SVptr['C_k_elyte'][j, species_ptr])
+                axs[ax_offset+1].plot(solution[0,:]/3600, 
+                    1000*solution[C_k_elyte_ptr,:])
 
         axs[ax_offset+1].legend(self.plot_species)
         axs[ax_offset+1].set_ylabel('Elyte Species Conc. \n (mol m$^{-3}$)')
