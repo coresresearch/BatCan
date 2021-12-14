@@ -264,9 +264,11 @@ class separator():
                 axs[ax_offset+1].plot(solution[0,:]/3600, 
                     solution[Ck_elyte_sep_ptr[j, self.index_Li],:], 
                     label="separator "+str(j+1))
-
-        Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][0]+2,:]
-        axs[ax_offset+1].plot(solution[0,:]/3600, Ck_elyte_ca[ca.index_Li,:])
+                    
+        for j in np.arange(ca.n_points):
+            Ck_elyte_ca = solution[ca.SV_offset+ca.SVptr['C_k_elyte'][j]+2,:]
+            axs[ax_offset+1].plot(solution[0,:]/3600, 
+                Ck_elyte_ca[ca.index_Li,:])
 
         axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m$^3$')
 
