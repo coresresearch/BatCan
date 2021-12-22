@@ -79,6 +79,9 @@ class separator():
         self.SVptr['sep'] = np.arange(self.SV_offset, 
             self.SV_offset + self.n_points*self.n_vars)
 
+        self.SVnames = \
+            (['phi_elyte']+ self.elyte_obj.species_names[:])*self.n_points
+        
         # Save indices for any algebraic variables.
         self.algvars = self.SV_offset + self.SVptr['phi']
 

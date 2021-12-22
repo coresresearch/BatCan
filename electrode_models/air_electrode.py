@@ -118,6 +118,8 @@ class electrode():
         self.elyte_obj.TP = params['T'], params['P']
         self.surf_obj.TP = params['T'], params['P']
 
+    def initialize(self, inputs, sep_inputs):
+
         # Set up pointers to the variables in the solution vector:
         self.SVptr = {}
         self.SVptr['phi_ed'] = np.arange(0, self.n_vars_tot, self.n_vars)
@@ -129,14 +131,16 @@ class electrode():
             self.SVptr['C_k_elyte'][i,:] = range(3 + i*self.n_vars, 
                 3 + i*self.n_vars + self.elyte_obj.n_species)
 
+        self.SVnames = (['phi_ed', 'phi_dl', 'eps_product'] 
+            + self.elyte_obj.species_names[:])*self.n_points
+        
         # A pointer to where the SV variables for this electrode are, within 
         # the overall solution vector for the entire problem:
-        self.SVptr['electrode'] = np.arange(offset, offset+self.n_vars_tot)
+        self.SVptr['electrode'] = np.arange(self.SV_offset, 
+            self.SV_offset+self.n_vars_tot)
 
         # Save the indices of any algebraic variables:
-        self.algvars = offset + self.SVptr['phi_ed'][:]
-
-    def initialize(self, inputs, sep_inputs):
+        self.algvars = self.SV_offset + self.SVptr['phi_ed'][:]
 
         # Initialize the solution vector for the electrode domain:
         SV = np.zeros(self.n_vars_tot)
