@@ -221,7 +221,10 @@ class electrode():
         self.SVptr['thickness'] = np.array([2])
         self.SVptr['C_k_elyte'] = np.arange(3, 
                 3 + self.elyte_obj.n_species)
-    
+
+        self.SVnames = (['phi_ed', 'phi_dl', 'thickness'] 
+            + self.elyte_obj.species_names[:])
+            
         # There is only one node, but give the pointer a shape so that SVptr
         # ['C_k_elyte'][j] accesses the pointer array:
         self.SVptr['C_k_elyte'].shape = (1, self.elyte_obj.n_species)

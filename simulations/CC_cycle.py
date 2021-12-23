@@ -258,17 +258,27 @@ def output(solution, an, sep, ca, params, sim):
             gridspec_kw = {'wspace':0, 'hspace':0})
 
     cycle_fig.set_size_inches((4.0,2.0))
-    solution_df = pd.DataFrame(solution.T)
-    
+
+    # Save the solution as a Pandas dataframe:
+    labels = ['cycle', 'current'] + an.SVnames + sep.SVnames + ca.SVnames
+    solution_df = pd.DataFrame(data = solution.T[:,1:],
+                                index = solution.T[:,0],
+                                columns = labels)
+
+    solution_df.index.name = 'time (s)'                                
+
     # time offset for start of cycle:
     t_0 = 0
     for i in range(int(solution[1,-1])):
-        cycle = solution_df[solution_df.iloc[:,1] == i+1]
-        cycle_axs.plot(1000*(cycle.iloc[:,0]-t_0)*abs(cycle.iloc[:,2])/3600,
-            cycle.iloc[:,phi_ptr])
+        cycle = solution_df[solution_df.iloc[:,0] == i+1]
+        cycle_axs.plot(1000*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
+            cycle.iloc[:,phi_ptr-1])
+       
+        # cycle_axs.plot(1000*(cycle.iloc[:,0]-t_0)*abs(cycle.iloc[:,2])/3600,
+        #     cycle.iloc[:,phi_ptr])
 
         # Update time offset:
-        t_0 = cycle.iloc[-1,0]
+        t_0 = cycle.index[-1]
 
     cycle_axs.set(xlabel='Capacity (mAh/cm$^2$)')
     cycle_axs.set(ylabel='Cell Potential (V)')
@@ -277,7 +287,6 @@ def output(solution, an, sep, ca, params, sim):
     cycle_axs.tick_params(axis="y",direction="in")
     cycle_axs.get_yaxis().get_major_formatter().set_useOffset(False)
     cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
-    
     cycle_fig.tight_layout()
 
     # If no specification is given on whether to show plots, assume 'True'
@@ -291,8 +300,8 @@ def output(solution, an, sep, ca, params, sim):
         if sim['outputs']['savename']:
             filename = ('outputs/'+sim['outputs']['savename']+'_'+params['input']+'_'+dt)
             os.makedirs(filename)
-            print(filename)
-            np.savetxt(filename+'/output.csv', solution, delimiter=',')
+            solution_df.to_pickle(filename+'/output.pkl')
+            solution_df.to_csv(filename+'/output.csv', sep=',')
             summary_fig.savefig(filename+'/summary.pdf')
             cycle_fig.savefig(filename+'/cycles.pdf')
         
