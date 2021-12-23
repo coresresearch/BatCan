@@ -83,7 +83,7 @@ parameters:
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: 0.00005 # input C-rate
-      n_cycles: 0.01 # Number of cycles. 
+      n_cycles: 1.5 # Number of cycles. 
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
@@ -92,7 +92,7 @@ parameters:
         enable: True # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
       outputs:
-        show-plots: False
+        show-plots: True
         savename: 'Test_CC'
 
 # Cantera inputs:

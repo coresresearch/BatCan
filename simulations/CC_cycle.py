@@ -287,7 +287,6 @@ def output(solution, an, sep, ca, params, sim):
     cycle_axs.tick_params(axis="y",direction="in")
     cycle_axs.get_yaxis().get_major_formatter().set_useOffset(False)
     cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
-    
     cycle_fig.tight_layout()
 
     # If no specification is given on whether to show plots, assume 'True'
