@@ -36,6 +36,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # current for each step. 'equil' is a flag to indicate whether there is an 
     # equilibration step.
     steps, currents, times, equil = setup_cycles(sim, current, t_final)
+    n_steps = len(steps)
 
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
@@ -44,14 +45,14 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         return_val[1] = ca.voltage_lim(SV, sim['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-4, 'atol':1e-6, 
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':1e-6, 
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
             'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
     for i, step in enumerate(steps):
-        print('Step ',int(i+1),': ',step,'...\n')
+        print('Step ',int(i+1),'(out of', n_steps, '): ',step,'...\n')
 
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
@@ -66,6 +67,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         # Create an array of currents, one for each time step:
         i_data = currents[i]*np.ones_like(solution.values.t)
         cycle_number = int(i+1-equil)*np.ones_like(solution.values.t)
+        cycle_capacity = 1000*solution.values.t*abs(i_data)/3600
 
         # Append the current data array to any preexisting data, for output.  
         # If this is the first step, create the output data array.
@@ -73,7 +75,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             # Stack the times, the current at each time step, and the solution 
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t+data_out[0,-1], cycle_number, 
-                i_data, solution.values.y.T))
+                i_data, cycle_capacity, solution.values.y.T))
             data_out = np.hstack((data_out, SV))
 
             # Use SV at the end of the simualtion as the new initial condition:
@@ -82,7 +84,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             # Stack the times, the current at each time step, and the solution 
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t, cycle_number, i_data, 
-                solution.values.y.T))
+                cycle_capacity, solution.values.y.T))
             data_out = SV
 
             # Use SV at the end of the simualtion as the new initial condition:
@@ -216,6 +218,10 @@ def output(solution, an, sep, ca, params, sim):
     # Number of subplots 
     # (this simulation produces 2: current and voltage, vs. time):
     n_plots = 2 + an.n_plots + ca.n_plots + sep.n_plots
+    
+    # There are 4 variables stored before the state variables: (1) time (s), 
+    # (2) cycle number, (3) current density(A/cm2) , and (4) Capacity (mAh/cm2)
+    SV_offset = 4
 
     # Initialize the figure:
     summary_fig, summary_axs = plt.subplots(n_plots, 1, sharex=True, 
@@ -223,7 +229,7 @@ def output(solution, an, sep, ca, params, sim):
     
     summary_fig.set_size_inches((4.0,1.8*n_plots))
     # Calculate cell potential:   
-    phi_ptr = 3+ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
+    phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
  
     # Axis 1: Current vs. time (h):
     summary_axs[0].plot(solution[0,:]/3600, 1000*solution[2,:]/10000)
@@ -234,7 +240,6 @@ def output(solution, an, sep, ca, params, sim):
     summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
 
     # Add any relevant anode, cathode, and separator plots: 
-    SV_offset = 3
     summary_axs = an.output(summary_axs, solution, SV_offset, ax_offset=2)
     summary_axs = ca.output(summary_axs, solution, SV_offset, 
         ax_offset=2+an.n_plots)
@@ -260,22 +265,19 @@ def output(solution, an, sep, ca, params, sim):
     cycle_fig.set_size_inches((4.0,2.0))
 
     # Save the solution as a Pandas dataframe:
-    labels = ['cycle', 'current'] + an.SVnames + sep.SVnames + ca.SVnames
+    labels = (['cycle', 'current', 'capacity'] + an.SVnames + sep.SVnames 
+        + ca.SVnames)
     solution_df = pd.DataFrame(data = solution.T[:,1:],
                                 index = solution.T[:,0],
                                 columns = labels)
 
     solution_df.index.name = 'time (s)'                                
 
-    # time offset for start of cycle:
     t_0 = 0
     for i in range(int(solution[1,-1])):
         cycle = solution_df[solution_df.iloc[:,0] == i+1]
         cycle_axs.plot(1000*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
             cycle.iloc[:,phi_ptr-1])
-       
-        # cycle_axs.plot(1000*(cycle.iloc[:,0]-t_0)*abs(cycle.iloc[:,2])/3600,
-        #     cycle.iloc[:,phi_ptr])
 
         # Update time offset:
         t_0 = cycle.index[-1]
