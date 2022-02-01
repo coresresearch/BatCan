@@ -47,7 +47,7 @@ cell-description:
           D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'air_electrode'
-    n-points: 10
+    n-points: 1
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -82,8 +82,8 @@ parameters:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 0.05 # input C-rate
-      n_cycles: 2.5 # Number of cycles. 
+      C-rate: 0.1 # input C-rate
+      n_cycles: 1 # Number of cycles. 
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
@@ -94,7 +94,7 @@ parameters:
       outputs:
         show-plots: True # Show the plots and save them (True), or just save 
                          # them (False)?
-        savename: 'Test_CC' # Folder label for output files.
+        savename: 'Test_SpmAir' # Folder label for output files.
 
 # Cantera inputs:
 description: |-
