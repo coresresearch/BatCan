@@ -1,0 +1,507 @@
+air-electrolyte-reactions:
+- beta: 0.5
+  equation: O2(g) <=> O2(e)
+  exchange-current-density-formulation: true
+  id: cathode_gas_reaction
+  rate-constant:
+    A: 5.95
+    Ea: 0 kJ/mol
+    b: 0.0
+cantera-version: 2.5.0
+cathode-surf-reactions:
+- beta: 0.5
+  equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]
+  exchange-current-density-formulation: true
+  id: cathode_reaction
+  rate-constant:
+    A: !!python/object/apply:numpy.core.multiarray._reconstruct
+      args:
+      - !!python/name:numpy.ndarray ''
+      - !!python/tuple
+        - 0
+      - !!binary |
+        Yg==
+      state: !!python/tuple
+      - 1
+      - !!python/tuple
+        - 1
+      - !!python/object/apply:numpy.dtype
+        args:
+        - f8
+        - false
+        - true
+        state: !!python/tuple
+        - 3
+        - <
+        - null
+        - null
+        - null
+        - -1
+        - -1
+        - 0
+      - false
+      - !!binary |
+        AAAAABJ5VUE=
+    Ea: 58.0 kJ/mol
+    b: 0.0
+cell-description:
+  anode:
+    A_surf_ratio: 1.0
+    C_dl: 6e-5
+    bulk-phase: lithium_metal
+    class: dense_electrode
+    conductor-phase: electron
+    dy_elyte: 2e-6
+    electrolyte-phase: electrolyte
+    minimum-thickness: 1e-9
+    mobile-ion: Li+[elyt]
+    phi_0: 0.0
+    stored-ion:
+      charge: 1
+      name: Li[metal]
+    surf-phase: lithium_electrolyte
+    thickness: 0.00045
+  cathode:
+    C_dl: 6e-4
+    class: air_electrode
+    d_oxide: 1.0e-06
+    electrolyte-phase: electrolyte
+    elyte-iphase: air-elyte-interface
+    eps_host: 0.621138
+    eps_product: 0.0
+    gas-phase: oxygen
+    host-phase: conductor
+    mobile-ion: Li+[elyt]
+    n-points: 5
+    phi_0: 2.95
+    plot-species:
+    - name: O2(e)
+    product-phase: li-oxide
+    product-phase-min: 1e-6
+    r_host: 6e-6
+    sigma_el: 1.0E1
+    stored-species:
+      MW: 45.881
+      charge: 2
+      name: Li2O2[cathode]
+    surf-iphase: cathode-surf
+    th_oxide: 500e-9
+    thickness: 0.00035
+  separator:
+    class: porous_separator
+    electrolyte-phase: electrolyte
+    eps_electrolyte: 0.65
+    n_points: 5
+    phi_0: 2.91
+    sigma_io: 0.272
+    thickness: 0.00026
+    transport:
+      diffusion-coefficients:
+      - D_k: 1.11e-10
+        species: C10H22O5[elyt]
+      - D_k: 6.98e-11
+        species: Li+[elyt]
+      - D_k: 8.79e-11
+        species: ClO4-[elyt]
+      - D_k: 4.26e-11
+        species: O2(e)
+      - D_k: 2e-13
+        species: Li2O2[elyt]
+      mobile-ion: Li+[elyt]
+      model: dilute-solution
+date: Wed, 11 Dec 2019 16:59:07 -0500
+description: 'Cantera input file for an Li-Oxygen battery
+
+
+  This file includes a full set of thermodynamic and kinetic parameters of a
+
+  lithium-oxygen battery, in particular:
+
+  - Active materials: Li2O2 and Li (li metal)
+
+  - Organic electrolyte: TEGDME with 1M LiPF6
+
+  - Interfaces: LCO/electrolyte and Li/electrolyte
+
+  - Cathode: The cathode is comprised of catalyst, carbon, (will binder be a later
+  addition.)
+
+  - Charge-transfer reactions at the two interfaces
+
+
+  Bulk phases
+
+  ===========
+
+  Lithium (anode)
+
+
+  Ether based electrolyte (electrolyte)
+
+  Solvent: Tetraethylene glycol dimethyl ether
+
+  Salt: 0.25M LiTFSI
+
+
+  Interface phases
+
+  ================
+
+
+  lithium/electrolyte interface (lithium_electrolyte)
+
+  Species and site density are dummy entries (as we do not consider surface-
+
+  adsorbed species)
+
+
+  LCO/electrolyte interface (cathode_electrolyte)
+
+  Species and site density are dummy entries (as we do not consider surface-
+
+  adsorbed species)
+
+
+  Builds on prior code development (LeBar, 2019)'
+generator: cti2yaml
+input-files:
+- lithium_ion_battery.cti
+lithium_electrolyte-reactions:
+- beta: 0.5
+  equation: Li[metal] <=> Li+[elyt] + electron
+  id: lithium_faradaic_reaction
+  rate-constant:
+    A: 60000000000000.0
+    Ea: 0.0
+    b: 0.0
+parameters:
+  P: 101325
+  T: 23
+  simulations:
+  - C-rate: null
+    equilibrate:
+      enable: true
+      time: 5
+    first-step: discharge
+    i_ext: 0.0004 A/cm2
+    n_cycles: 1
+    outputs:
+      savename: CP04
+      show-plots: true
+    phi-cutoff-lower: 2.0
+    phi-cutoff-upper: 4.8
+    species-cutoff: 1e-12
+    type: CC_cycle
+  - C-rate: null
+    equilibrate:
+      enable: true
+      time: 5
+    first-step: discharge
+    i_ext: 0.0005 A/cm2
+    n_cycles: 1
+    outputs:
+      savename: CP05
+      show-plots: true
+    phi-cutoff-lower: 2.0
+    phi-cutoff-upper: 4.8
+    species-cutoff: 1e-12
+    type: CC_cycle
+  - C-rate: null
+    equilibrate:
+      enable: true
+      time: 5
+    first-step: discharge
+    i_ext: 0.0006 A/cm2
+    n_cycles: 1
+    outputs:
+      savename: CP06
+      show-plots: true
+    phi-cutoff-lower: 2.0
+    phi-cutoff-upper: 4.8
+    species-cutoff: 1e-12
+    type: CC_cycle
+phases:
+- density: 0.534 g/cm^3
+  name: lithium_metal
+  species:
+  - Li[metal]
+  state:
+    P: 1 atm
+    T: 300.0
+  thermo: ideal-condensed
+- density: 1.0 kg/m^3
+  elements:
+  - E
+  name: electron
+  species:
+  - electron
+  state:
+    X:
+      electron: 1.0
+  thermo: electron-cloud
+- kinetics: surface
+  name: lithium_electrolyte
+  reactions:
+  - lithium_electrolyte-reactions
+  site-density: 0.01 mol/cm^2
+  species:
+  - (dummy)
+  thermo: ideal-surface
+- elements:
+  - Li
+  - Cl
+  - C
+  - H
+  - O
+  - E
+  name: electrolyte
+  species:
+  - C10H22O5[elyt]
+  - Li+[elyt]
+  - ClO4-[elyt]
+  - O2(e)
+  - Li2O2[elyt]
+  standard-concentration-basis: unity
+  state:
+    X:
+      C10H22O5[elyt]: 0.9007
+      ClO4-[elyt]: 0.04961
+      Li+[elyt]: 0.04961
+      Li2O2[elyt]: 1E-9
+      O2(e): 0.000139
+  thermo: ideal-condensed
+- kinetics: surface
+  name: air-elyte-interface
+  reactions:
+  - air-electrolyte-reactions
+  site-density: 0.01 mol/cm^2
+  species:
+  - (dummy)
+  thermo: ideal-surface
+- elements:
+  - O
+  name: oxygen
+  species:
+  - O2(g)
+  state:
+    P: 1 atm
+    T: 300.0
+  thermo: ideal-gas
+  transport: mixture-averaged
+- density: 1.0 kg/m^3
+  elements:
+  - E
+  name: conductor
+  species:
+  - electron
+  state:
+    X:
+      electron: 1.0
+  thermo: electron-cloud
+- kinetics: surface
+  name: cathode-surf
+  reactions:
+  - cathode-surf-reactions
+  site-density: 2.50e-5 mol/cm^2
+  species:
+  - (dummy)
+  state:
+    P: 1 atm
+    T: 300.0
+  thermo: ideal-surface
+- composition:
+    Li: 2
+    O: 2
+  density: 2310 kg/m^3
+  name: li-oxide
+  species:
+  - Li2O2[cathode]
+  state:
+    P: 1 atm
+    T: 300.0
+  thermo: fixed-stoichiometry
+species:
+- composition:
+    Li: 1
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 12.998 cm^3/mol
+  name: Li[metal]
+  thermo:
+    h0: 19.50 kJ/mol
+    model: constant-cp
+    s0: 29.1 J/mol/K
+- composition:
+    E: 1
+  name: electron
+  note: 'Electron, MW: 0.000545 g/mol
+
+    Molar enthalpy and entropy set to zero (dummy entries because chemical
+
+    potential is set to zero for a "metal" phase)'
+  thermo:
+    h0: 0.0 kJ/mol
+    model: constant-cp
+    s0: 0.0 J/mol/K
+- composition: {}
+  name: (dummy)
+  note: Dummy species (needed for defining the interfaces)
+  thermo:
+    h0: 0.0 kJ/mol
+    model: constant-cp
+    s0: 0.0 J/mol/K
+- composition:
+    C: 10
+    H: 22
+    O: 5
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 226.24380574826557222 cm^3/mol
+  name: C10H22O5[elyt]
+  note: 'tetraethylene glycol dimethyl ether, MW: 228.28 g/mol
+
+    Density of tetraethylene glycol dimethyl ether: 1009 kg/m3 (used to calculate
+    species molar volume
+
+    as molecular weight (MW)/density)
+
+    Taken from: https://www.sigmaaldrich.com/US/en/sds/aldrich/172405
+
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+
+    not participate in chemical reactions)
+
+    Molar heat capacities over a certain temperature are here: https://pubs.acs.org/doi/pdf/10.1021/je800999s
+    implement?'
+  thermo:
+    h0: 1134.6 J/mol
+    model: constant-cp
+    s0: 0.0 J/mol/K
+- composition:
+    E: -1
+    Li: 1
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 5.508297619047619 cm^3/mol
+  name: Li+[elyt]
+  note: 'Lithium ion, MW: 6.940455 g/mol
+
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+
+    as molecular weight (MW)/density)
+
+    Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
+
+    Chemistry", Wiley-VCH (2006)'
+  thermo:
+    h0: -278.49 kJ/mol
+    model: constant-cp
+    s0: 13.4 J/mol/K
+- composition:
+    Cl: 1
+    E: 1
+    O: 4
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 78.92857142857143 cm^3/mol
+  name: ClO4-[elyt]
+  note: 'bis(trifluoromethylsulphonyl)imide ion, MW: 99.45 g/mol
+
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+
+    as molecular weight (MW)/density)
+
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+
+    not participate in chemical reactions)'
+  thermo:
+    h0: 0.0 J/mol
+    model: constant-cp
+    s0: 0.0 J/mol/K
+- composition:
+    Li: 2
+    O: 2
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 19.344262295081968261 cm^3/mol
+  name: Li2O2[elyt]
+  note: 'Li2O2 particle, MW: 38.94 g/mol
+
+    Density of electrolyte: 2013 kg/m3 (used to calculate species molar volume
+
+    as molecular weight (MW)/density)
+
+    https://www.chemspider.com/Chemical-Structure.145811.html
+
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+
+    not participate in chemical reactions)'
+  thermo:
+    h0: 0.0 J/mol
+    model: constant-cp
+    s0: 0.0 J/mol/K
+- composition:
+    O: 2
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 28.0445 cm^3/mol
+  name: O2(e)
+  note: 'An O2 molecule dissolved into electrolyte.  Thermo tuned to get correct solubility
+    at room temperature.
+
+    Molar volume estimated from liquid O2 values. https://en.wikipedia.org/wiki/Liquid_oxygen#cite_note-3'
+  thermo:
+    h0: -39.2 kJ/mol
+    model: constant-cp
+    s0: 0. J/mol/K
+- composition:
+    O: 2
+  name: O2(g)
+  thermo:
+    data:
+    - - 3.78245636
+      - -0.00299673416
+      - 9.84730201e-06
+      - -9.68129509e-09
+      - 3.24372837e-12
+      - -1063.94356
+      - 3.65767573
+    - - 3.28253784
+      - 0.00148308754
+      - -7.57966669e-07
+      - 2.09470555e-10
+      - -2.16717794e-14
+      - -1088.45772
+      - 5.45323129
+    model: NASA7
+    note: TPIS89
+    temperature-ranges:
+    - 200.0
+    - 1000.0
+    - 3500.0
+  transport:
+    diameter: 3.458
+    geometry: linear
+    model: gas
+    polarizability: 1.6
+    rotational-relaxation: 3.8
+    well-depth: 107.4
+- composition:
+    Li: 2
+    O: 2
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 19.861904761904753514 cm^3/mol
+  name: Li2O2[cathode]
+  note: 'h0 value tuned to give correct open circuit potential, relative to li metal
+    anode.
+
+    Lithium peroxide, MW: 45.881 g/mol.
+
+    Density of L2O2: 2310 kg/m3
+
+    (Haynes, 2016)'
+  thermo:
+    h0: -634.3 kJ/mol
+    model: constant-cp
+    s0: 0.0 J/mol/K
