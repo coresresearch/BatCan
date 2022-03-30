@@ -14,34 +14,7 @@ cathode-surf-reactions:
   exchange-current-density-formulation: true
   id: cathode_reaction
   rate-constant:
-    A: !!python/object/apply:numpy.core.multiarray._reconstruct
-      args:
-      - !!python/name:numpy.ndarray ''
-      - !!python/tuple
-        - 0
-      - !!binary |
-        Yg==
-      state: !!python/tuple
-      - 1
-      - !!python/tuple
-        - 1
-      - !!python/object/apply:numpy.dtype
-        args:
-        - f8
-        - false
-        - true
-        state: !!python/tuple
-        - 3
-        - <
-        - null
-        - null
-        - null
-        - -1
-        - -1
-        - 0
-      - false
-      - !!binary |
-        AAAAABJ5VUE=
+    A: 6879000.0
     Ea: 58.0 kJ/mol
     b: 0.0
 cell-description:
@@ -72,7 +45,7 @@ cell-description:
     gas-phase: oxygen
     host-phase: conductor
     mobile-ion: Li+[elyt]
-    n-points: 5
+    n-points: 15
     phi_0: 2.95
     plot-species:
     - name: O2(e)
@@ -91,7 +64,7 @@ cell-description:
     class: porous_separator
     electrolyte-phase: electrolyte
     eps_electrolyte: 0.65
-    n_points: 5
+    n_points: 15
     phi_0: 2.91
     sigma_io: 0.272
     thickness: 0.00026
@@ -186,7 +159,7 @@ parameters:
     i_ext: 0.0004 A/cm2
     n_cycles: 1
     outputs:
-      savename: CP04
+      savename: CPCN04
       show-plots: true
     phi-cutoff-lower: 2.0
     phi-cutoff-upper: 4.8
@@ -200,8 +173,8 @@ parameters:
     i_ext: 0.0005 A/cm2
     n_cycles: 1
     outputs:
-      savename: CP05
-      show-plots: true
+      savename: CPCN05
+      show-plots: false
     phi-cutoff-lower: 2.0
     phi-cutoff-upper: 4.8
     species-cutoff: 1e-12
@@ -214,8 +187,8 @@ parameters:
     i_ext: 0.0006 A/cm2
     n_cycles: 1
     outputs:
-      savename: CP06
-      show-plots: true
+      savename: CPCN06
+      show-plots: false
     phi-cutoff-lower: 2.0
     phi-cutoff-upper: 4.8
     species-cutoff: 1e-12
