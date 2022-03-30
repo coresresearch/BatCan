@@ -11,7 +11,7 @@ from scipy import optimize as spo
 import yaml
 
 #%%
-inputfile = ["LiMetal_PorousSep_Air.yaml"]
+#inputfile = ["LiMetal_PorousSep_Air.yaml"]
 #Summary_array = [0 for _ in inputfile] forgot what this is for.  It might be useful some day
 #%%
 ID_key = {"CPCN04": "50CP50CNT0.4", "CP04":"CP0.4", "CPCN05":"50CP50CNT0.5", "CP05": "CP0.5", "CPCN06":"50CP50CNT0.6", "CP06":"CP0.6"}
@@ -22,9 +22,10 @@ test_yaml = 'D:\projects\BatCan\inputs\LiMetal_PorousSep_Air_test.yaml'
 #%%
 
 def batcanrun(rate_constant):
+    placeholder = float(rate_constant[0])
     with open(test_yaml, 'r') as file:
         imput_file = yaml.safe_load(file)
-    imput_file['cathode-surf-reactions'][0]['rate-constant']['A'] = rate_constant
+    imput_file['cathode-surf-reactions'][0]['rate-constant']['A'] = placeholder
     with open(test_yaml, "w") as f:
         yaml.dump(imput_file, f)
     foldarray =os.listdir(path)
@@ -38,12 +39,12 @@ def batcanrun(rate_constant):
         RefData = pd.read_excel(refpath + "/"+ comparison, sheet_name= dataset)
         SSR_file = SSRmain(i)
         SSRarray.append(SSR_file)
-        print(SSRarray)
+    print(SSRarray)
     return(sum(SSRarray))
 
 #%%
 test_yaml = 'D:\projects\BatCan\inputs\LiMetal_PorousSep_Air_test.yaml'
-Done = batcanrun(5629000.0)
+Done = batcanrun([6879000])
 print(Done)
 
 #%%
