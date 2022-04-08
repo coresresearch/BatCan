@@ -71,7 +71,14 @@ def initialize(input_file=None):
     else:
         raise ValueError('Please specify simulation parameters.')
 
+    if 'fit-parameters' in inputs:
+        fit_parameters = inputs['fit-parameters']
+        return (anode_inputs, sep_inputs, cathode_inputs, parameters, 
+             fit_parameters)
+    else:
+         return anode_inputs, sep_inputs, cathode_inputs, parameters
 
-    return anode_inputs, sep_inputs, cathode_inputs, parameters
+
+   
     
     
