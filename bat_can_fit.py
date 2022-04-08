@@ -8,6 +8,7 @@
 # Import modules
 import importlib # allows us to import from user input string.
 import numpy as np
+from scipy import optimize as spo
 
 from bat_can_init import initialize
 
@@ -29,7 +30,8 @@ def bat_can(input = None, return_type = None):
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
-    an_inputs, sep_inputs, ca_inputs, parameters = initialize(input_file)
+    an_inputs, sep_inputs, ca_inputs, parameters, fit_params = \
+        initialize(input_file)
 
     # Save name of input file, without path or extension:
     parameters['input'] = input
@@ -78,17 +80,59 @@ def bat_can(input = None, return_type = None):
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:
-    for sim in parameters['simulations']:
-        model = importlib.import_module('.'+sim['type'], package='simulations')
+    if 'initialize' in parameters and parameters['initialize']['enable']:
+        if parameters['initialize']['type'] == 'open-circuit':
+            model = importlib.import_module('.'+'CC_cycle', 
+                package='simulations')
 
-        solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+            sim = {'i_ext': None, 'C-rate': 0.0, 'n_cycles': 0, 
+                'first-step': 'discharge', 'equilibrate': 
+                {'enable': True, 'time':  5}, 'phi-cutoff-lower': 2.0, 
+                'phi-cutoff-upper': 4.8}
+            
+            solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+            
+            # Save final state as the initial state for all subsequent 
+            # simulation steps:
+            SV_0 = model.final_state(solution)
 
-        #=======================================================================
-        #   CREATE FIGURES AND SAVE ALL OUTPUTS
-        #=======================================================================
-        # Call any output routines related to the simulation type:
-        model.output(solution, an, sep, ca, parameters, sim)
+        else:
+            raise ValueError("Initialization method currently not implemented.")
 
+
+    def run_model(x_guess):
+        print('x = ',x_guess)
+        for i, x in enumerate(x_guess):
+            if fit_params[i]['type'] == 'elyte-transport':
+                sep.D_k[sep.elyte_obj.species_index(fit_params[i]['species'])] \
+                    = x
+
+
+        SSR = 0
+        for sim in parameters['simulations']:
+            model = importlib.import_module('.'+sim['type'], package='simulations')
+
+            solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+
+            # Read out the results:
+            results = model.output(solution, an, sep, ca, parameters, sim, True)
+
+            SSR += results['capacity'].iloc[-1]
+
+        print('SSR = ',SSR)
+        return SSR
+
+
+
+    x_start = []
+    for x in fit_params:
+        x_start.append(x['guess-value'])
+
+    
+    x_bounds = [(1e-15, None)]
+    result = spo.minimize(run_model, x_start, bounds = x_bounds, 
+        options={'disp': True})
+    # print(result)
 
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE

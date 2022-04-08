@@ -202,7 +202,7 @@ def residual(t, SV, SVdot, resid, inputs):
     
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
-def output(solution, an, sep, ca, params, sim):
+def output(solution, an, sep, ca, params, sim, return_flag=False):
     """
     Prepare and save any output data to the correct location. Prepare, 
     create, and save any figures relevant to constant-current cycling.
@@ -292,7 +292,9 @@ def output(solution, an, sep, ca, params, sim):
     cycle_fig.tight_layout()
 
     # If no specification is given on whether to show plots, assume 'True'
-    if 'outputs' not in sim:
+    if return_flag:
+        return solution_df
+    elif 'outputs' not in sim:
         summary_fig.savefig('output.pdf')
         cycle_fig.savefig('cycles.pdf')
         plt.show()
@@ -300,14 +302,22 @@ def output(solution, an, sep, ca, params, sim):
         now = datetime.now()
         dt =  now.strftime("%Y%m%d_%H%M")
         if sim['outputs']['savename']:
-            filename = ('outputs/'+sim['outputs']['savename']+'_'+params['input']+'_'+dt)
-            os.makedirs(filename)
-            solution_df.to_pickle(filename+'/output.pkl')
-            solution_df.to_csv(filename+'/output.csv', sep=',')
-            summary_fig.savefig(filename+'/summary.pdf')
-            cycle_fig.savefig(filename+'/cycles.pdf')
+            if len(params['simulations']) == 1:
+                sim['filename'] = ('outputs/' + params['input'] +'_' 
+                    + sim['outputs']['savename'] + '_' + dt)
+            else:
+                sim['filename'] = ('outputs/' + params['input'] +'/' 
+                    + sim['outputs']['savename'] + '_' + dt)
+            os.makedirs( sim['filename'])
+            solution_df.to_pickle(sim['filename']+'/output.pkl')
+            solution_df.to_csv(sim['filename']+'/output.csv', sep=',')
+            summary_fig.savefig(sim['filename']+'/summary.pdf')
+            cycle_fig.savefig(sim['filename']+'/cycles.pdf')
         
         if 'show-plots' not in sim['outputs'] or sim['outputs']['show-plots']:
             plt.show()
     
-    
+
+def final_state(solution):
+    # Return the state vector at the final simulation time:
+    return solution[4:, -1]
