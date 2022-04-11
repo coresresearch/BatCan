@@ -25,7 +25,7 @@ cell-description:
   separator:
     class: 'porous_separator'
     thickness: 2.6e-4  # separator thickness, m
-    n_points: 5       # Number of finite volumes to discretize
+    n_points: 10       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 2.91 # Initial electric potential, V // Yin, 2017
@@ -47,7 +47,7 @@ cell-description:
           D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'air_electrode'
-    n-points: 5
+    n-points: 15
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -99,6 +99,7 @@ parameters:
         show-plots: False # Show the plots and save them (True), or just save
                          # them (False)?
         savename: 'CPCN04' # Folder label for output files.
+      validation: 'LiAir_Test/CPC04.xls' #Location of validation data
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: 0.0005 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
@@ -115,6 +116,7 @@ parameters:
         show-plots: False # Show the plots and save them (True), or just save
                          # them (False)?
         savename: 'CPCN05' # Folder label for output files.
+      validation: 'LiAir_Test/CPC05.xls' #Location of validation data
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: 0.0006 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
@@ -131,15 +133,15 @@ parameters:
         show-plots: False # Show the plots and save them (True), or just save
                          # them (False)?
         savename: 'CPCN06' # Folder label for output files.
+      validation: 'LiAir_Test/CPC06.xls' #Location of validation data
 
 fit-parameters:
-  # kinetics:
-  #   - phase: 'cathode-surf'
-  #     reaction-id: 'cathode_reaction'
-  #     guess-value: 9500
   - type: 'elyte-transport'
     species: 'O2(e)'
     guess-value: 1e-12
+  - type: 'cathode-kinetics'
+    reaction-index: 0
+    guess-value: 1 # This is a multiplier to scale the value in the mech.
 
 # Cantera inputs:
 description: |-

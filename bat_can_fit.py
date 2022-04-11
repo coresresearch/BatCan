@@ -8,8 +8,11 @@
 # Import modules
 import importlib # allows us to import from user input string.
 import numpy as np
+import pandas as pd
 from scipy import optimize as spo
+import timeit
 
+from submodels.fitting import SSR_voltage_capacity as SSR
 from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it 
@@ -102,37 +105,57 @@ def bat_can(input = None, return_type = None):
 
     def run_model(x_guess):
         print('x = ',x_guess)
+    
+        # Right now we just do diffusion coefficients:
         for i, x in enumerate(x_guess):
             if fit_params[i]['type'] == 'elyte-transport':
                 sep.D_k[sep.elyte_obj.species_index(fit_params[i]['species'])] \
                     = x
+            if fit_params[i]['type'] == 'cathode-kinetics':
+                ca.surf_obj.set_multiplier(x, fit_params[i]['reaction-index'])
 
-
-        SSR = 0
+        outcome = 0
         for sim in parameters['simulations']:
-            model = importlib.import_module('.'+sim['type'], package='simulations')
+            try:
+                model = importlib.import_module('.'+sim['type'], package='simulations')
 
-            solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+                solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
 
-            # Read out the results:
-            results = model.output(solution, an, sep, ca, parameters, sim, True)
+                # Read out the results:
+                results = model.output(solution, an, sep, ca, parameters, sim, True)
 
-            SSR += results['capacity'].iloc[-1]
+                sim_data = np.array((results['capacity'].to_numpy(),
+                    results['phi_ed'].iloc[:,-1]))
+                
+                ssr_calc = SSR(sim['ref_data'].to_numpy(), sim_data)
+                print('SSR = ', ssr_calc)
+                outcome += ssr_calc 
+            except:
+                # Assign a large penalty for failed parameter sets:
+                ssr_calc = 1e23
+                print('Simulation failed')
+                outcome += ssr_calc
 
-        print('SSR = ',SSR)
-        return SSR
+        print('SSR = ', outcome)
+        return outcome
 
-
-
+    start = timeit.default_timer()
     x_start = []
+    x_bounds = []
     for x in fit_params:
         x_start.append(x['guess-value'])
+        x_bounds.append((1e-15, None))
 
-    
-    x_bounds = [(1e-15, None)]
+    for sim in parameters['simulations']:
+        sim['ref_data'] = pd.read_excel('data/' + sim['validation'])
+
+    # x_bounds = [(1e-15, None), (1e-15, None)]
     result = spo.minimize(run_model, x_start, bounds = x_bounds, 
         options={'disp': True})
-    # print(result)
+    print(result)
+
+    stop = timeit.default_timer()
+    print('Time: ', stop - start)  
 
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE
