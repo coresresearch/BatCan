@@ -273,6 +273,7 @@ def output(solution, an, sep, ca, params, sim, return_flag=False):
 
     solution_df.index.name = 'time (s)'                                
 
+    # iterate over cycles:
     t_0 = 0
     for i in range(int(solution[1,-1])):
         cycle = solution_df[solution_df.iloc[:,0] == i+1]
