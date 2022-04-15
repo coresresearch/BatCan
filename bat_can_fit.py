@@ -7,12 +7,14 @@
 """
 # Import modules
 import importlib # allows us to import from user input string.
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import optimize as spo
 import timeit
 
-from submodels.fitting import SSR_voltage_capacity as SSR
+#todo #53
+from submodels.fitting import voltage_capacity as fit
 from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it 
@@ -103,7 +105,7 @@ def bat_can(input = None, return_type = None):
             raise ValueError("Initialization method currently not implemented.")
 
 
-    def run_model(x_guess):
+    def run_model(x_guess, plot_flag = False, SSR_flag = True):
         print('x = ',x_guess)
     
         # Right now we just do diffusion coefficients:
@@ -112,39 +114,69 @@ def bat_can(input = None, return_type = None):
                 sep.D_k[sep.elyte_obj.species_index(fit_params[i]['species'])] \
                     = x
             if fit_params[i]['type'] == 'cathode-kinetics':
-                ca.surf_obj.set_multiplier(x, fit_params[i]['reaction-index'])
+                ca.surf_obj.set_multiplier(x, 
+                    fit_params[i]['reaction-index'])
+
+        if plot_flag:
+            fig, axs = plt.subplots(1, 1, sharex=True, 
+                gridspec_kw = {'wspace':0, 'hspace':0})
+        
+            fig.set_size_inches((5.0, 2.25))
+
+            ndata = len(parameters['simulations'])
+            cmap = plt.get_cmap('plasma')
+            ndata = 4
+            
+            color_ind = np.linspace(0,1,ndata)
+            colors = list()
+
+            for i in np.arange(ndata):
+                colors.append(cmap(color_ind[i]))
 
         outcome = 0
+        icolor = 0
         for sim in parameters['simulations']:
             try:
                 model = importlib.import_module('.'+sim['type'], package='simulations')
 
-                solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+                solution = model.run(SV_0, an, sep, ca, algvars, 
+                    parameters, sim)
 
                 # Read out the results:
-                results = model.output(solution, an, sep, ca, parameters, sim, True)
-
+                results = model.output(solution, an, sep, ca, parameters, sim, 
+                    plot_flag=False, return_flag=True)
+                phi_sim = results['phi_ed'].to_numpy()[:,-1]
+                    
                 sim_data = np.array((results['capacity'].to_numpy(),
-                    results['phi_ed'].iloc[:,-1]))
-                
-                ssr_calc = SSR(sim['ref_data'].to_numpy(), sim_data)
-                print('SSR = ', ssr_calc)
-                outcome += ssr_calc 
+                    phi_sim))
+
+                if SSR_flag:   
+                    ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
+                        units_scale = 1e4)
+                    print('SSR = ', ssr_calc)
+                    outcome += ssr_calc 
+                elif plot_flag:
+                    axs = fit.plot(sim['ref_data'].to_numpy(), sim_data.T,
+                        axs, units_scale = 1e4, color = colors[icolor])
+                    icolor += 1
             except:
                 # Assign a large penalty for failed parameter sets:
                 ssr_calc = 1e23
                 print('Simulation failed')
                 outcome += ssr_calc
 
-        print('SSR = ', outcome)
-        return outcome
+        if SSR_flag:
+            print('SSR = ', outcome)
+            return outcome
+        elif plot_flag:
+            plt.show()
 
     start = timeit.default_timer()
     x_start = []
     x_bounds = []
     for x in fit_params:
         x_start.append(x['guess-value'])
-        x_bounds.append((1e-15, None))
+        x_bounds.append((x['min'], x['max'])) #todo #54
 
     for sim in parameters['simulations']:
         sim['ref_data'] = pd.read_excel('data/' + sim['validation'])
@@ -152,7 +184,12 @@ def bat_can(input = None, return_type = None):
     # x_bounds = [(1e-15, None), (1e-15, None)]
     result = spo.minimize(run_model, x_start, bounds = x_bounds, 
         options={'disp': True})
+    
     print(result)
+
+    print("Best fit = ", result.x)
+
+    run_model(result.x, plot_flag=True, SSR_flag=False)
 
     stop = timeit.default_timer()
     print('Time: ', stop - start)  

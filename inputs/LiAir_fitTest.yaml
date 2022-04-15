@@ -42,7 +42,7 @@ cell-description:
         - species: 'ClO4-[elyt]'
           D_k: 8.79e-11 # m2 S-1 // Saito, 2017
         - species: 'O2(e)'
-          D_k: 4.26e-11 # m2 s-1 // Gittleson, 2017
+          D_k: 2.95e-5 #4.26e-11 # m2 s-1 // Gittleson, 2017
         - species: 'Li2O2[elyt]'
           D_k: 2e-13 # can't find (assume low?)
   cathode:
@@ -59,7 +59,7 @@ cell-description:
     thickness: 3.50e-4 # cathode thickness, m
     r_host: 6e-6 # Carbon Particle radius, m
     d_oxide: 1.0e-6 #Oxide diameter, m
-    th_oxide: 500e-9 #oxide thickness, m
+    th_product: 500e-9 #oxide thickness, m
     phi_0: 2.95 # Initial electric potential, V // Yin, 2017
     sigma_el: 1.0E1 #electrical ondutivity of the host
     eps_host: 0.621138 # Solid phase volume fraction of carbon -
@@ -138,10 +138,19 @@ parameters:
 fit-parameters:
   - type: 'elyte-transport'
     species: 'O2(e)'
-    guess-value: 1e-12
+    guess-value: 2.9242e-5
+    min: 1e-15
+    max: 1e-3
   - type: 'cathode-kinetics'
     reaction-index: 0
-    guess-value: 1 # This is a multiplier to scale the value in the mech.
+    guess-value: 10 # This is a multiplier to scale the value in the mech.
+    min: 1e-10
+    max: 1e10
+  - type: 'cathode-microstructure'
+    parameter: 'th_product'
+    guess-value: 500e-9
+    min: 5e-9
+    max: 2e-6
 
 # Cantera inputs:
 description: |-
