@@ -12,23 +12,23 @@ import cantera as ct
 from math import tanh
 import numpy as np
 
-class electrode(): 
+class electrode():
     """
     Create an electrode object representing the single particle electrode.
     """
 
-    def __init__(self, input_file, inputs, sep_inputs, counter_inputs,    
+    def __init__(self, input_file, inputs, sep_inputs, counter_inputs,
         electrode_name, params, offset):
         """
         Initialize the model.
-        """ 
-   
+        """
+
         # Import relevant Cantera objects.
         self.elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
         self.host_obj = ct.Solution(input_file, inputs['host-phase'])
-        self.host_surf_obj = ct.Interface(input_file, inputs['surf-phase'], 
+        self.host_surf_obj = ct.Interface(input_file, inputs['surf-phase'],
             [self.elyte_obj, self.host_obj])
-       
+
         # Create conversion phases and associated electrolyte interfaces:
         self.conversion_phases = []
         self.conversion_obj = []
@@ -37,12 +37,12 @@ class electrode():
         for ph in inputs["conversion-phases"]:
             self.conversion_phases.append(ph["bulk-name"])
             self.conversion_obj.append(ct.Solution(input_file, ph["bulk-name"]))
-            self.conversion_surf_obj.append(ct.Interface(input_file, 
-                ph["surf-name"],[self.elyte_obj, self.host_obj, 
+            self.conversion_surf_obj.append(ct.Interface(input_file,
+                ph["surf-name"],[self.elyte_obj, self.host_obj,
                 self.conversion_obj[self.n_conversion_phases]]))
             self.n_conversion_phases += 1
 
-        # Anode or cathode? Positive external current delivers positive charge 
+        # Anode or cathode? Positive external current delivers positive charge
         # to the anode, and removes positive charge from the cathode.
         self.name = electrode_name
         if self.name=='anode':
@@ -52,7 +52,7 @@ class electrode():
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
-        # Store the species index of the Li ion in the Cantera object for the 
+        # Store the species index of the Li ion in the Cantera object for the
         # electrolyte phase:
         self.index_Li = self.elyte_obj.species_index(inputs['mobile-ion'])
 
@@ -62,27 +62,27 @@ class electrode():
         self.dyInv = 1/self.dy
         self.dyInv_n = self.n_points/self.dy*np.ones((self.n_points, 1))
 
-        # For some models, the elyte thickness is different from that of the 
+        # For some models, the elyte thickness is different from that of the
         # electrode, so we specify is separately:
         self.dy_elyte = self.dy
 
         # Phase volume fractions
-        self.eps_solid = inputs['eps_solid']
-        self.eps_elyte = 1 - self.eps_solid
+        self.eps_host = inputs['eps_host']
+        self.eps_elyte = 1 - self.eps_host
 
         # Electrode-electrolyte interface area, per unit geometric area.
-        # This calculation assumes spherical particles of a single radius, with 
+        # This calculation assumes spherical particles of a single radius, with
         # no overlap.
-        self.A_surf_ratio = (3*self.eps_solid*self.dy/inputs['r_p'])
+        self.A_surf_ratio = (3*self.eps_host*self.dy/inputs['r_p'])
 
         # Inverse double layer capacitance, per unit interfacial area.
         self.C_dl_Inv = 1/inputs['C_dl']
 
-        # Microstructure-based transport scaling factor, based on Bruggeman 
+        # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
         self.elyte_microstructure = self.eps_elyte**1.5
-        
-        # SV_offset specifies the index of the first SV variable for the 
+
+        # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
         self.SV_offset = offset
 
@@ -90,16 +90,16 @@ class electrode():
 
         # Max concentration of stored ion (conversion phase end product)
         # Concentration of stored Li, per unit volume of conversion phase:
-        Conc = (self.conversion_obj[inputs["stored-ion"]["n_phase"]].       
+        Conc = (self.conversion_obj[inputs["stored-ion"]["n_phase"]].
             concentrations[0])
-        
+
         self.capacity = (Conc*inputs['stored-ion']['charge']*ct.faraday
-                * (1. - inputs['eps_solid']))*inputs['thickness']/3600
-        
-        # Number of state variables: electrode potential, electrolyte 
-        # potential, phase volume fraction for each conversion phase, 
+                * (1. - inputs['eps_host']))*inputs['thickness']/3600
+
+        # Number of state variables: electrode potential, electrolyte
+        # potential, phase volume fraction for each conversion phase,
         # electrolyte composition (n_species)
-        self.n_vars_node = (2 + self.elyte_obj.n_species 
+        self.n_vars_node = (2 + self.elyte_obj.n_species
             + self.n_conversion_phases )
         self.n_vars = self.n_vars_node * self.n_points
 
@@ -122,20 +122,20 @@ class electrode():
         self.SVptr['phi_ed'] = np.array([0])
         self.SVptr['phi_dl'] = np.array([1])
 
-        self.SVptr['eps_conversion'] = np.empty((self.n_points, 
+        self.SVptr['eps_conversion'] = np.empty((self.n_points,
             self.n_conversion_phases), dtype=int)
         for j in range(self.n_conversion_phases):
-            self.SVptr['eps_conversion'][:,j] = np.arange(2+j, self.n_vars, 
+            self.SVptr['eps_conversion'][:,j] = np.arange(2+j, self.n_vars,
                 self.n_vars_node, dtype=int)
-        self.SVptr['C_k_elyte'] = np.empty((self.n_points, 
+        self.SVptr['C_k_elyte'] = np.empty((self.n_points,
             self.elyte_obj.n_species), dtype=int)
         for j in range(self.n_points):
             self.SVptr['C_k_elyte'][j,:] = \
                 np.arange(self.n_vars_node*j + 2+self.n_conversion_phases,
-                self.n_vars_node*j + 2 + self.n_conversion_phases 
+                self.n_vars_node*j + 2 + self.n_conversion_phases
                 + self.elyte_obj.n_species, dtype=int)
 
-        # A pointer to where the SV variables for this electrode are, within 
+        # A pointer to where the SV variables for this electrode are, within
         # the overall solution vector for the entire problem:
         self.SVptr['electrode'] = np.arange(offset, offset+self.n_vars)
 
@@ -166,15 +166,15 @@ class electrode():
 
         1. The electric potential in the electrode phase is an algebraic variable.
             In the anode, phi = 0 is the reference potential for the system.
-            In the cathode, the electric potential must be such that the ionic current is spatially invariant (i.e. it is constant and equal to the external applied current, for galvanostatic simulations).  
+            In the cathode, the electric potential must be such that the ionic current is spatially invariant (i.e. it is constant and equal to the external applied current, for galvanostatic simulations).
 
             The residual corresponding to these variables (suppose an index 'j') are of the form:
                 resid[j]  = (expression equal to zero)
 
         2. All other variables are governed by differential equations.
-        
-            We have a means to calculate dSV[j]/dt for a state variable SV[j] (state variable with index j).  
-        
+
+            We have a means to calculate dSV[j]/dt for a state variable SV[j] (state variable with index j).
+
             The residuals corresponding to these variables will have the form:
                 resid[j] = SVdot[j] - (expression equal to dSV/dt)
 
@@ -186,7 +186,7 @@ class electrode():
             - counter: the object representing the electrode counter to the current electrode
             - params: dict of battery simulation parameters.
         """
-        
+
         # Save local copies of the solution vectors, pointers for this electrode:
         SVptr = self.SVptr
         SV_loc = SV[SVptr['electrode']]
@@ -203,8 +203,8 @@ class electrode():
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
 
-        # Assume converstin phases (and associated interfaces) take the 
-        # electric potential of the solid host.  For most, it will not matter, 
+        # Assume converstin phases (and associated interfaces) take the
+        # electric potential of the solid host.  For most, it will not matter,
         # since the host provides the electron source/sink:
         for ph in self.conversion_obj:
             ph.electric_potential = phi_ed
@@ -212,37 +212,37 @@ class electrode():
             ph.electric_potential = phi_ed
 
         C_k_elyte = SV_loc[SVptr["C_k_elyte"]]
-        
+
         # All mole fractions are normalized, by default:
         self.elyte_obj.X = C_k_elyte
-        
-        # Faradaic current density is positive when electrons are consumed 
+
+        # Faradaic current density is positive when electrons are consumed
         # (Li transferred to the electrode)
-        i_Far = -(ct.faraday 
+        i_Far = -(ct.faraday
             * self.host_surf_obj.get_net_production_rates(self.host_obj))
-        
-        # Calculate the electrolyte species fluxes and associated ionic current 
+
+        # Calculate the electrolyte species fluxes and associated ionic current
         # at the boundary with the separator:
         N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T'])
 
         if self.name=='anode':
             # The electric potential of the anode = 0 V.
             resid[[SVptr['phi_ed'][0]]] = SV_loc[SVptr['phi_ed'][0]]
-            
+
         elif self.name=='cathode':
-            # For the cathode, the potential of the cathode must be such that 
-            # the electrolyte electric potential (calculated as phi_ca + 
+            # For the cathode, the potential of the cathode must be such that
+            # the electrolyte electric potential (calculated as phi_ca +
             # dphi_dl) produces the correct ionic current between the separator # and cathode:
             if params['boundary'] == 'current':
                 resid[SVptr['phi_ed']] = i_io - params['i_ext']
-            elif params['boundary'] == 'potential':   
+            elif params['boundary'] == 'potential':
                 # Potential at time t:
                 phi = np.interp(t, params['times'], params['potentials'])
-                   
+
                 # Cell potential must equal phi:
                 resid[SVptr['phi_ed']] = SV_loc[SVptr['phi_ed']] - phi
 
-        # Double layer current has the same sign as i_Far, and is based on 
+        # Double layer current has the same sign as i_Far, and is based on
         # charge balance in the electrolyte phase:
         i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
 
@@ -250,19 +250,19 @@ class electrode():
         resid[SVptr['phi_dl']] = \
             SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv
 
-        # Molar production rate of electrolyte species (kmol/m2/s), due to 
+        # Molar production rate of electrolyte species (kmol/m2/s), due to
         # reactions at the host surface and for each conversion phase surface:
         sdot_elyte = self.host_surf_obj.get_net_production_rates(self.elyte_obj)
         for j, ph in enumerate(self.conversion_surf_obj):
-            
+
             #TODO: Need a tanh function to scale these reactions when the phase disappears.
 
-            # sdot_elyte += ph.get_net_production_rates(self.elyte_obj)
-        
-        # Double layer current removes Li from the electrolyte.  Subtract this 
+            sdot_elyte += ph.get_net_production_rates(self.elyte_obj)
+
+        # Double layer current removes Li from the electrolyte.  Subtract this
         # from sdot_electrolyte:
         sdot_elyte[self.index_Li] -= i_dl / ct.faraday
-            
+
         # Change in electrolyte species concentration per unit time:
         dCk_elyte_dt = \
             ((sdot_elyte * self.A_surf_ratio + self.i_ext_flag * N_k_sep)
@@ -270,7 +270,7 @@ class electrode():
         resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
 
         return resid
-        
+
     def voltage_lim(self, SV, val):
         """
         Check to see if the voltage limits have been exceeded.
@@ -278,15 +278,15 @@ class electrode():
         # Save local copies of the solution vector and pointers for this electrode:
         SVptr = self.SVptr
         SV_loc = SV[SVptr['electrode']]
-        
-        # Calculate the current voltage, relative to the limit.  The simulation 
-        # looks for instances where this value changes sign (i.e. crosses zero)    
+
+        # Calculate the current voltage, relative to the limit.  The simulation
+        # looks for instances where this value changes sign (i.e. crosses zero)
         voltage_eval = SV_loc[SVptr['phi_ed']] - val
-        
+
         return voltage_eval
 
     def adjust_separator(self, sep):
-        """ 
+        """
         Sometimes, an electrode object requires adjustments to the separator object.  This is not the case, for the SPM.
         """
 

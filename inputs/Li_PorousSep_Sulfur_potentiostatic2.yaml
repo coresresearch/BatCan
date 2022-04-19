@@ -15,12 +15,12 @@ cell-description:
       name: Li(b)
       charge: 1
     mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
-    thickness: 8e-6 # Initial anode thickness, m
+    thickness: 15e-6 # Initial anode thickness, m
     minimum-thickness: 1e-9 # minimum anode thickness, m
     phi_0: 0. # Initial electric potential, V
     A_surf_ratio: 1.0 # Interface area per unit geometric area
-    C_dl: 9e-6 #F/m2
-    dy_elyte: 2e-6
+    C_dl: 6e-3 #F/m2
+    dy_elyte: 4e-6
   separator:
     class: 'porous_separator'
     thickness: 20e-6  # separator thickness, m
@@ -33,27 +33,27 @@ cell-description:
       diffusion-coefficients: # Species names must match those in the phase
       #definition, below:
         - species: 'TEGDME(e)'
-          D_k: 1e-12
+          D_k: 1e-15
         - species: 'Li+(e)'
-          D_k: 1e-10
+          D_k: 1e-15
         - species: 'TFSI-(e)'
-          D_k: 4e-10
+          D_k: 2e-11
         - species: S8(e)
-          D_k: 1e-9
+          D_k: 2e-13
         - species: S8-(e)
-          D_k: 6e-10
+          D_k: 2e-13
         - species: S6-(e)
-          D_k: 6e-10
+          D_k: 2e-13
         - species: S4-(e)
-          D_k: 1e-10
+          D_k: 2e-13
         - species: s2-(e)
-          D_k: 1e-10
+          D_k: 2e-13
         - species: s-(e)
-          D_k: 1e-10
-    phi_0: 2.96 # Initial electric potential, V
+          D_k: 2e-13
+    phi_0: 0.08 # Initial electric potential, V
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
   cathode:
-    class: 'sulfur_electrode'
+    class: 'sulfur_electrode2'
     n-points: 1
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
@@ -62,11 +62,11 @@ cell-description:
       - bulk-name: "sulfur" # Cantera phase name
         surf-name: "sulfur_surf" # Cantera name for surface phase
         elyte-name: "S8(e)"
-        min-vol-frac: 1E-10
+        min-vol-frac: 1E-5
       - bulk-name: "lithium_sulfide" # Cantera phase name
         surf-name: "lithium_sulfide_surf" # Cantera name for surface phase
         elyte-name: "s-(e)"
-        min-vol-frac: 1E-10
+        min-vol-frac: 1E-5
     initial-state: # Determine initial state of electrode
       method: "porosity"
       eps_init:
@@ -85,12 +85,12 @@ cell-description:
       charge: 2 # How many moles of charge per mole of species?
       n_phase: 1 # What is the index of this phase in the 'conversion-phases' list above (starting with zero)?
     mobile-ion:  "Li+(e)" # Species name for Li+ in elyte.
-    thickness: 40e-6 # anode thickness, m
-    r_host: 2.5e-6 # Particle radius, m
-    phi_0: 3.2 # Initial electric potential, V
-    sigma_el: 1.0E1 #electrical ondutivity of the host
+    thickness: 50e-6 # anode thickness, m
+    r_host: 6e-6 # Particle radius, m
+    phi_0: 3.8 # Initial electric potential, V
+    sigma_el: 1.0e-1 #electrical ondutivity of the host
     eps_host: 0.65 # Solid phase volume fraction, -
-    C_dl: 1.5e-2 #F/m2
+    C_dl: 6e-3 #F/m2
     plot-species: # any extra species in the electrolyte that you want to plot.
       - name: 'Li+(e)'
 
@@ -103,17 +103,14 @@ parameters:
     show-plots: True # Do you want the plots shown and saved, or just saved?
   # Describe simulation type, parameters, etc.
   simulations:
-    - type: 'CC_cycle' # Constant current cycling
+    - type: 'potential_hold' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
-      i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 0.001 # input C-rate
-      n_cycles: 1 # Number of cycles. Currently must be 0.5 or an int.
-      first-step: 'discharge'  # Start with charge or discharge?
+      steps:
+      - potential: 3.25
+      time: 1
       equilibrate:
         enable: True # Start with a hold at open circuit?
-        time: 100 # If true, how long is the hold, s
-      phi-cutoff-lower: 3.4 # Simulation cuts off if E_Cell <= this value, V
-      phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
+        time: 5 # If true, how long is the hold, s
       species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m3
 
 # Cantera inputs:
@@ -221,8 +218,8 @@ species:
   composition: {Li: 1}
   thermo:
     model: constant-cp
-    h0: 19.50 kJ/mol
-    s0: 29.1 J/mol/K
+    h0: -8.676 kJ/mol
+    s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
     molar-volume: 12.998 cm^3/mol
@@ -320,7 +317,7 @@ species:
   composition: {Li: 2, S: 1}
   thermo:
     model: constant-cp
-    h0: -576.875 kJ/mol
+    h0: -506.875 kJ/mol
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume
@@ -346,7 +343,7 @@ species:
 lithium_electrolyte-reactions:
 - equation: Li(b) <=> Li+(e) + electron
   id: lithium_faradaic_reaction
-  rate-constant: {A: 6.0e+09, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 6.0e-10, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 sulfur-elyte-reactions:
@@ -357,30 +354,30 @@ sulfur-elyte-reactions:
 carbon-elyte-reactions:
 - equation: 0.5 S8(e) + electron <=> 0.5 S8-(e)
   id: sulfur_reduction_1
-  rate-constant: {A: 7.725e13, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 7.725e5, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: 1.5 S8-(e) + electron <=> 2 S6-(e)
   id: sulfur_reduction_2
-  rate-constant: {A: 4.331e16, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 4.331e5, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: S6-(e) + electron <=> 1.5 S4-(e)
   id: sulfur_reduction_3
-  rate-constant: {A: 3.193e14, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 3.193e5, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: 0.5 S4-(e) + electron <=> S2-(e)
   id: sulfur_reduction_4
-  rate-constant: {A: 2.375e11, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 2.375e2, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: 0.5 S2-(e) + electron <=> S-(e)
   id: sulfur_reduction_4
-  rate-constant: {A: 4.655e12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 4.655e1, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 lithium-sulfide-elyte-reactions:
 - equation: 2 Li+(e) + S-(e) <=> Li2S(s)
   id: sulfur_reduction_6
-  rate-constant: {A: 2.75e-5, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.075e2, b: 0.0, Ea: 0.0}
