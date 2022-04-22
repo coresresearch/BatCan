@@ -216,7 +216,14 @@ class electrode():
             # Set Cantera object properties:
             self.host_obj.electric_potential = phi_ed
             self.elyte_obj.electric_potential = phi_elyte
-            self.elyte_obj.X = c_k_elyte
+            # try:
+            self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+            # except:
+            #     # print(c_k_elyte)
+            #     # c_k_elyte[c_k_elyte<0] = 1e-21
+            #     # c_k_elyte[np.isnan(np.abs(c_k_elyte))] = 1e-21
+            #     # self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+            #     pass
 
             # Set microstructure multiplier for effective diffusivities
             #TODO #48
@@ -315,7 +322,14 @@ class electrode():
         # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
-        self.elyte_obj.X = c_k_elyte
+        # try:
+        self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+        # except:
+        #     # # print(c_k_elyte)
+        #     # c_k_elyte[c_k_elyte<0] = 1e-21
+        #     # c_k_elyte[np.isnan(np.abs(c_k_elyte))] = 1e-21
+        #     # self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+        #     pass
 
         # Electric potential boundary condition:
         if self.name=='anode':
@@ -400,6 +414,34 @@ class electrode():
         
         return voltage_eval
 
+    def species_lim(self, SV, val):
+        """
+        Check to see if the minimum species concentration limit has been exceeded.
+        """
+        # Save local copies of the solution vector and pointers for this electrode:
+        SVptr = self.SVptr
+        SV_loc = SV[SVptr['electrode']]
+
+        # Default is that the minimum hasn't been exceeded:
+        species_eval = 1.
+
+        # For each electrode point, find the minimum species concentration, and # compare to the user-provided minimum.  Save only the minimum value:
+        for j in range(self.n_points):
+            Ck_loc = SV_loc[SVptr['C_k_elyte'][j,:]]
+            
+            local_eval = min(Ck_loc) - val
+            species_eval = min(species_eval, local_eval)
+
+            if np.isnan(np.sum(Ck_loc)):
+                species_eval = -1
+                print("nan found")
+                break
+
+
+        # The simulation  looks for instances where this value changes sign 
+        # (i.e. where it equals zero)    
+        return abs(species_eval) + species_eval
+
     def adjust_separator(self, sep):
         """ 
         Sometimes, an electrode object requires adjustments to the separator object.  This is not the case, for the SPM.
@@ -431,6 +473,7 @@ class electrode():
         return axs
 
 #Official Soundtrack:
+    #Belle and Sebastian - The Boy with the Arab Strap
     #Passion Pit - Gossamer
     #CHVRCHES - Every Open Eye
     #Cursive - Happy Hollow
@@ -438,3 +481,4 @@ class electrode():
     #Jimmy Eat World - Chase the Light + Invented
     #Lay - Lit
     #George Ezra - Staying at Tamara's
+    

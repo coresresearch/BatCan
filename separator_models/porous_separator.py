@@ -277,3 +277,23 @@ class separator():
         axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m$^3$')
 
         return axs
+
+    def species_lim(self, SV, val):
+        """
+        Check to see if the minimum species concentration limit has been exceeded.
+        """
+        # Save local copies of the solution vector and pointers for this electrode:
+        SVptr = self.SVptr
+        SV_loc = SV[SVptr['sep']]
+
+        # Default is that the minimum hasn't been exceeded:
+        species_eval = 1.
+
+        # For each electrode point, find the minimum species concentration, and # compare to the user-provided minimum.  Save only the minimum value:
+        for j in range(self.n_points):
+            local_eval = min(SV_loc[SVptr['C_k_elyte'][j,:]]) - val
+            species_eval = min(species_eval, local_eval)
+
+        # The simulation  looks for instances where this value changes sign 
+        # (i.e. where it crosses zero)    
+        return species_eval

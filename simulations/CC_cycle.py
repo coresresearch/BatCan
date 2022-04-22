@@ -40,14 +40,24 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
+    # Default number of root functions:
+    n_roots = 2
+    if 'species-cutoff' in sim:
+        n_roots += 3
+    
     def terminate_check(t, SV, SVdot, return_val, inputs):
         return_val[0] = ca.voltage_lim(SV, sim['phi-cutoff-lower'])
         return_val[1] = ca.voltage_lim(SV, sim['phi-cutoff-upper'])
 
+        if 'species-cutoff' in sim:
+            return_val[2] = an.species_lim(SV, sim['species-cutoff'])
+            return_val[3] = sep.species_lim(SV, sim['species-cutoff'])
+            return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
+
     # Set up the differential algebraic equation (dae) solver:
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':1e-6, 
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
-            'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
+            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
@@ -203,13 +213,12 @@ def residual(t, SV, SVdot, resid, inputs):
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
 def output(solution, an, sep, ca, params, sim, plot_flag=True, 
-    return_flag=False):
+    return_flag=False, save_flag=True):
     """
     Prepare and save any output data to the correct location. Prepare, 
     create, and save any figures relevant to constant-current cycling.
     """
     #TODO #17    
-    from datetime import datetime   
     import matplotlib.pyplot as plt 
     import os
     import pandas as pd
@@ -296,31 +305,36 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
         cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
         cycle_fig.tight_layout()
 
-    # If no specification is given on whether to show plots, assume 'True'
+    # If no specification is given on whether to show plots, assume 'True'    
+    if save_flag:
+        print('hello, ', params['output'], sim['outputs']['save-name']) 
+        if 'outputs' not in sim:
+            summary_fig.savefig('output.pdf')
+            cycle_fig.savefig('cycles.pdf')
+            plt.show()
+        else:
+            if 'save-name' in sim['outputs']:
+                if len(params['simulations']) == 1:
+                    sim['filename'] = (params['output'] +'_' 
+                        + sim['outputs']['save-name'] )
+                else:
+                    sim['filename'] = (params['output'] +'/'
+                        + sim['outputs']['save-name'] )
+                
+                if not os.path.exists(sim['filename']):
+                    os.makedirs( sim['filename'])
+
+                solution_df.to_pickle(sim['filename']+'/output.pkl')
+                solution_df.to_csv(sim['filename']+'/output.csv', sep=',')
+                summary_fig.savefig(sim['filename']+'/summary.pdf')
+                cycle_fig.savefig(sim['filename']+'/cycles.pdf')
+            
+            if ('show-plots' not in sim['outputs'] or 
+                sim['outputs']['show-plots']):
+                plt.show()
+
     if return_flag:
         return solution_df
-    elif 'outputs' not in sim:
-        summary_fig.savefig('output.pdf')
-        cycle_fig.savefig('cycles.pdf')
-        plt.show()
-    else:
-        now = datetime.now()
-        dt =  now.strftime("%Y%m%d_%H%M")
-        if sim['outputs']['savename']:
-            if len(params['simulations']) == 1:
-                sim['filename'] = ('outputs/' + params['input'] +'_' 
-                    + sim['outputs']['savename'] + '_' + dt)
-            else:
-                sim['filename'] = ('outputs/' + params['input'] +'/' 
-                    + sim['outputs']['savename'] + '_' + dt)
-            os.makedirs( sim['filename'])
-            solution_df.to_pickle(sim['filename']+'/output.pkl')
-            solution_df.to_csv(sim['filename']+'/output.csv', sep=',')
-            summary_fig.savefig(sim['filename']+'/summary.pdf')
-            cycle_fig.savefig(sim['filename']+'/cycles.pdf')
-        
-        if 'show-plots' not in sim['outputs'] or sim['outputs']['show-plots']:
-            plt.show()
 
 def final_state(solution):
     # Return the state vector at the final simulation time:
