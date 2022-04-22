@@ -6,6 +6,7 @@
 
 """
 # Import modules
+from datetime import datetime   
 import importlib # allows us to import from user input string.
 import numpy as np
 
@@ -13,7 +14,7 @@ from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
-def bat_can(input = None, return_type = None):
+def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
         input_file = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
@@ -29,10 +30,14 @@ def bat_can(input = None, return_type = None):
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
-    an_inputs, sep_inputs, ca_inputs, parameters = initialize(input_file)
+    an_inputs, sep_inputs, ca_inputs, parameters, _ = initialize(input_file)
+
+    now = datetime.now()
+    dt =  now.strftime("%Y%m%d_%H%M")
 
     # Save name of input file, without path or extension:
     parameters['input'] = input
+    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================

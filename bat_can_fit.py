@@ -6,6 +6,7 @@
 
 """
 # Import modules
+from datetime import datetime   
 import importlib # allows us to import from user input string.
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,7 +20,7 @@ from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
-def bat_can(input = None, return_type = None):
+def bat_can(input = None):
     if input is None:
         # Default is a single-particle model of graphite/LCO
         input_file = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
@@ -38,8 +39,12 @@ def bat_can(input = None, return_type = None):
     an_inputs, sep_inputs, ca_inputs, parameters, fit_params = \
         initialize(input_file)
 
+    now = datetime.now()
+    dt =  now.strftime("%Y%m%d_%H%M")
+
     # Save name of input file, without path or extension:
     parameters['input'] = input
+    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
@@ -105,23 +110,26 @@ def bat_can(input = None, return_type = None):
             raise ValueError("Initialization method currently not implemented.")
 
 
-    def run_model(x_guess, plot_flag = False, SSR_flag = True):
+    def run_model(x_guess, final_flag = False):
         print('x = ',x_guess)
     
-        # Right now we just do diffusion coefficients:
+        # Set the current fitting parameter values:
         for i, x in enumerate(x_guess):
             if fit_params[i]['type'] == 'elyte-transport':
                 sep.D_k[sep.elyte_obj.species_index(fit_params[i]['species'])] \
                     = x
-            if fit_params[i]['type'] == 'cathode-kinetics':
+            elif fit_params[i]['type'] == 'cathode-kinetics':
                 ca.surf_obj.set_multiplier(x, 
                     fit_params[i]['reaction-index'])
+            elif fit_params[i]['type'] == 'cathode-microstructure':
+                setattr(ca, fit_params[i]['parameter'], x)
 
-        if plot_flag:
-            fig, axs = plt.subplots(1, 1, sharex=True, 
+        # If the fit is done, we want to plot the best fit:
+        if final_flag:
+            fit_fig, fit_axs = plt.subplots(1, 1, sharex=True, 
                 gridspec_kw = {'wspace':0, 'hspace':0})
         
-            fig.set_size_inches((5.0, 2.25))
+            fit_fig.set_size_inches((5.0, 2.25))
 
             ndata = len(parameters['simulations'])
             cmap = plt.get_cmap('plasma')
@@ -137,27 +145,35 @@ def bat_can(input = None, return_type = None):
         icolor = 0
         for sim in parameters['simulations']:
             try:
-                model = importlib.import_module('.'+sim['type'], package='simulations')
+                model = importlib.import_module('.'+sim['type'], 
+                    package='simulations')
 
                 solution = model.run(SV_0, an, sep, ca, algvars, 
                     parameters, sim)
 
                 # Read out the results:
-                results = model.output(solution, an, sep, ca, parameters, sim, 
-                    plot_flag=False, return_flag=True)
+                if final_flag:
+                    sim['outputs']['show-plots'] = False
+                    results = model.output(solution, an, sep, ca, parameters, 
+                        sim, plot_flag=True, return_flag=True, save_flag=True)
+                else:
+                    results = model.output(solution, an, sep, ca, parameters, 
+                        sim, plot_flag=False, return_flag=True, save_flag=False)
                 phi_sim = results['phi_ed'].to_numpy()[:,-1]
                     
                 sim_data = np.array((results['capacity'].to_numpy(),
                     phi_sim))
 
-                if SSR_flag:   
-                    ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
+                   
+                ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
                         units_scale = 1e4)
-                    print('SSR = ', ssr_calc)
-                    outcome += ssr_calc 
-                elif plot_flag:
-                    axs = fit.plot(sim['ref_data'].to_numpy(), sim_data.T,
-                        axs, units_scale = 1e4, color = colors[icolor])
+                print('SSR = ', ssr_calc)
+                outcome += ssr_calc 
+
+                if final_flag:
+                    fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
+                        sim_data.T,fit_axs, fit_fig, units_scale = 1e4, 
+                        color = colors[icolor])
                     icolor += 1
             except:
                 # Assign a large penalty for failed parameter sets:
@@ -165,11 +181,16 @@ def bat_can(input = None, return_type = None):
                 print('Simulation failed')
                 outcome += ssr_calc
 
-        if SSR_flag:
-            print('SSR = ', outcome)
-            return outcome
-        elif plot_flag:
+        print('SSR = ', outcome)
+        
+        if final_flag:
+            fit_axs.annotate(f"SSR = 1.0", xy=(0,0),
+                xytext=(0.5, 0.5), textcoords='axes fraction', fontsize = 2)
+                
+            fit_fig.savefig(parameters['output']+'/fit.pdf')
             plt.show()
+
+        return outcome
 
     start = timeit.default_timer()
     x_start = []
@@ -189,7 +210,7 @@ def bat_can(input = None, return_type = None):
 
     print("Best fit = ", result.x)
 
-    run_model(result.x, plot_flag=True, SSR_flag=False)
+    run_model(result.x, final_flag=True)
 
     stop = timeit.default_timer()
     print('Time: ', stop - start)  

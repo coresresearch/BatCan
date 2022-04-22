@@ -25,7 +25,7 @@ cell-description:
   separator:
     class: 'porous_separator'
     thickness: 2.6e-4  # separator thickness, m
-    n_points: 10       # Number of finite volumes to discretize
+    n_points: 3       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 2.91 # Initial electric potential, V // Yin, 2017
@@ -47,7 +47,7 @@ cell-description:
         #   D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'air_electrode'
-    n-points: 15
+    n-points: 3
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -91,7 +91,7 @@ parameters:
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-      species-cutoff: 0.000535 #1e-12 # Simulation cuts off if C_k <= this value
+      species-cutoff: 0.000565 #1e-12 # Simulation cuts off if C_k <= this value
       equilibrate:
         enable: False # Start with a hold at open circuit? (True or False)
         time: 5 # If true, how long is the hold, s
@@ -100,23 +100,23 @@ parameters:
                          # them (False)?
         save-name: 'CPCN04' # Folder label for output files.
       validation: 'LiAir_Test/CPC04.xls' #Location of validation data
-    # - type: 'CC_cycle' # Constant current cycling
-    #   # Specify only one of i_ext or C-rate. The other should be null:
-    #   i_ext: 0.0005 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    #   C-rate: null # input C-rate
-    #   n_cycles: 0.5 # Number of cycles.
-    #   first-step: 'discharge'  # Start with charge or discharge?
-    #   phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
-    #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-    #   species-cutoff: 0.05 # 1e-12 # Simulation cuts off if C_k <= this value
-    #   equilibrate:
-    #     enable: False # Start with a hold at open circuit? (True or False)
-    #     time: 5 # If true, how long is the hold, s
-    #   outputs:
-    #     show-plots: False # Show the plots and save them (True), or just save
-    #                      # them (False)?
-    #     save-name: 'CPCN05' # Folder label for output files.
-    #   validation: 'LiAir_Test/CPC05.xls' #Location of validation data
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: 0.0005 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: null # input C-rate
+      n_cycles: 0.5 # Number of cycles.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+      species-cutoff: 0.000565 # 1e-12 # Simulation cuts off if C_k <= this value
+      equilibrate:
+        enable: False # Start with a hold at open circuit? (True or False)
+        time: 5 # If true, how long is the hold, s
+      outputs:
+        show-plots: False # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: 'CPCN05' # Folder label for output files.
+      validation: 'LiAir_Test/CPC05.xls' #Location of validation data
     # - type: 'CC_cycle' # Constant current cycling
     #   # Specify only one of i_ext or C-rate. The other should be null:
     #   i_ext: 0.0006 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
@@ -125,7 +125,7 @@ parameters:
     #   first-step: 'discharge'  # Start with charge or discharge?
     #   phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
     #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-    #   species-cutoff: 0.05 #1e-12 # Simulation cuts off if C_k <= this value
+    #   species-cutoff: 0.000565 #1e-12 # Simulation cuts off if C_k <= this value
     #   equilibrate:
     #     enable: False # Start with a hold at open circuit? (True or False)
     #     time: 5 # If true, how long is the hold, s
@@ -141,11 +141,11 @@ fit-parameters:
     guess-value: 2.9242e-5
     min: 1e-15
     max: 1e-4
-  # - type: 'cathode-kinetics'
-  #   reaction-index: 0
-  #   guess-value: 100 # This is a multiplier to scale the value in the mech.
-  #   min: 1e-10
-  #   max: 1e10
+  - type: 'cathode-kinetics'
+    reaction-index: 0
+    guess-value: 1 # This is a multiplier to scale the value in the mech.
+    min: 1e-10
+    max: 1e10
   # - type: 'cathode-microstructure'
   #   parameter: 'th_product'
   #   guess-value: 900e-9
@@ -219,7 +219,7 @@ phases:
   elements: [Li, Cl, C, H, O, E]
   species: ['C10H22O5[elyt]', 'Li+[elyt]', 'ClO4-[elyt]', 'O2(e)']#, 'Li2O2[elyt]']
   state:
-    X: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 0.049610, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.39E-4} #, 'Li2O2[elyt]': 1E-9}
+    X: {'C10H22O5[elyt]': 0.90066, 'Li+[elyt]': 0.049608, 'ClO4-[elyt]': 0.049608, 'O2(e)': 1.2173E-4} #, 'Li2O2[elyt]': 1E-9}
   standard-concentration-basis: unity
 
 - name: air-elyte-interface
