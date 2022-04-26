@@ -166,6 +166,9 @@ class electrode():
         # Save the indices of any algebraic variables:
         self.algvars = offset + self.SVptr['phi_ed'][:]
 
+        print(self.host_surf_obj.delta_standard_gibbs)
+        print(self.conversion_surf_obj[1].delta_standard_gibbs)
+
     def initialize(self, inputs, sep_inputs):
 
         # Initialize the solution vector for the electrode domain:
@@ -317,6 +320,7 @@ class electrode():
 
             # Chemical production rate of the conversion phases:
             # (kmol/m2-interface/s)
+            conv_sw = np.array([1, 1])
             sdot_conversion = np.zeros((self.n_conversion_phases))
             for ph in np.arange(0, self.n_conversion_phases):
                 sdot_conversion[ph] = (self.conversion_surf_obj[ph].get_creation_rates(self.conversion_obj[ph])
@@ -324,7 +328,7 @@ class electrode():
 
                 # Rate of change of the conversion phase volume fraction:
                 resid[SVptr['eps_conversion'][j][ph]] = \
-                    (SVdot_loc[SVptr['eps_conversion'][j][ph]] - A_conversion[ph]
+                    (SVdot_loc[SVptr['eps_conversion'][j][ph]] - conv_sw[ph]*A_conversion[ph]
                     * np.dot(sdot_conversion[ph], self.conversion_obj[ph].partial_molar_volumes))
 
             # Production rate of the electron (moles / m2 interface / s)
@@ -476,8 +480,8 @@ class electrode():
             - (sdot_elyte_host*A_surf_ratio + (N_k_in - N_k_out))*self.dyInv/eps_elyte
             + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)
 
-        #print(resid, t)
         #print(SV_loc, t)
+        #print(SV_loc[SVptr['C_k_elyte']])
         return resid
 
     def voltage_lim(self, SV, val):
@@ -509,7 +513,7 @@ class electrode():
             for j in np.arange(self.n_points):
                 eps_product_ptr = (SV_offset + self.SV_offset
                     + self.SVptr['eps_conversion'][j][ph])
-                axs[ax_offset+ph].plot(solution[ph,:]/3600,
+                axs[ax_offset+ph].plot(solution[0,:]/3600,
                     solution[eps_product_ptr, :])
 
             axs[ax_offset+ph].set_ylabel(self.name+' product \n volume fraction')
