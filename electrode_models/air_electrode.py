@@ -64,7 +64,7 @@ class electrode():
         self.r_host = inputs['r_host']
         self.th_product = inputs['th_product']
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
-        self.A_host = 4. * np.pi * (self.r_host / 2)**2 # Surface area of a single carbon / host particle [m2]
+        self.A_host = 4. * np.pi * (self.r_host)**2 # Surface area of a single carbon / host particle [m2]
         self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
 
         # For some models, the elyte thickness is different from that of the 
@@ -216,14 +216,12 @@ class electrode():
             # Set Cantera object properties:
             self.host_obj.electric_potential = phi_ed
             self.elyte_obj.electric_potential = phi_elyte
-            # try:
-            self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
-            # except:
-            #     # print(c_k_elyte)
-            #     # c_k_elyte[c_k_elyte<0] = 1e-21
-            #     # c_k_elyte[np.isnan(np.abs(c_k_elyte))] = 1e-21
-            #     # self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
-            #     pass
+            try:
+                self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+            except:
+                X_elyte = params['species-default']
+                self.elyte_obj.X = X_elyte
+                
 
             # Set microstructure multiplier for effective diffusivities
             #TODO #48
@@ -322,14 +320,13 @@ class electrode():
         # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
-        # try:
-        self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
-        # except:
-        #     # # print(c_k_elyte)
-        #     # c_k_elyte[c_k_elyte<0] = 1e-21
-        #     # c_k_elyte[np.isnan(np.abs(c_k_elyte))] = 1e-21
-        #     # self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
-        #     pass
+        try:
+            self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+        except:
+            if 'species-default' in params:
+                self.elyte_obj.X = params['species-default']
+            else:
+                pass
 
         # Electric potential boundary condition:
         if self.name=='anode':

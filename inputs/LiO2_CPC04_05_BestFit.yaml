@@ -1,0 +1,451 @@
+#===============================================================================
+#  input_template.yaml
+#
+#  User inputs for bat-can model creation and running.
+#===============================================================================
+
+cell-description:
+#This section can have any attributes just do whatever you want
+  anode:
+    class: 'dense_electrode'
+    bulk-phase: 'lithium_metal' # Cantera phase name
+    surf-phase: 'lithium_electrolyte' # Cantera phase name
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    conductor-phase: 'electron' # Cantera phase name
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li[metal]
+      charge: 1
+    mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+    thickness: 4.5e-4 # anode thickness, m
+    minimum-thickness: 1e-9 # minimum anode thickness.
+    phi_0: 0. # Initial electric potential, V
+    A_surf_ratio: 1.0 # Interface area per unit geometric area
+    C_dl: 6e-5 #F/m2
+    dy_elyte: 2e-6 #maybe should remove this?
+  separator:
+    class: 'porous_separator'
+    thickness: 2.6e-4  # separator thickness, m
+    n_points: 10       # Number of finite volumes to discretize
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
+    phi_0: 2.91 # Initial electric potential, V // Yin, 2017
+    eps_electrolyte: 0.65 # Electrolyte volume fraction, -
+    transport:
+      mobile-ion:  'Li+[elyt]'
+      model: 'dilute-solution'
+      diffusion-coefficients: # Species names must match those in the phase
+      #definition, below: # fix diffusion coefficients later...
+        - species: 'C10H22O5[elyt]'
+          D_k: 1.11e-10 # m2 S-1 // Saito, 2017
+        - species: 'Li+[elyt]'
+          D_k: 6.98e-10 # m2 S-1 // Saito, 2017
+        - species: 'ClO4-[elyt]'
+          D_k: 8.79e-11 # m2 S-1 // Saito, 2017
+        - species: 'O2(e)'
+          D_k: 8.26e-9 #11 # m2 s-1 // Gittleson, 2017 for DMSO
+        # - species: 'Li2O2[elyt]'
+        #   D_k: 2e-13 # can't find (assume low?)
+  cathode:
+    class: 'air_electrode'
+    n-points: 15
+    gas-phase: 'oxygen'
+    elyte-iphase: 'air-elyte-interface'
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    host-phase: 'conductor' # Cantera phase name
+    surf-iphase: 'cathode-surf' # Cantera phase name
+    product-phase: 'li-oxide'
+    product-phase-min: 1e-6 # Minimum volume fraction for product phase
+    mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+    thickness: 3.50e-4 # cathode thickness, m
+    r_host: 8e-6 # Carbon Particle radius, m
+    d_oxide: 1.0e-8 #Oxide diameter, m
+    th_product: 185e-9 #oxide thickness, m
+    phi_0: 2.95 # Initial electric potential, V // Yin, 2017
+    sigma_el: 1.0E1 #electrical ondutivity of the host
+    eps_host: 0.621138 # Solid phase volume fraction of carbon -
+    eps_product: 0.00 # solid phase volume fraction of Li2O2 -
+    C_dl: 6e-4 #F/m2
+    stored-species: # Details on the stored species. Used for capacity calc.
+      name: Li2O2[cathode]
+      charge: 2
+      MW: 45.881
+    plot-species: # any extra species in the electrolyte that you want to plot.
+      - name: 'O2(e)'
+
+
+# Simulation parameters:
+parameters:
+  T: 23 # C
+  P: 101325 # Pa
+  # Describe simulation type, parameters, etc.
+  initialize: # Calculate a common inititial condition for all steps?
+    enable: True
+    type: 'open-circuit'
+    time: 5 # s   
+  simulations:
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: 0.0004 A/cm2 # A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: null # input C-rate
+      n_cycles: 0.5 # Number of cycles.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+      species-cutoff: 1E-12 # Simulation cuts off if C_k <= this value
+      species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
+      equilibrate:
+        enable: False # Start with a hold at open circuit? (True or False)
+        time: 5 # If true, how long is the hold, s
+      outputs:
+        show-plots: True # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: 'CPCN04_dual_print' # Folder label for output files.
+      validation: 'LiAir_Test/CPC04.xls' #Location of validation data
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: 0.0005 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: null # input C-rate
+      n_cycles: 0.5 # Number of cycles.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+      species-cutoff: 1.e-12  # Simulation cuts off if C_k <= this value
+      species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
+      equilibrate:
+        enable: False # Start with a hold at open circuit? (True or False)
+        time: 5 # If true, how long is the hold, s
+      outputs:
+        show-plots: False # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: 'CPCN05_dual_print' # Folder label for output files.
+      validation: 'LiAir_Test/CPC05.xls' #Location of validation data
+    # - type: 'CC_cycle' # Constant current cycling
+    #   # Specify only one of i_ext or C-rate. The other should be null:
+    #   i_ext: 0.0006 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+    #   C-rate: null # input C-rate
+    #   n_cycles: 0.5 # Number of cycles.
+    #   first-step: 'discharge'  # Start with charge or discharge?
+    #   phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
+    #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+    #   species-cutoff: 0.000565 # Simulation cuts off if C_k <= this value
+    #   species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
+    #   equilibrate:
+    #     enable: False # Start with a hold at open circuit? (True or False)
+    #     time: 5 # If true, how long is the hold, s
+    #   outputs:
+    #     show-plots: False # Show the plots and save them (True), or just save
+    #                      # them (False)?
+    #     save-name: 'CPCN06' # Folder label for output files.
+    #   validation: 'LiAir_Test/CPC06.xls' #Location of validation data
+
+fit-parameters:
+  - type: 'elyte-transport'
+    species: 'O2(e)'
+    guess-value: 8.26e-9
+    min: 1e-10
+    max: 1e-8
+  - type: 'elyte-transport'
+    species: 'Li+[elyt]'
+    guess-value: 6.98e-10
+    min: 1e-10
+    max: 1e-9
+  - type: 'cathode-kinetics'
+    reaction-index: 0
+    guess-value: 0.001 # This is a multiplier to scale the value in the mech.
+    min: 0.1
+    max: 10
+  - type: 'cathode-microstructure'
+    parameter: 'th_product'
+    guess-value: 185e-9
+    min: 10e-9
+    max: 1e-6
+
+# Cantera inputs:
+description: |-
+  Cantera input file for an Li-Oxygen battery
+
+  This file includes a full set of thermodynamic and kinetic parameters of a
+  lithium-oxygen battery, in particular:
+  - Active materials: Li2O2 and Li (li metal)
+  - Organic electrolyte: TEGDME with 1M LiPF6
+  - Interfaces: LCO/electrolyte and Li/electrolyte
+  - Cathode: The cathode is comprised of catalyst, carbon, (will binder be a later addition.)
+  - Charge-transfer reactions at the two interfaces
+
+  Bulk phases
+  ===========
+  Lithium (anode)
+
+  Ether based electrolyte (electrolyte)
+  Solvent: Tetraethylene glycol dimethyl ether
+  Salt: 0.25M LiTFSI
+
+  Interface phases
+  ================
+
+  lithium/electrolyte interface (lithium_electrolyte)
+  Species and site density are dummy entries (as we do not consider surface-
+  adsorbed species)
+
+  LCO/electrolyte interface (cathode_electrolyte)
+  Species and site density are dummy entries (as we do not consider surface-
+  adsorbed species)
+
+  Builds on prior code development (LeBar, 2019)
+generator: cti2yaml
+cantera-version: 2.5.0
+date: Wed, 11 Dec 2019 16:59:07 -0500
+input-files: [lithium_ion_battery.cti]
+
+phases:
+
+- name: lithium_metal
+  thermo: ideal-condensed
+  species: ['Li[metal]']
+  density: 0.534 g/cm^3 #verified
+  state:
+    T: 300.0
+    P: 1 atm
+
+- name: electron
+  thermo: electron-cloud
+  elements: [E]
+  species: [electron]
+  state:
+    X: {electron: 1.0}
+  density: 1.0 kg/m^3
+
+- name: lithium_electrolyte
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [lithium_electrolyte-reactions]
+  site-density: 0.01 mol/cm^2  #Question: should I change this??
+
+- name: electrolyte
+  thermo: ideal-condensed
+  elements: [Li, Cl, C, H, O, E]
+  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'ClO4-[elyt]', 'O2(e)']#, 'Li2O2[elyt]']
+  state:
+    X: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 0.049610, 'ClO4-[elyt]': 0.049610, 'O2(e)': 6.39E-4} #,'O2(e)': 1.39E-4} 'Li2O2[elyt]': 1E-9}
+  standard-concentration-basis: unity
+
+- name: air-elyte-interface
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [air-electrolyte-reactions]
+  site-density: 0.01 mol/cm^2
+
+- name: oxygen
+  thermo: ideal-gas
+  elements: [O]
+  species: [O2(g)]
+  transport: mixture-averaged
+  state: {T: 300.0, P: 1 atm}
+
+- name: conductor
+  thermo: electron-cloud
+  elements: [E]
+  species: [electron]
+  state:
+    X: {electron: 1.0}
+  density: 1.0 kg/m^3
+
+- name: cathode-surf
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [cathode-surf-reactions]
+  state:
+    T: 300.0
+    P: 1 atm
+  site-density: 2.50e-5 mol/cm^2
+
+- name: li-oxide
+  composition: {Li: 2, O: 2}
+  thermo: fixed-stoichiometry
+  species: ['Li2O2[cathode]']
+  density: 2310 kg/m^3 # https://pubchem.ncbi.nlm.nih.gov/compound/Lithium-peroxide-_Li2_O2#section=Physical-Description
+  state:
+    T: 300.0
+    P: 1 atm
+
+species:
+- name: Li[metal]
+  composition: {Li: 1}
+  thermo:
+    model: constant-cp
+    h0: 19.50 kJ/mol # Question: unverified - source?
+    s0: 29.1 J/mol/K # verified NIST webbook
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 12.998 cm^3/mol #verified
+
+- name: electron
+  composition: {E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: |-
+    Electron, MW: 0.000545 g/mol
+    Molar enthalpy and entropy set to zero (dummy entries because chemical
+    potential is set to zero for a "metal" phase)
+
+- name: (dummy)
+  composition: {}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: Dummy species (needed for defining the interfaces)
+
+- name: C10H22O5[elyt]
+  composition: {C: 10, H: 22, O: 5}
+  thermo:
+    model: constant-cp
+    h0: 1134.6 J/mol # https://www.atamanchemicals.com/tetraethylene-glycol-dimethyl-ether_u24765/
+    s0: 0.0 J/mol/K # unknown
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 226.24380574826557222 cm^3/mol
+  note: |-
+    tetraethylene glycol dimethyl ether, MW: 228.28 g/mol
+    Density of tetraethylene glycol dimethyl ether: 1009 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Taken from: https://www.sigmaaldrich.com/US/en/sds/aldrich/172405
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+    Molar heat capacities over a certain temperature are here: https://pubs.acs.org/doi/pdf/10.1021/je800999s implement?
+
+- name: Li+[elyt]
+  composition: {Li: 1, E: -1}
+  thermo:
+    model: constant-cp
+    h0: -278.49 kJ/mol
+    s0: 13.4 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 5.508297619047619 cm^3/mol
+  note: |- #Question: why is this using the density of electrolyte
+    Lithium ion, MW: 6.940455 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
+    Chemistry", Wiley-VCH (2006)
+
+- name: ClO4-[elyt]
+  composition: {Cl: 1, O: 4, E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 78.92857142857143 cm^3/mol
+  note: |- #Question: why is this using the density of electrolyte
+    bis(trifluoromethylsulphonyl)imide ion, MW: 99.45 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+
+- name: Li2O2[elyt]
+  composition: {Li: 2, O: 2}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol # Question: should I put this here https
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 19.344262295081968261 cm^3/mol
+  note: |-
+    Li2O2 particle, MW: 38.94 g/mol
+    Density of electrolyte: 2013 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    https://www.chemspider.com/Chemical-Structure.145811.html
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+
+- name: O2(e)
+  composition: {O: 2}
+  thermo:
+    model: constant-cp
+    h0: -46.75 kJ/mol #-39.2 kJ/mol
+    s0: 0. J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 28.0445 cm^3/mol
+  note: |-
+    An O2 molecule dissolved into electrolyte.  Thermo tuned to get correct solubility at room temperature.
+    Molar volume estimated from liquid O2 values. https://en.wikipedia.org/wiki/Liquid_oxygen#cite_note-3
+
+- name: O2(g)
+  composition: {O: 2}
+  thermo:
+    model: NASA7
+    temperature-ranges: [200.0, 1000.0, 3500.0]
+    data:
+    - [3.78245636, -2.99673416e-03, 9.84730201e-06, -9.68129509e-09, 3.24372837e-12,
+      -1063.94356, 3.65767573]
+    - [3.28253784, 1.48308754e-03, -7.57966669e-07, 2.09470555e-10, -2.16717794e-14,
+      -1088.45772, 5.45323129]
+    note: TPIS89
+  transport:
+    model: gas
+    geometry: linear
+    well-depth: 107.4
+    diameter: 3.458
+    polarizability: 1.6
+    rotational-relaxation: 3.8
+
+- name: Li2O2[cathode]
+  composition: {Li: 2, O: 2}
+  thermo:
+    model: constant-cp
+    h0: -634.3 kJ/mol #Haynes, 2016
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 19.861904761904753514 cm^3/mol
+  note: |-
+    h0 value tuned to give correct open circuit potential, relative to li metal anode.
+    Lithium peroxide, MW: 45.881 g/mol.
+    Density of L2O2: 2310 kg/m3
+    (Haynes, 2016)
+
+lithium_electrolyte-reactions:
+- equation: Li[metal] <=> Li+[elyt] + electron
+  id: lithium_faradaic_reaction
+  rate-constant: {A: 6.0e+18, b: 0.0, Ea: 0.0} #{A: 6.0e+09, b: 0.0, Ea: 0.0}
+  beta: 0.5
+
+cathode-surf-reactions:
+- equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]  # Reaction 1
+  id: cathode_reaction
+  rate-constant: {A: 2.82745e+3, b: 0.0, Ea: 58.0 kJ/mol} #This is already scaled by 0.001 from fit params. #need a new reaction rate #5.629e+6, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+  exchange-current-density-formulation: true
+  beta: 0.5
+
+air-electrolyte-reactions:
+- equation: O2(g) <=> O2(e)  # Reaction 2
+  id: cathode_gas_reaction
+  rate-constant: {A: 0.75e-6, b: 0.0, Ea: 0 kJ/mol}
+  exchange-current-density-formulation: true
+  beta: 0.5
+
+#"""Citations"""
+#Chen, J.; et al., ACS Omega, vol. 4, no. 20708-20714, 2019, DOI: 10.1021/acsomega.9b02941.
+
+#Gittleson, F; et al, Energy Environ. Sci., 2017,10, 1167-1179, DOI: 10.1039/C6EE02915A.
+
+#Haynes, W.M.; CRC handbook of chemistry and physics, 2016, 97th Edition / Boca Raton, Florida: CRC Press.
+
+#LeBar, A., Colorado School of Mines, 2019, URL: https://mountainscholar.org/handle/11124/173373
+
+#Yin, Y.; et al., J. Phys. Chem. C, vol. 121, no. 36, pp. 19577–19585, 2017, doi: 10.1021/acs.jpcc.7b05224.
+
+#Official Soundtrack:
+  #Day 6 - as of 2021 all albums/songs
+  #      - highlight Finale, Congradulations, 예뻤어

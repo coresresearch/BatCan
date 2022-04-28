@@ -8,13 +8,18 @@
 # Import modules
 from datetime import datetime   
 import importlib # allows us to import from user input string.
+import multiprocessing as mp
 import numpy as np
+import timeit
 
 from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
-def bat_can(input = None):
+def bat_can(input, cores):
+    # Record the start time:
+    start = timeit.default_timer()
+
     if input is None:
         # Default is a single-particle model of graphite/LCO
         input_file = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
@@ -27,6 +32,8 @@ def bat_can(input = None):
         else:
             input_file = 'inputs/'+input+'.yaml'
 
+    if not cores:
+        cores = 1
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
@@ -83,7 +90,29 @@ def bat_can(input = None):
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:
-    for sim in parameters['simulations']:
+
+    # If the user requests a specific initailization routine, run that first:
+    if 'initialize' in parameters and parameters['initialize']['enable']:
+        if parameters['initialize']['type'] == 'open-circuit':
+            model = importlib.import_module('.'+'CC_cycle', 
+                package='simulations')
+
+            sim = {'i_ext': None, 'C-rate': 0.0, 'n_cycles': 0, 
+                'first-step': 'discharge', 'equilibrate': 
+                {'enable': True, 'time':  5}, 'phi-cutoff-lower': 2.0, 
+                'phi-cutoff-upper': 4.8}
+            
+            solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+            
+            # Save final state as the initial state for all subsequent 
+            # simulation steps:
+            SV_0 = model.final_state(solution)
+
+        else:
+            raise ValueError("Initialization method currently not implemented.")
+
+    global model_run
+    def model_run(sim):
         model = importlib.import_module('.'+sim['type'], package='simulations')
 
         solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
@@ -94,7 +123,14 @@ def bat_can(input = None):
         # Call any output routines related to the simulation type:
         model.output(solution, an, sep, ca, parameters, sim)
 
+    # If the user specified to use multiple cores (only relevant if there are 
+    # multiple simulations), run themin a multiprocessing pool:
+    pool = mp.Pool(processes = int(cores))
+    pool.map(model_run, list(parameters['simulations']))
 
+    # Record time when finished:
+    stop = timeit.default_timer()
+    print('Time: ', stop - start)  
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE
 #===========================================================================
@@ -105,6 +141,7 @@ if __name__ == '__main__':
     # the input file location:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
+    parser.add_argument('--cores', action='store_true')
     args = parser.parse_args()
     
-    bat_can(args.input)
+    bat_can(args.input, args.cores)

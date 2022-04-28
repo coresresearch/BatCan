@@ -42,10 +42,9 @@ class voltage_capacity:
             # capacity from the reference data:
             sim_voltage[i] = np.interp(ref_cap[i], sim[:,0], sim[:,1])
 
-        print('loop done.')
         ax.plot(sim[:,0], sim[:,1], color=color)
-        ax.plot(ref_cap, ref[:,1], color = color, marker='x')
-        print('plot done.')
+        ax.plot(ref_cap, ref[:,1], color = color, marker='x', linestyle=None)
+        
         return ax, fig
         # summary_axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp
 
