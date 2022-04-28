@@ -31,6 +31,11 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # Specify the boundary condition as galvanostatic:
     params['boundary'] = 'current'
 
+    # If specified, save the default mole fractions to replace an 
+    # errant concentration during simulation:
+    if 'species-default' in sim:
+        params['species-default'] = sim['species-default']
+
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
     # current for each step. 'equil' is a flag to indicate whether there is an 
@@ -144,7 +149,11 @@ def calc_current(params, an, ca):
             "or the C-rate (C-rate).")
     
     # Use the capacity divided by current to find the max charge/discharge time:
-    t_final = cap*3600/i_ext
+    if i_ext > 0:
+        t_final = cap*3600/i_ext
+    else: 
+        # For an equilibration/ocv run, just run for a long time:
+        t_final = 1e6
 
     return i_ext, t_final
 
@@ -307,7 +316,6 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
 
     # If no specification is given on whether to show plots, assume 'True'    
     if save_flag:
-        print('hello, ', params['output'], sim['outputs']['save-name']) 
         if 'outputs' not in sim:
             summary_fig.savefig('output.pdf')
             cycle_fig.savefig('cycles.pdf')

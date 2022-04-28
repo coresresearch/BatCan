@@ -1,6 +1,8 @@
-# bat_can.py
+# bat_can_fit.py
 """
-    BatCan - Battery Modeling in Cantera
+    BatCan_Fit - Battery Modeling in Cantera
+
+    This file is for fitting modeling results to user-specified reference data.
 
     This file reads in the user input, runs the simulation, and then produces any requested output (saved data file, preliminary plots, etc.)
 
@@ -8,7 +10,9 @@
 # Import modules
 from datetime import datetime   
 import importlib # allows us to import from user input string.
+import itertools
 import matplotlib.pyplot as plt
+import multiprocessing as mp
 import numpy as np
 import pandas as pd
 from scipy import optimize as spo
@@ -18,9 +22,11 @@ import timeit
 from submodels.fitting import voltage_capacity as fit
 from bat_can_init import initialize
 
+
+# mp.set_start_method('spawn')
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
-def bat_can(input = None):
+def bat_can(input, cores, print_flag):
     if input is None:
         # Default is a single-particle model of graphite/LCO
         input_file = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
@@ -33,6 +39,8 @@ def bat_can(input = None):
         else:
             input_file = 'inputs/'+input+'.yaml'
 
+    if cores is None:
+        cores = 1
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
@@ -90,6 +98,8 @@ def bat_can(input = None):
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the 
     # module, then call its 'run' function:
+
+    # If the user requests a specific initailization routine, run that first:
     if 'initialize' in parameters and parameters['initialize']['enable']:
         if parameters['initialize']['type'] == 'open-circuit':
             model = importlib.import_module('.'+'CC_cycle', 
@@ -121,11 +131,58 @@ def bat_can(input = None):
             elif fit_params[i]['type'] == 'cathode-kinetics':
                 ca.surf_obj.set_multiplier(x, 
                     fit_params[i]['reaction-index'])
+            elif fit_params[i]['type'] == 'air-kinetics':
+                ca.gas_elyte_obj.set_multiplier(x, 
+                    fit_params[i]['reaction-index'])
             elif fit_params[i]['type'] == 'cathode-microstructure':
                 setattr(ca, fit_params[i]['parameter'], x)
 
-        # If the fit is done, we want to plot the best fit:
+        global icolor 
+        icolor = 0
+        #for sim in parameters['simulations']:
+        global run
+        def run(sim, fit_fig=None, fit_axs=None, icolor=0):
+            sim_local = sim
+            try:
+                model = importlib.import_module('.'+sim['type'], 
+                    package='simulations')
+
+                solution = model.run(SV_0, an, sep, ca, algvars, 
+                    parameters, sim)
+
+                # Read out the results:
+                if final_flag:
+                    sim_local['outputs']['show-plots'] = False
+                    results = model.output(solution, an, sep, ca, parameters, 
+                        sim_local, plot_flag=True, return_flag=True, save_flag=True)
+                else:
+                    results = model.output(solution, an, sep, ca, parameters, 
+                        sim, plot_flag=False, return_flag=True, save_flag=False)
+                phi_sim = results['phi_ed'].to_numpy()[:,-1]
+                    
+                sim_data = np.array((results['capacity'].to_numpy(),
+                    phi_sim))
+
+                # This function calculates the SSR for this simulation:
+                ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
+                        units_scale = 1e4)
+                print('SSR = ', ssr_calc)
+
+                if final_flag:
+                    fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
+                        sim_data.T, fit_axs, fit_fig, units_scale = 1e4, 
+                        color = colors[icolor])
+                    icolor += 1
+            except:
+                # Assign a large penalty for failed parameter sets:
+                ssr_calc = 1e23
+                print('Simulation failed')
+
+            return ssr_calc
+
         if final_flag:
+            SSR_net = 0
+            icolor = 0
             fit_fig, fit_axs = plt.subplots(1, 1, sharex=True, 
                 gridspec_kw = {'wspace':0, 'hspace':0})
         
@@ -141,56 +198,31 @@ def bat_can(input = None):
             for i in np.arange(ndata):
                 colors.append(cmap(color_ind[i]))
 
-        outcome = 0
-        icolor = 0
-        for sim in parameters['simulations']:
-            try:
-                model = importlib.import_module('.'+sim['type'], 
-                    package='simulations')
+            # pool = mp.Pool(processes = int(cores))
+            # SSR_net = pool.map(run, (list(parameters['simulations'])))
+            for sim in parameters['simulations']:
+                SSR_net += run(sim, fit_fig, fit_axs, icolor)
+                icolor += 1
+        else:
+            pool = mp.Pool(processes = int(cores))
+            SSR_net = pool.map(run, list(parameters['simulations']))
 
-                solution = model.run(SV_0, an, sep, ca, algvars, 
-                    parameters, sim)
-
-                # Read out the results:
-                if final_flag:
-                    sim['outputs']['show-plots'] = False
-                    results = model.output(solution, an, sep, ca, parameters, 
-                        sim, plot_flag=True, return_flag=True, save_flag=True)
-                else:
-                    results = model.output(solution, an, sep, ca, parameters, 
-                        sim, plot_flag=False, return_flag=True, save_flag=False)
-                phi_sim = results['phi_ed'].to_numpy()[:,-1]
-                    
-                sim_data = np.array((results['capacity'].to_numpy(),
-                    phi_sim))
-
-                   
-                ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
-                        units_scale = 1e4)
-                print('SSR = ', ssr_calc)
-                outcome += ssr_calc 
-
-                if final_flag:
-                    fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
-                        sim_data.T,fit_axs, fit_fig, units_scale = 1e4, 
-                        color = colors[icolor])
-                    icolor += 1
-            except:
-                # Assign a large penalty for failed parameter sets:
-                ssr_calc = 1e23
-                print('Simulation failed')
-                outcome += ssr_calc
-
-        print('SSR = ', outcome)
+        print('SSR = ', np.sum(SSR_net))
         
         if final_flag:
-            fit_axs.annotate(f"SSR = 1.0", xy=(0,0),
-                xytext=(0.5, 0.5), textcoords='axes fraction', fontsize = 2)
+            fit_axs.annotate(f"SSR = 1.0", xy=(0,0))#,
+                # xytext=(0.5, 0.5), textcoords='axes fraction')#, fontsize = 8)
                 
-            fit_fig.savefig(parameters['output']+'/fit.pdf')
+            if len(parameters['simulations']) == 1:
+                savename = (parameters['output'] +'_' 
+                    + sim['outputs']['save-name'] )
+            else:
+                savename = (parameters['output'])
+                
+            fit_fig.savefig(savename + '/fit.pdf')
             plt.show()
 
-        return outcome
+        return np.sum(SSR_net)
 
     start = timeit.default_timer()
     x_start = []
@@ -202,15 +234,21 @@ def bat_can(input = None):
     for sim in parameters['simulations']:
         sim['ref_data'] = pd.read_excel('data/' + sim['validation'])
 
-    # x_bounds = [(1e-15, None), (1e-15, None)]
-    result = spo.minimize(run_model, x_start, bounds = x_bounds, 
-        options={'disp': True})
     
-    print(result)
+    if print_flag:
+        # Just print the fit of the starting guess - do not run the fitting 
+        # routine:
+        result = run_model(x_start, final_flag=True)
+    else:
+        # Fit to the reference data:
+        result = spo.minimize(run_model, x_start, bounds = x_bounds, 
+            options={'disp': True})
+    
+        print(result)
 
-    print("Best fit = ", result.x)
+        print("Best fit = ", result.x)
 
-    run_model(result.x, final_flag=True)
+        run_model(result.x, final_flag=True)
 
     stop = timeit.default_timer()
     print('Time: ', stop - start)  
@@ -225,6 +263,8 @@ if __name__ == '__main__':
     # the input file location:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
+    parser.add_argument('--cores')
+    parser.add_argument('--print', action='store_true')
     args = parser.parse_args()
     
-    bat_can(args.input)
+    bat_can(args.input, args.cores, args.print)
