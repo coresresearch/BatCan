@@ -10,6 +10,8 @@ from datetime import datetime
 import importlib # allows us to import from user input string.
 import multiprocessing as mp
 import numpy as np
+import os
+from shutil import copy2
 import timeit
 
 from bat_can_init import initialize
@@ -128,6 +130,18 @@ def bat_can(input, cores):
     pool = mp.Pool(processes = int(cores))
     pool.map(model_run, list(parameters['simulations']))
 
+    
+    if len(parameters['simulations']) == 1:
+        filename = (parameters['output'] +'_' 
+                    + sim['outputs']['save-name'] )
+    else:
+        filename = (parameters['output'] +'/')
+                
+    if not os.path.exists(filename):
+        os.makedirs(filename)
+
+    copy2(input_file, filename)
+
     # Record time when finished:
     stop = timeit.default_timer()
     print('Time: ', stop - start)  
@@ -141,7 +155,7 @@ if __name__ == '__main__':
     # the input file location:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
-    parser.add_argument('--cores', action='store_true')
+    parser.add_argument('--cores')
     args = parser.parse_args()
     
     bat_can(args.input, args.cores)

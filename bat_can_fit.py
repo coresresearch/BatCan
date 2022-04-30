@@ -164,13 +164,15 @@ def bat_can(input, cores, print_flag):
                     phi_sim))
 
                 # This function calculates the SSR for this simulation:
+                # Scale to convert mAh to mAh/cm2:
+                InvArea = 1./0.7
                 ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
-                        units_scale = 1e4)
+                        units_scale = InvArea)
                 print('SSR = ', ssr_calc)
 
                 if final_flag:
                     fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
-                        sim_data.T, fit_axs, fit_fig, units_scale = 1e4, 
+                        sim_data.T, fit_axs, fit_fig, units_scale = InvArea, 
                         color = colors[icolor])
                     icolor += 1
             except:

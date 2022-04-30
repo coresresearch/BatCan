@@ -82,7 +82,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         # Create an array of currents, one for each time step:
         i_data = currents[i]*np.ones_like(solution.values.t)
         cycle_number = int(i+1-equil)*np.ones_like(solution.values.t)
-        cycle_capacity = 1000*solution.values.t*abs(i_data)/3600
+        cycle_capacity = 0.1*solution.values.t*abs(i_data)/3600
 
         # Append the current data array to any preexisting data, for output.  
         # If this is the first step, create the output data array.
@@ -299,7 +299,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
         t_0 = 0
         for i in range(int(solution[1,-1])):
             cycle = solution_df[solution_df.iloc[:,0] == i+1]
-            cycle_axs.plot(1000*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
+            cycle_axs.plot(0.1*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
                 cycle.iloc[:,phi_ptr-1])
 
             # Update time offset:
@@ -332,10 +332,14 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
                 if not os.path.exists(sim['filename']):
                     os.makedirs( sim['filename'])
 
-                solution_df.to_pickle(sim['filename']+'/output.pkl')
-                solution_df.to_csv(sim['filename']+'/output.csv', sep=',')
-                summary_fig.savefig(sim['filename']+'/summary.pdf')
-                cycle_fig.savefig(sim['filename']+'/cycles.pdf')
+                solution_df.to_pickle(sim['filename']+'/output_' 
+                    + sim['outputs']['save-name'] + '.pkl')
+                solution_df.to_csv(sim['filename']+'/output_' 
+                    + sim['outputs']['save-name'] + '.csv', sep=',')
+                summary_fig.savefig(sim['filename']+'/summary_' 
+                    + sim['outputs']['save-name'] + '.pdf')
+                cycle_fig.savefig(sim['filename']+'/cycles_' 
+                    + sim['outputs']['save-name'] + '.pdf')
             
             if ('show-plots' not in sim['outputs'] or 
                 sim['outputs']['show-plots']):
