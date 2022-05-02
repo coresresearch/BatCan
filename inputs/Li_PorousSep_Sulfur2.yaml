@@ -358,7 +358,7 @@ lithium-electrolyte-reactions:
 sulfur-elyte-reactions:
 - equation: S8(s) <=> S8(e)
   id: sulfur_dissolution
-  rate-constant: {A: 1.9e-6, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1.9e-2, b: 0.0, Ea: 0.0}
 
 carbon-elyte-reactions:
 - equation: 0.5 S8(e) + electron <=> 0.5 S8-(e)

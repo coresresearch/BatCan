@@ -166,9 +166,6 @@ class electrode():
         # Save the indices of any algebraic variables:
         self.algvars = offset + self.SVptr['phi_ed'][:]
 
-        print(self.host_surf_obj.delta_standard_gibbs)
-        print(self.conversion_surf_obj[1].delta_standard_gibbs)
-
     def initialize(self, inputs, sep_inputs):
 
         # Initialize the solution vector for the electrode domain:
@@ -240,7 +237,7 @@ class electrode():
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
         eps_conversion = np.zeros((self.n_conversion_phases))
-        eps_conversion[:] = SV_loc[SVptr['eps_conversion'][j][:]]
+        eps_conversion = SV_loc[SVptr['eps_conversion'][j]]
         eps_elyte = 1. - sum(eps_conversion[:]) - self.eps_host
         mult = np.zeros((self.n_conversion_phases))
 
@@ -316,20 +313,19 @@ class electrode():
             # drops below the user-specified minimum, any reactions that
             # consume the phase have their rates quickly go to zero:
             for ph_index, ph in enumerate(eps_conversion):
-                mult[ph_index] = tanh(eps_conversion[ph_index] / self.conversion_phase_min[ph_index])
+                mult[ph_index] = tanh(ph / self.conversion_phase_min[ph_index])
 
             # Chemical production rate of the conversion phases:
             # (kmol/m2-interface/s)
-            conv_sw = np.array([1, 1])
-            sdot_conversion = np.zeros((self.n_conversion_phases))
             for ph in np.arange(0, self.n_conversion_phases):
-                sdot_conversion[ph] = (self.conversion_surf_obj[ph].get_creation_rates(self.conversion_obj[ph])
+
+                sdot_conversion = (self.conversion_surf_obj[ph].get_creation_rates(self.conversion_obj[ph])
                     - mult[ph] * self.conversion_surf_obj[ph].get_destruction_rates(self.conversion_obj[ph]))
 
                 # Rate of change of the conversion phase volume fraction:
                 resid[SVptr['eps_conversion'][j][ph]] = \
                     (SVdot_loc[SVptr['eps_conversion'][j][ph]] - conv_sw[ph]*A_conversion[ph]
-                    * np.dot(sdot_conversion[ph], self.conversion_obj[ph].partial_molar_volumes))
+                    * np.dot(sdot_conversion, self.conversion_obj[ph].partial_molar_volumes))
 
             # Production rate of the electron (moles / m2 interface / s)
             #sdot_electron = \
@@ -429,23 +425,28 @@ class electrode():
 
         # Convert to m2 interface per m2 geometric area:
         A_surf_ratio = A_avail*self.dy
+        A_conversion_ratio = A_conversion*self.dy
 
         # Multiplier to scale phase destruction rates.  As eps_product drops
         # below the user-specified minimum, any reactions that consume the
         # phase have their rates quickly go to zero:
+        sw_conv = np.zeros((self.n_conversion_phases))
         for ph_index, ph in enumerate(eps_conversion):
-            mult[ph_index] = tanh(eps_conversion[ph_index] / self.conversion_phase_min[ph_index])
+            if ph < 1e-5 and ph_index == 0:
+                sw_conv[ph_index] = 0
+            else:
+                sw_conv[ph_index] = 1
+
 
         # Chemical production rate of the product phase: (mol/m2 interface/s)
-        sdot_conversion = np.zeros((self.n_conversion_phases))
         for ph in np.arange(0, self.n_conversion_phases):
 
-            sdot_conversion[ph] = (self.conversion_surf_obj[ph].get_creation_rates(self.conversion_obj[ph])
-                - mult[ph] * self.conversion_surf_obj[ph].get_destruction_rates(self.conversion_obj[ph]))
+            sdot_conversion = (self.conversion_surf_obj[ph].get_creation_rates(self.conversion_obj[ph])
+                - self.conversion_surf_obj[ph].get_destruction_rates(self.conversion_obj[ph]))
 
             # Rate of change of the product phase volume fraction:
             resid[SVptr['eps_conversion'][j][ph]] = (SVdot_loc[SVptr['eps_conversion'][j][ph]]
-                - A_conversion[ph] * np.dot(sdot_conversion[ph], self.conversion_obj[ph].partial_molar_volumes))
+                - sw_conv[ph] * A_conversion[ph] * np.dot(sdot_conversion, self.conversion_obj[ph].partial_molar_volumes))
 
         # Production rate of the electron (moles / m2 interface / s)
         #sdot_electron = (mult * self.host_surf_obj.get_creation_rates(self.host_obj)
@@ -467,8 +468,18 @@ class electrode():
         for species in np.arange(0, self.n_conversion_phases):
             mult_elyte[int(self.index_conversion_elyte[species])] = mult[species]
 
-        sdot_elyte_host = (mult_elyte*self.host_surf_obj.get_creation_rates(self.elyte_obj)
+        sdot_elyte_host = (self.host_surf_obj.get_creation_rates(self.elyte_obj)
             - self.host_surf_obj.get_destruction_rates(self.elyte_obj))
+
+        sdot_elyte_conv_ph = np.zeros((self.elyte_obj.n_species, self.n_conversion_phases))
+        for ph in np.arange(0, self.n_conversion_phases):
+            sdot_elyte_conv_ph[:,ph] = (self.conversion_surf_obj[ph].get_creation_rates(self.elyte_obj)
+            - self.conversion_surf_obj[ph].get_destruction_rates(self.elyte_obj))
+
+            sdot_elyte_conv_ph[:,ph] *= sw_conv[ph]*A_conversion[ph]
+
+        #sdot_elyte_conv_ph *= A_conversion
+        sdot_elyte = np.sum(sdot_elyte_conv_ph, axis=1) + sdot_elyte_host*A_avail
 
         # Double layer current represents an additional chemical source/sink
         # term, for electrolyte chemical species:
@@ -477,7 +488,7 @@ class electrode():
         dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
         # Rate of change of electrolyte chemical species molar concentration:
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
-            - (sdot_elyte_host*A_surf_ratio + (N_k_in - N_k_out))*self.dyInv/eps_elyte
+            - (sdot_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
             + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)
 
         #print(SV_loc, t)
@@ -524,10 +535,10 @@ class electrode():
                 C_k_elyte_ptr = (SV_offset + self.SV_offset
                     + self.SVptr['C_k_elyte'][j, species_ptr])
                 axs[ax_offset+self.n_conversion_phases].plot(solution[0,:]/3600,
-                    1000*solution[C_k_elyte_ptr,:])
+                    solution[C_k_elyte_ptr,:])
 
         axs[ax_offset+self.n_conversion_phases].legend(self.plot_species)
-        axs[ax_offset+self.n_conversion_phases].set_ylabel('Elyte Species Conc. \n (mol m$^{-3}$)')
+        axs[ax_offset+self.n_conversion_phases].set_ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)')
         return axs
 
 #Official Soundtrack:

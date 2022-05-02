@@ -45,7 +45,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         return_val[1] = ca.voltage_lim(SV, sim['phi-cutoff-upper'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-22,
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-16,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
             'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
@@ -58,7 +58,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'A/m^2 \n')
 
-        t_out = np.linspace(0, times[i], 500000)
+        t_out = np.linspace(0, times[i], 100000)
 
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
