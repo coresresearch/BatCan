@@ -11,7 +11,7 @@ import numpy as np
 
 from bat_can_init import initialize
 
-# This is the main function that runs the model.  We define it this way so it 
+# This is the main function that runs the model.  We define it this way so it
 # is called by "main," below:
 def bat_can(input = None):
     if input is None:
@@ -36,31 +36,31 @@ def bat_can(input = None):
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
-    # For each element (anode 'an', separator 'sep', cathode 'ca') the 'class' 
-    # variable from the inputs tells what kind of anode, separator, or cathode 
-    # it is, and points to a '.py' file in this directory.  We import that 
-    # module, and then run its 'initialize' routine to create an intial 
+    # For each element (anode 'an', separator 'sep', cathode 'ca') the 'class'
+    # variable from the inputs tells what kind of anode, separator, or cathode
+    # it is, and points to a '.py' file in this directory.  We import that
+    # module, and then run its 'initialize' routine to create an intial
     # solution vector and an object that stores needed parameters.
     # import single_particle_electrode as an_module_0
-    an_module = importlib.import_module('electrode_models.' 
+    an_module = importlib.import_module('electrode_models.'
         + an_inputs['class'])
-    an = an_module.electrode(input_file, an_inputs, sep_inputs, ca_inputs, 
+    an = an_module.electrode(input_file, an_inputs, sep_inputs, ca_inputs,
             'anode', parameters, offset=0)
-    
-    sep_module = importlib.import_module('separator_models.' 
+
+    sep_module = importlib.import_module('separator_models.'
         + sep_inputs['class'])
-    sep = sep_module.separator(input_file, sep_inputs, parameters, 
+    sep = sep_module.separator(input_file, sep_inputs, parameters,
             offset=an.n_vars)
-    
+
     # Check to see if the anode object needs to adjust the separator properties:
     sep = an.adjust_separator(sep)
-    ca_module = importlib.import_module('electrode_models.' 
+    ca_module = importlib.import_module('electrode_models.'
         + ca_inputs['class'])
-    ca = ca_module.electrode(input_file, ca_inputs, sep_inputs, an_inputs, 
+    ca = ca_module.electrode(input_file, ca_inputs, sep_inputs, an_inputs,
         'cathode', parameters, offset= an.n_vars+sep.n_vars*sep.n_points)
 
-    # Check to see if the cathode object needs to adjust the separator 
-    # properties:    
+    # Check to see if the cathode object needs to adjust the separator
+    # properties:
     sep = ca.adjust_separator(sep)
 
     # Initialize the solution vector:
@@ -76,12 +76,17 @@ def bat_can(input = None):
     #===========================================================================
     #   RUN THE SIMULATION
     #===========================================================================
-    # The inputs tell us what type of experiment we will simulate.  Load the 
+    # The inputs tell us what type of experiment we will simulate.  Load the
     # module, then call its 'run' function:
     for sim in parameters['simulations']:
         model = importlib.import_module('.'+sim['type'], package='simulations')
 
         solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+
+        #=======================================================================
+        # RUN CONSERVATION TEST SUITE
+        #=======================================================================
+        model.conservation_test(solution, an, sep, ca, parameters, sim)
 
         #=======================================================================
         #   CREATE FIGURES AND SAVE ALL OUTPUTS
@@ -96,10 +101,10 @@ def bat_can(input = None):
 if __name__ == '__main__':
     import argparse
 
-    # Currently, the only command line keyword enabled is --input, to specify 
+    # Currently, the only command line keyword enabled is --input, to specify
     # the input file location:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
     args = parser.parse_args()
-    
+
     bat_can(args.input)

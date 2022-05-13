@@ -308,30 +308,34 @@ class electrode():
 
             # Convert to m2 interface per m2 geometric area:
             A_surf_ratio = A_avail*self.dy
+            A_conversion_ratio = A_conversion*self.dy
 
             # Multiplier to scale phase destruction rates.  As eps_product
             # drops below the user-specified minimum, any reactions that
             # consume the phase have their rates quickly go to zero:
-            for ph_index, ph in enumerate(eps_conversion):
-                mult[ph_index] = tanh(ph / self.conversion_phase_min[ph_index])
+            sw_conv = np.zeros((self.n_conversion_phases))
+            for ph_i, ph in enumerate(eps_conversion):
+                if ph < 1e-5 and ph_i == 0:
+                    sw_conv[ph_i] = 0
+                else:
+                    sw_conv[ph_i] = 1
 
             # Chemical production rate of the conversion phases:
             # (kmol/m2-interface/s)
-            for ph in np.arange(0, self.n_conversion_phases):
+            for ph_i, ph in enumerate(self.conversion_surf_obj):
+                sdot_conversion = \
+                    ph.get_net_production_rates(self.conversion_obj[ph_i])
 
-                sdot_conversion = (self.conversion_surf_obj[ph].get_creation_rates(self.conversion_obj[ph])
-                    - mult[ph] * self.conversion_surf_obj[ph].get_destruction_rates(self.conversion_obj[ph]))
-
+                nu = self.conversion_obj[ph_i].partial_molar_volumes
                 # Rate of change of the conversion phase volume fraction:
-                resid[SVptr['eps_conversion'][j][ph]] = \
-                    (SVdot_loc[SVptr['eps_conversion'][j][ph]] - conv_sw[ph]*A_conversion[ph]
-                    * np.dot(sdot_conversion, self.conversion_obj[ph].partial_molar_volumes))
+                resid[SVptr['eps_conversion'][j][ph_i]] = \
+                    (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
+                    - sw_conv[ph_i]*A_conversion[ph_i]
+                    * np.dot(sdot_conversion, nu))
 
             # Production rate of the electron (moles / m2 interface / s)
-            #sdot_electron = \
-            #    (mult * self.surf_obj.get_creation_rates(self.host_obj)
-            #    - self.surf_obj.get_destruction_rates(self.host_obj))
-            sdot_electron = (self.host_surf_obj.get_net_production_rates(self.host_obj))
+            sdot_electron = \
+                (self.host_surf_obj.get_net_production_rates(self.host_obj))
 
             # Positive Faradaic current corresponds to positive charge created
             # in the electrode:
@@ -343,23 +347,27 @@ class electrode():
             resid[SVptr['phi_dl'][j]] = (SVdot_loc[SVptr['phi_dl'][j]] -
                 i_dl*self.C_dl_Inv)
 
-            mult_elyte = np.ones((self.elyte_obj.n_species))
-            for species in np.arange(0, self.n_conversion_phases):
-                mult_elyte[int(self.index_conversion_elyte[species])] = mult[species]
-
             # Species production rate for electrolyte species:
             sdot_elyte_host = \
-                (mult_elyte * self.host_surf_obj.get_creation_rates(self.elyte_obj)
-                - self.host_surf_obj.get_destruction_rates(self.elyte_obj))
+                self.host_surf_obj.get_net_production_rates(self.elyte_obj)
+
+            R_elyte_conv = np.zeros((self.elyte_obj.n_species,
+                                     self.n_conversion_phases))
+            for ph_i, ph in enumerate(self.conversion_surf_obj):
+                sdot_elyte_conv = ph.get_net_production_rates(self.elyte_obj)
+                R_elyte_conv[:,ph_i] = (sdot_elyte_conv) \
+                                            *sw_conv[ph_i]*A_conversion[ph_i]
 
             # The double layer current acts as an additional chemical source/
             # sink term:
             sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday
 
+            R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail
+
             # Change in electrolyte species concentration, per unit time:
             dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
             resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
-                - (sdot_elyte_host*A_surf_ratio + (N_k_in - N_k_out))*self.dyInv/eps_elyte
+                - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
                 + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)
 
             # Re-set "next" node state variables to be the new "current" node
@@ -400,7 +408,8 @@ class electrode():
             if params['boundary'] == 'current':
                 # Total current (i_io + i_el) into the node equals i_ext:
                 i_el_out = params['i_ext']
-                resid[SVptr['phi_ed'][j]] =  i_io_in - i_io_out + i_el_in - i_el_out
+                resid[SVptr['phi_ed'][j]] =  \
+                    i_io_in - i_io_out + i_el_in - i_el_out
             elif params['boundary'] == 'potential':
                 # Electrode potential = cell potential:
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']]
@@ -437,21 +446,21 @@ class electrode():
             else:
                 sw_conv[ph_index] = 1
 
-
         # Chemical production rate of the product phase: (mol/m2 interface/s)
-        for ph in np.arange(0, self.n_conversion_phases):
+        #for ph in np.arange(0, self.n_conversion_phases):
+        for ph_i, ph in enumerate(self.conversion_surf_obj):
+            sdot_conversion = \
+                ph.get_net_production_rates(self.conversion_obj[ph_i])
 
-            sdot_conversion = (self.conversion_surf_obj[ph].get_creation_rates(self.conversion_obj[ph])
-                - self.conversion_surf_obj[ph].get_destruction_rates(self.conversion_obj[ph]))
-
+            nu = self.conversion_obj[ph_i].partial_molar_volumes
             # Rate of change of the product phase volume fraction:
-            resid[SVptr['eps_conversion'][j][ph]] = (SVdot_loc[SVptr['eps_conversion'][j][ph]]
-                - sw_conv[ph] * A_conversion[ph] * np.dot(sdot_conversion, self.conversion_obj[ph].partial_molar_volumes))
+            resid[SVptr['eps_conversion'][j][ph_i]] = \
+                (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
+                - sw_conv[ph_i]*A_conversion[ph_i]*np.dot(sdot_conversion, nu))
 
         # Production rate of the electron (moles / m2 interface / s)
-        #sdot_electron = (mult * self.host_surf_obj.get_creation_rates(self.host_obj)
-        #    - self.host_surf_obj.get_destruction_rates(self.host_obj))
-        sdot_electron = (self.host_surf_obj.get_net_production_rates(self.host_obj))
+        sdot_electron = \
+            (self.host_surf_obj.get_net_production_rates(self.host_obj))
 
         # Positive Faradaic current corresponds to positive charge created in
         # the electrode:
@@ -463,36 +472,31 @@ class electrode():
         resid[SVptr['phi_dl'][j]] = (SVdot_loc[SVptr['phi_dl'][j]]
             - i_dl*self.C_dl_Inv)
 
-        # Molar production rate of electrolyte species at the electrolyte-electrode interface (kmol / m2 of interface / s)
-        mult_elyte = np.ones((self.elyte_obj.n_species))
-        for species in np.arange(0, self.n_conversion_phases):
-            mult_elyte[int(self.index_conversion_elyte[species])] = mult[species]
+        # Molar production rate of electrolyte species at the electrolyte-
+        #   electrode interface (kmol / m2 of interface / s)
+        sdot_elyte_host = \
+            self.host_surf_obj.get_net_production_rates(self.elyte_obj)
 
-        sdot_elyte_host = (self.host_surf_obj.get_creation_rates(self.elyte_obj)
-            - self.host_surf_obj.get_destruction_rates(self.elyte_obj))
-
-        sdot_elyte_conv_ph = np.zeros((self.elyte_obj.n_species, self.n_conversion_phases))
-        for ph in np.arange(0, self.n_conversion_phases):
-            sdot_elyte_conv_ph[:,ph] = (self.conversion_surf_obj[ph].get_creation_rates(self.elyte_obj)
-            - self.conversion_surf_obj[ph].get_destruction_rates(self.elyte_obj))
-
-            sdot_elyte_conv_ph[:,ph] *= sw_conv[ph]*A_conversion[ph]
-
-        #sdot_elyte_conv_ph *= A_conversion
-        sdot_elyte = np.sum(sdot_elyte_conv_ph, axis=1) + sdot_elyte_host*A_avail
+        R_elyte_conv = np.zeros((self.elyte_obj.n_species,
+                                 self.n_conversion_phases))
+        for ph_i, ph in enumerate(self.conversion_surf_obj):
+            sdot_elyte_conv = ph.get_net_production_rates(self.elyte_obj)
+            R_elyte_conv[:,ph_i] = (sdot_elyte_conv) \
+                                        * sw_conv[ph_i]*A_conversion[ph_i]
 
         # Double layer current represents an additional chemical source/sink
         # term, for electrolyte chemical species:
         sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday
 
+        #sdot_elyte_conv_ph *= A_conversion
+        R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail
+
         dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
         # Rate of change of electrolyte chemical species molar concentration:
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
-            - (sdot_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
+            - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
             + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)
 
-        #print(SV_loc, t)
-        #print(SV_loc[SVptr['C_k_elyte']])
         return resid
 
     def voltage_lim(self, SV, val):

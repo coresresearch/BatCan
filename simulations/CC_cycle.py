@@ -202,6 +202,21 @@ def residual(t, SV, SVdot, resid, inputs):
 
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
+def conservation_test(solution, an, sep, ca, params, sim):
+
+    SV_offset = 4
+    ca_Ck_ptr = SV_offset + ca.SV_offset + ca.SVptr['C_k_elyte']
+    sep_Ck_ptr = SV_offset + sep.SV_offset + sep.SVptr['C_k_elyte']
+    an_Ck_ptr = SV_offset + an.SV_offset + an.SVptr['C_k_elyte']
+    n_S_atoms = np.zeros((ca.elyte_obj.n_species))
+    for i, species in enumerate(ca.elyte_obj.species_names):
+        n_S_atoms[i] = ca.elyte_obj.n_atoms(species, 'S')
+
+
+    print('test suite')
+
+
+
 def output(solution, an, sep, ca, params, sim):
     """
     Prepare and save any output data to the correct location. Prepare,
