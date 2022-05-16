@@ -23,10 +23,10 @@ cell-description:
     dy_elyte: 4e-6
   separator:
     class: 'porous_separator'
-    thickness: 20e-6  # separator thickness, m
+    thickness: 7e-6  # separator thickness, m
     n_points: 4       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
-    sigma_io: 50.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
+    sigma_io: 10.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
     transport:
       mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
       model: 'dilute-solution'

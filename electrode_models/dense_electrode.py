@@ -24,7 +24,7 @@ class electrode():
         self.conductor_obj = ct.Solution(input_file, inputs['conductor-phase'])
         self.surf_obj = ct.Interface(input_file, inputs['surf-phase'],
             [self.bulk_obj, self.elyte_obj, self.conductor_obj])
-        print(-self.surf_obj.delta_standard_gibbs/ct.faraday)
+        #print(-self.surf_obj.delta_standard_gibbs/ct.faraday)
         # Anode or cathode? Positive external current delivers positive charge
         # to the anode, and removes positive charge from the cathode.
         self.name = electrode_name
@@ -263,12 +263,14 @@ class electrode():
         """
         The electrode domain considers the electrode object plus a thin layer of the separator, adjacent to the self. We subtract this thickness from the total separator thickness, so that we do not inadvertently increase the total transport resistance through the separator.
         """
-        sep.dy -= self.dy_elyte
-
+        #sep.H -= self.dy_elyte
+        #sep.dy -= self.dy_elyte
         # Reduce the number of points in the separator by one, unless the
         # separator already only contains one point (which is the case for the
         # `ionic_resistor` model. In this case, leave sep.n_points at 1.)
         sep.n_points = max(sep.n_points - 1, 1)
+        dy_r = sep.dy - self.dy_elyte
+        sep.dy += dy_r/sep.n_points
 
         return sep
 

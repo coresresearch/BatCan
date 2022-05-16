@@ -204,18 +204,42 @@ def residual(t, SV, SVdot, resid, inputs):
 
 def conservation_test(solution, an, sep, ca, params, sim):
 
+    print('Running test suite')
     SV_offset = 4
     ca_Ck_ptr = SV_offset + ca.SV_offset + ca.SVptr['C_k_elyte']
     sep_Ck_ptr = SV_offset + sep.SV_offset + sep.SVptr['C_k_elyte']
     an_Ck_ptr = SV_offset + an.SV_offset + an.SVptr['C_k_elyte']
-    n_S_atoms = np.zeros((ca.elyte_obj.n_species))
+
+    ca_eps_ptr = SV_offset + ca.SV_offset + ca.SVptr['eps_conversion']
+    ca_eps_elyte = np.zeros((ca.n_points, len(solution[0])))
+    for j in np.arange(0, ca.n_points):
+        eps_conversion = solution[ca_eps_ptr[j,:]]
+        ca_eps_elyte[j,:] = 1 - ca.eps_host - np.sum(eps_conversion, axis=0)
+
+    n_S_atoms = np.zeros((ca.elyte_obj.n_species, 1))
     for i, species in enumerate(ca.elyte_obj.species_names):
         n_S_atoms[i] = ca.elyte_obj.n_atoms(species, 'S')
 
+    # Calculate kmol_S/m2 planar cell area
+    n_S_sep = np.zeros((sep.n_points, len(solution[0])))
+    n_S_ca = np.zeros((ca.n_points, len(solution[0])))
 
-    print('test suite')
+    n_S_an = an.eps_elyte*an.dy_elyte*np.sum(n_S_atoms*solution[an_Ck_ptr[0,:]], axis=0)
+    for j in np.arange(0, sep.n_points):
+        n_S_sep[j,:] = sep.eps_elyte*sep.dy*np.sum(n_S_atoms*solution[sep_Ck_ptr[j,:]], axis=0)
+    for j in np.arange(0, ca.n_points):
+        n_S_ca[j,:] = ca_eps_elyte[j,:]*ca.dy*np.sum(n_S_atoms*solution[ca_Ck_ptr[j,:]], axis=0)
 
+    # Calculate amount of sulfur in cathode conversion phases
+    n_S_ca_solid = np.zeros((ca.n_conversion_phases, len(solution[0])))
+    n_S_atoms_solid = np.array([[8],[1]])
+    for j in np.arange(0, ca.n_conversion_phases):
+        eps_conversion = solution[ca_eps_ptr[:,j]]
+        n_S_ca_solid[j,:] = np.sum(n_S_atoms_solid[j]*ca.conversion_obj[j].density_mole*eps_conversion*ca.dy, axis=0)
 
+    n_S_tot = np.sum(n_S_an,axis=0) + np.sum(n_S_sep,axis=0) + np.sum(n_S_ca,axis=0) + np.sum(n_S_ca_solid,axis=0)
+    pct_err_S = 100*(n_S_tot - n_S_tot[0])/n_S_tot[0]
+    print('Max percent error in sulfur conservation =', max(pct_err_S))
 
 def output(solution, an, sep, ca, params, sim):
     """

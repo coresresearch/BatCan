@@ -17,9 +17,9 @@ class separator():
 
         # State variables: electrolyte potential, electrolyte composition (nsp)
         self.n_vars = 1 + self.elyte_obj.n_species
-
+        self.H = inputs['thickness']
         self.n_points = inputs['n_points']
-        self.dy = inputs['thickness']/self.n_points
+        self.dy = self.H/self.n_points
         self.dyInv = 1 / self.dy
         self.eps_elyte = inputs['eps_electrolyte']
 
