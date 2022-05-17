@@ -39,7 +39,7 @@ def bat_can(input, cores):
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
-    an_inputs, sep_inputs, ca_inputs, parameters, _ = initialize(input_file)
+    an_inputs, sep_inputs, ca_inputs, parameters = initialize(input_file)
 
     now = datetime.now()
     dt =  now.strftime("%Y%m%d_%H%M")
@@ -113,8 +113,9 @@ def bat_can(input, cores):
         else:
             raise ValueError("Initialization method currently not implemented.")
 
-    global model_run
-    def model_run(sim):
+    # global model_run
+    # def model_run(sim):
+    for sim in parameters['simulations']:
         model = importlib.import_module('.'+sim['type'], package='simulations')
 
         solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
@@ -127,8 +128,8 @@ def bat_can(input, cores):
 
     # If the user specified to use multiple cores (only relevant if there are 
     # multiple simulations), run themin a multiprocessing pool:
-    pool = mp.Pool(processes = int(cores))
-    pool.map(model_run, list(parameters['simulations']))
+    # pool = mp.Pool(processes = int(cores))
+    # pool.map(model_run, list(parameters['simulations']))
 
     
     if len(parameters['simulations']) == 1:

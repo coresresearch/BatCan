@@ -43,6 +43,7 @@ class electrode():
         # Electrode thickness and inverse thickness:
         self.dy = inputs['thickness']
         self.dyInv = 1/self.dy
+        self.n_points = 1. # No internal discretization
 
         # For some models, the elyte thickness is different from that of the 
         # electrode, so we specify is separately:
@@ -116,8 +117,11 @@ class electrode():
         # ['C_k_elyte'][j] accesses the pointer array:
         self.SVptr['C_k_elyte'].shape = (1,self.elyte_obj.n_species)
 
-        # A pointer to where the SV variables for this electrode are, within the 
-        # overall solution vector for the entire problem:
+        self.SVnames = (['phi_ed', 'phi_dl'] 
+            + self.bulk_obj.species_names[:] + self.elyte_obj.species_names[:])
+
+        # A pointer to where the SV variables for this electrode are, within 
+        # the overall solution vector for the entire problem:
         self.SVptr['electrode'] = np.arange(offset, offset+self.n_vars)
 
         # Save the indices of any algebraic variables:
@@ -258,6 +262,32 @@ class electrode():
         
         return voltage_eval
 
+    def species_lim(self, SV, val):
+        """
+        Check to see if the minimum species concentration limit has been exceeded.
+        """
+        # Save local copies of the solution vector and pointers for 
+        # this electrode:
+        SVptr = self.SVptr
+        SV_loc = SV[SVptr['electrode']]
+
+        # Default is that the minimum hasn't been exceeded:
+        species_eval = 1.
+
+        # Find the minimum species concentration, and # compare to the user-provided minimum.  Save only the minimum value:
+        Ck_elyte = SV_loc[SVptr['C_k_elyte'][0]]
+            
+        local_eval = min(Ck_elyte) - val
+        species_eval = min(species_eval, local_eval)
+
+        if np.isnan(np.sum(Ck_elyte)):
+            species_eval = -1
+            print("nan found")
+
+        # The simulation  looks for instances where this value changes sign 
+        # (i.e. where it equals zero)    
+        return abs(species_eval) + species_eval
+
     def adjust_separator(self, sep):
         """ 
         Sometimes, an electrode object requires adjustments to the separator object.  This is not the case, for the SPM.
@@ -266,10 +296,13 @@ class electrode():
         # Return the separator class object, unaltered:
         return sep
 
-    def output(self, axs, solution, ax_offset):
+    def output(self, axs, solution, SV_offset, ax_offset):
+        
         """Plot the intercalation fraction vs. time"""
-        C_k_an = solution[2 + self.SV_offset + self.SVptr['C_k_ed'][0],:]
-        axs[ax_offset].plot(solution[0,:]/3600, C_k_an)
+        C_k_ed = solution[SV_offset+self.SV_offset + self.SVptr['C_k_ed'][:],:]
+        
+        X_k_ed = C_k_ed/np.sum(C_k_ed,axis=0)
+        axs[ax_offset].plot(solution[0,:]/3600, X_k_ed[0,:])
         axs[ax_offset].set_ylabel(self.name+' Li \n(kmol/m$^3$)')
         axs[ax_offset].set(xlabel='Time (h)')
 
