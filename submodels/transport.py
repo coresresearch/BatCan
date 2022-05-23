@@ -10,17 +10,27 @@ def dilute_solution(state_1, state_2, sep):
         * dy_inv)
     T_int = ((state_1['dy'] * state_1['T'] + state_2['dy'] * state_2['T'])
         * dy_inv)
-
-    D_k_eff = ((state_1['dy'] * state_1['microstructure'] 
-        + state_2['dy'] * state_2['microstructure']) * sep.D_k * dy_inv)
+    D_scale = scale_Diff(C_k_int, sep)
+    D_k_scale = sep.D_k - D_scale
+    D_k_eff = ((state_1['dy'] * state_1['microstructure']
+        + state_2['dy'] * state_2['microstructure']) * D_k_scale * dy_inv)
     D_k_mig = (D_k_eff * sep.elyte_obj.charges * ct.faraday * C_k_int
         / ct.gas_constant / T_int)
-    
+
     # Dilute solution theory fluxes:
     N_k_elyte = ((D_k_eff * (state_1['C_k'] - state_2['C_k'])
         + D_k_mig * (state_1['phi'] - state_2['phi'])) * 2 * dy_inv)
-    
+
     # Ionic current = sum(z_k*N_k*F)
     i_io = ct.faraday*np.dot(N_k_elyte, sep.elyte_obj.charges)
 
     return N_k_elyte, i_io
+
+def scale_Diff(C_k, sep):
+    D_vec = np.zeros_like(C_k)
+    C_Li = C_k[sep.index_Li] + sep.flag_lithiated*2*np.sum(C_k[4:])
+
+    D_scale = sep.D_scale_coeff*abs(sep.C_Li_0 - C_Li)
+    D_vec[sep.index_Li] = D_scale
+
+    return D_vec

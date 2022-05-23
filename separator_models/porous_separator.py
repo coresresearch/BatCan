@@ -30,6 +30,10 @@ class separator():
         self.index_Li = \
             self.elyte_obj.species_index(inputs['transport']['mobile-ion'])
 
+        self.flag_lithiated = inputs['flag_lithiated']
+
+        self.D_scale_coeff = inputs['D_scale_coeff']
+
         # Process transport inputs:
         if inputs['transport']['model']=='dilute-solution':
             # Import transport function:
@@ -60,6 +64,9 @@ class separator():
             self.elyte_obj.TP = params['T'], params['P']
 
         self.elyte_obj.electric_potential = inputs['phi_0']
+
+        self.C_Li_0 = self.elyte_obj.concentrations[self.index_Li] \
+                    + self.flag_lithiated*2*np.sum(self.elyte_obj.concentrations[4:])
 
     def initialize(self, inputs):
         SV = np.zeros([self.n_points*self.n_vars])
