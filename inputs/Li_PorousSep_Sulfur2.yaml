@@ -56,7 +56,7 @@ cell-description:
     D_scale_coeff: 1e-11
   cathode:
     class: 'sulfur_electrode2'
-    n-points: 3
+    n-points: 1
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name

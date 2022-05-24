@@ -232,7 +232,11 @@ def conservation_test(solution, an, sep, ca, params, sim):
 
     # Calculate amount of sulfur in cathode conversion phases
     n_S_ca_solid = np.zeros((ca.n_conversion_phases, len(solution[0])))
-    n_S_atoms_solid = np.array([[8],[1]])
+    n_S_atoms_solid = np.zeros((ca.n_conversion_phases))
+    for j, species in enumerate(ca.conversion_obj):
+        for i in np.arange(0, len(species.species_names)):
+            n_S_atoms_solid[j] += species.n_atoms(species.species_names[i], 'S')
+
     for j in np.arange(0, ca.n_conversion_phases):
         eps_conversion = solution[ca_eps_ptr[:,j]]
         n_S_ca_solid[j,:] = np.sum(n_S_atoms_solid[j]*ca.conversion_obj[j].density_mole*eps_conversion*ca.dy, axis=0)
