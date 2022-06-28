@@ -82,8 +82,8 @@ class electrode():
         self.r_host = inputs['r_host']
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
         self.A_host = 4. * np.pi * (self.r_host / 2)**2 # Surface area of a single carbon / host particle [m2]
-        self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
-
+        self.A_init = 2e4 #self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
+        print(self.A_init)
         # For some models, the elyte thickness is different from that of the
         # electrode, so we specify it separately:
         self.dy_elyte = self.dy
@@ -232,6 +232,9 @@ class electrode():
 
         # Read out properties:
         np_conversion = np.zeros((self.n_conversion_phases))
+        r_conversion = np.zeros((self.n_conversion_phases))
+        A_conversion = np.zeros((self.n_conversion_phases))
+        tpb_conversion = np.zeros((self.n_conversion_phases))
         np_conversion = self.conversion_phase_np
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
@@ -289,17 +292,13 @@ class electrode():
             # Total current (ionic plus electronic) must be spatially invariant.
             resid[SVptr['phi_ed'][j]] = i_io_in - i_io_out + i_el_in - i_el_out
 
-            # Calculate phase/electrolyte surface area for conversion phases
-            A_conversion = np.zeros((self.n_conversion_phases))
-            A_conversion = (2*pi*np_conversion*
-                            (3*eps_conversion/2/np_conversion/pi)**(2/3))
-
             # Calculate representative particle radius of conversion phases
-            r_conversion = np.zeros((self.n_conversion_phases))
-            r_conversion = 3*eps_conversion/A_conversion
+            r_conversion = (1.5*eps_conversion/np_conversion/pi)**(1/3)
+
+            # Calculate phase/electrolyte surface area for conversion phases
+            A_conversion = (3*eps_conversion/r_conversion)
 
             # Calculate tpb boundary length if applicable
-            tpb_conversion = np.zeros((self.n_conversion_phases))
             tpb_conversion = 3*eps_conversion/(r_conversion**2)
 
             # Calculate available surface area (m2 interface per m3 electrode):
@@ -415,17 +414,13 @@ class electrode():
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']]
                     - params['potential'])
 
-        # Calculate phase/electrolyte surface area for conversion phases
-        A_conversion = np.zeros((self.n_conversion_phases))
-        A_conversion = (2*pi*np_conversion*
-                        (3*eps_conversion/2/np_conversion/pi)**(2/3))
-
         # Calculate representative particle radius of conversion phases
-        r_conversion = np.zeros((self.n_conversion_phases))
-        r_conversion = 3*eps_conversion/A_conversion
+        r_conversion = (1.5*eps_conversion/np_conversion/pi)**(1/3)
+
+        # Calculate phase/electrolyte surface area for conversion phases
+        A_conversion = 3*eps_conversion/r_conversion
 
         # Calculate tpb boundary length if applicable
-        tpb_conversion = np.zeros((self.n_conversion_phases))
         tpb_conversion = 3*eps_conversion/(r_conversion**2)
 
         # Calculate available surface area (m2 interface per m3 electrode):
@@ -513,6 +508,32 @@ class electrode():
         voltage_eval = SV_loc[SVptr['phi_ed'][-1]] - val
 
         return voltage_eval
+
+    def species_lim(self, SV, val):
+        """
+        Check to see if the min species concentration limit has been exceeded
+        """
+        # Save local copies of the solution vector and pointers for this electrode
+        SVptr = self.SVptr
+        SV_loc = SV[SVptr['electrode']]
+
+        # Default is that the minimum hasn't been exceeded
+        species_eval = 1.
+
+        # For each electrode point, find the minimum species concentration, and
+        #   compare to the user provided minimum. Save only the minimum value
+        for j in range(self.n_points):
+            Ck_loc = SV_loc[SVptr['C_k_elyte'][j,:]]
+
+            local_eval = min(Ck_loc) - val
+            species_eval = min(species_eval, local_eval)
+
+            if np.isnan(np.sum(Ck_loc)):
+                species_eval = -1
+                print("nan found")
+                break
+
+        return abs(species_eval) + species_eval
 
     def adjust_separator(self, sep):
         """

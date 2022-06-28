@@ -14,6 +14,7 @@
 
 """
 import numpy as np
+import time
 from scikits.odes.dae import dae
 from math import floor
 
@@ -21,6 +22,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     """
     Run the simulation
     """
+    t_count = time.time()
     # Determine the current to run at, and the time to fully charge/discharge.
     # 'calc_current' is defined below.
     current, t_final = calc_current(sim, an, ca)
@@ -40,14 +42,23 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
     # This function checks to see if certain limits are exceeded which will
     # terminate the simulation:
+    n_roots = 2
+    if 'species-cutoff' in sim:
+        n_roots += 3
+
     def terminate_check(t, SV, SVdot, return_val, inputs):
         return_val[0] = ca.voltage_lim(SV, sim['phi-cutoff-lower'])
         return_val[1] = ca.voltage_lim(SV, sim['phi-cutoff-upper'])
 
+        if 'species-cutoff' in sim:
+            return_val[2] = an.species_lim(SV, sim['species-cutoff'])
+            return_val[3] = sep.species_lim(SV, sim['species-cutoff'])
+            return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
+
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-16,
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-17,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
-            'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
+            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
@@ -90,6 +101,8 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
 
+    t_elapsed = time.time() - t_count
+    print('t_cpu =', t_elapsed, '\n')
     return data_out
 
 def calc_current(params, an, ca):

@@ -20,11 +20,11 @@ cell-description:
     phi_0: 0. # Initial electric potential, V
     A_surf_ratio: 1.0 # Interface area per unit geometric area
     C_dl: 1.5e-1 #F/m2
-    dy_elyte: 4e-6
+    dy_elyte: 5e-6
   separator:
     class: 'porous_separator'
-    thickness: 10e-6  # separator thickness, m
-    n_points: 4       # Number of finite volumes to discretize
+    thickness: 25e-6  # separator thickness, m
+    n_points: 5       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 50.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
     transport:
@@ -51,12 +51,12 @@ cell-description:
         - species: s-(e)
           D_k: 1e-10
     phi_0: 1.014 # Initial electric potential, V
-    eps_electrolyte: 0.65 # Electrolyte volume fraction, -
+    eps_electrolyte: 0.5 # Electrolyte volume fraction, -
     flag_lithiated: 0
     D_scale_coeff: 1e-11
   cathode:
     class: 'sulfur_electrode2'
-    n-points: 1
+    n-points: 20
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -87,12 +87,12 @@ cell-description:
       charge: 2 # How many moles of charge per mole of species?
       n_phase: 1 # What is the index of this phase in the 'conversion-phases' list above (starting with zero)?
     mobile-ion:  "Li+(e)" # Species name for Li+ in elyte.
-    thickness: 50e-6 # anode thickness, m
+    thickness: 100e-6 # anode thickness, m
     r_host: 6e-6 # Particle radius, m
     phi_0: 3.4 # Initial electric potential, V
     sigma_el: 6.0e1 #electrical ondutivity of the host
-    eps_host: 0.65 # Solid phase volume fraction, -
-    C_dl: 1.5e-1 #F/m2
+    eps_host: 0.056 # Solid phase volume fraction, -
+    C_dl: 1.5e-2 #F/m2
     plot-species: # any extra species in the electrolyte that you want to plot.
       - name: 'S8(e)'
       - name: 'S8-(e)'
@@ -114,13 +114,13 @@ parameters:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 0.1 # input C-rate
+      C-rate: 1 # input C-rate
       n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
       first-step: 'discharge'  # Start with charge or discharge?
       equilibrate:
         enable: True # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
-      phi-cutoff-lower: 0.4 # Simulation cuts off if E_Cell <= this value, V
+      phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
       phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
       species-cutoff: 1e-15 # Simulation cuts off if C_k <= this value, kmol/m3
 
