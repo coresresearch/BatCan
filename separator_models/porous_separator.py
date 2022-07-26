@@ -23,6 +23,17 @@ class separator():
         self.dyInv = 1 / self.dy
         self.eps_elyte = inputs['eps_electrolyte']
 
+        # If user input for non-dimensionalization is true, initialize the
+        #   vector that will hold the scaling values for each variable in the
+        #   separator
+        self.scale_nd = np.ones([self.n_vars])
+        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
+        nd_type = params['simulations'][0]['non-dimensionalize']
+        if nd_type == 'init' or nd_type == 'equil':
+            self.scale_nd_flag = 1
+        else:
+            self.scale_nd_flag = 0
+
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
         self.elyte_microstructure = self.eps_elyte**1.5
@@ -97,6 +108,14 @@ class separator():
         for i in range(self.n_points):
             SV[self.SVptr['C_k_elyte'][i,:]] = self.elyte_obj.concentrations
 
+        if self.scale_nd_flag:
+            self.scale_nd = np.copy(SV[0:self.n_vars])
+            self.scale_nd[self.scale_nd == 0] = 1e-12
+
+        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
+
+        SV /= self.scale_nd_vec
+
         return SV
 
     def residual(self, SV, SVdot, an, ca, params):
@@ -124,7 +143,10 @@ class separator():
 
         # Save local copies of the solution vectors, pointers for the separator:
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['sep']]
+        scale_nd = self.scale_nd
+        scale_nd_vec = self.scale_nd_vec
+        #print(scale_nd)
+        SV_loc = SV[SVptr['sep']]*scale_nd_vec
         SVdot_loc = SVdot[SVptr['sep']]
 
         # Initialize the residual vector, assuming dSVdt = 0 (we will overwrite/
@@ -151,7 +173,7 @@ class separator():
 
             resid[self.SVptr['C_k_elyte'][j]] = \
                 (SVdot_loc[self.SVptr['C_k_elyte'][j]]
-                - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte)
+                - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte / scale_nd[SVptr['C_k_elyte'][0]])
 
             N_k_elyte_in, i_io_in = N_k_elyte_out, i_io_out
 
@@ -161,7 +183,7 @@ class separator():
 
         resid[self.SVptr['C_k_elyte'][j]] = \
             (SVdot_loc[self.SVptr['C_k_elyte'][j]]
-            - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte)
+            - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte / scale_nd[SVptr['C_k_elyte'][0]])
 
         # The ionic current must equal the external current.
         resid[self.SVptr['phi'][j]] = i_io_in - i_io_out
@@ -189,18 +211,24 @@ class separator():
             j_ed = 0
             j_elyte = -1
 
+        phi_1_sc = self.scale_nd[self.SVptr['phi'][0]]
+        phi_ed_sc = ed.scale_nd[ed.SVptr['phi_ed'][0]]
+        phi_dl_sc = ed.scale_nd[ed.SVptr['phi_dl'][0]]
+        C_k_1_sc = self.scale_nd[self.SVptr['C_k_elyte'][0]]
+        C_k_2_sc = ed.scale_nd[ed.SVptr['C_k_elyte'][0]]
+
         # Determine the electrolyte properties in the separator and electrode domains. Let the separator be "state_1," the electrode "state_2"
 
         # Elyte electric potential in separator:
-        phi_1 = SV[self.SVptr['sep'][self.SVptr['phi'][j_elyte]]]
+        phi_1 = SV[self.SVptr['sep'][self.SVptr['phi'][j_elyte]]]*phi_1_sc
 
         # Elyte electric potential in electrode:
-        phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed'][j_ed]]]
-        phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl'][j_ed]]]
+        phi_ed = SV[ed.SVptr['electrode'][ed.SVptr['phi_ed'][j_ed]]]*phi_ed_sc
+        phi_dl = SV[ed.SVptr['electrode'][ed.SVptr['phi_dl'][j_ed]]]*phi_dl_sc
         phi_2 = phi_ed + phi_dl
 
-        C_k_1 = SV[self.SVptr['sep'][self.SVptr['C_k_elyte'][j_elyte]]]
-        C_k_2 = SV[ed.SVptr['electrode'][ed.SVptr['C_k_elyte'][j_ed]]]
+        C_k_1 = SV[self.SVptr['sep'][self.SVptr['C_k_elyte'][j_elyte]]]*C_k_1_sc
+        C_k_2 = SV[ed.SVptr['electrode'][ed.SVptr['C_k_elyte'][j_ed]]]*C_k_2_sc
 
         # Create dictionaries to pass to the transport function:
         state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':self.dy,
@@ -284,3 +312,30 @@ class separator():
         axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m$^3$')
 
         return axs
+
+    def species_lim(self, SV, val):
+        """
+        Check to see if the minimum species concentration limit has been exceeded
+        """
+        # Save local copies of the solution vector and pointers for this electrode
+        SVptr = self.SVptr
+        SV_loc = SV[SVptr['sep']]
+
+        # Default is that the minimum hasn't been exceeded:
+        species_eval = 1.
+
+        # For each electrode point, find the minimum species concentration, and
+        #   compare to the user provided minimum. Save only the minimum value
+        for j in range(self.n_points):
+            local_eval = min(SV_loc[SVptr['C_k_elyte'][j,:]]) - val
+            species_eval = min(species_eval, local_eval)
+
+        # The simulation looks for instances where this value changes sign
+        #   (i.e. where it crosses zero)
+        return species_eval
+
+    def adjust_scale_nd(self, SV, elyte_scale):
+        # Update the scaling factor after equilibration
+        self.scale_nd = np.copy(elyte_scale)
+        self.scale_nd[self.scale_nd == 0] = 1e-12
+        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)

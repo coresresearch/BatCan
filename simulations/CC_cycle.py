@@ -37,7 +37,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a
     # current for each step. 'equil' is a flag to indicate whether there is an
     # equilibration step.
-    steps, currents, times, equil = setup_cycles(sim, current, t_final)
+    steps, currents, times, equil, rescale = setup_cycles(sim, current, t_final)
     n_steps = len(steps)
 
     # This function checks to see if certain limits are exceeded which will
@@ -100,6 +100,15 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
+            if rescale:
+                SV_0_ca = ca.scale_nd_vec*np.copy(SV_0[ca.SVptr['electrode']])
+                phi_el_scale = SV_0_ca[ca.SVptr['phi_dl']] \
+                             + SV_0_ca[ca.SVptr['phi_ed']]
+                Ck_scale = SV_0_ca[ca.SVptr['C_k_elyte'][-1,:]]
+                elyte_scale = np.concatenate((phi_el_scale, Ck_scale))
+                ca.adjust_scale_nd(ca.scale_nd_vec*SV_0[ca.SVptr['electrode']])
+                sep.adjust_scale_nd(sep.scale_nd_vec*SV_0[sep.SVptr['sep']], elyte_scale)
+                an.adjust_scale_nd(an.scale_nd_vec*SV_0[an.SVptr['electrode']], elyte_scale)
 
     t_elapsed = time.time() - t_count
     print('t_cpu =', t_elapsed, '\n')
@@ -160,6 +169,7 @@ def setup_cycles(params, current, time):
     currents = ()
     times = ()
     equil = 0
+    rescale_nd = 0
 
     if params['first-step'] == "discharge":
         cycle = ('discharge', 'charge')
@@ -195,8 +205,10 @@ def setup_cycles(params, current, time):
         steps = ('equilibrate',)+ steps
         currents = (0,) + currents
         times = (params['equilibrate']['time'],) + times
+        if params['non-dimensionalize'] == 'equil':
+            rescale_nd = 1
 
-    return steps, currents, times, equil
+    return steps, currents, times, equil, rescale_nd
 
 def residual(t, SV, SVdot, resid, inputs):
     """

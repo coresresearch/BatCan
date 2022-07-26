@@ -117,6 +117,17 @@ class electrode():
         self.n_vars = 2 + self.elyte_obj.n_species + self.n_conversion_phases
         self.n_vars_tot = self.n_points*self.n_vars
 
+        # If user input for non-dimensionalization is true, initialize the
+        #   vector that will hold the scaling values for each variable in the SV
+        self.scale_nd = np.ones([self.n_vars])
+        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
+        self.nd_type = params['simulations'][0]['non-dimensionalize']
+        self.scale_eps_el = 1
+        if self.nd_type == 'init' or self.nd_type == 'equil':
+            self.scale_nd_flag = 1
+        else:
+            self.scale_nd_flag = 0
+
         # Specify the number of plots
         #   1 - Elyte species concentrations for select species
         #   2 - Cathode produce phase volume fraction
@@ -180,6 +191,14 @@ class electrode():
                 SV[self.SVptr['eps_conversion'][:,j]] = item["value"]
         SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations
 
+        if self.scale_nd_flag:
+            self.scale_nd = np.copy(SV[0:self.n_vars])
+            self.scale_eps_el = 1 - self.eps_host - sum(self.scale_nd[self.SVptr['eps_conversion'][0]])
+            self.scale_nd[self.scale_nd == 0] = 1e-12
+
+        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
+
+        SV /= self.scale_nd_vec
         return SV
 
     def residual(self, t, SV, SVdot, sep, counter, params):
@@ -224,8 +243,16 @@ class electrode():
         # Save local copies of the solution vectors, pointers for this
         #   electrode:
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['electrode']]
+        scale_nd = self.scale_nd
+        scale_nd_vec = self.scale_nd_vec
+        #print(scale_nd)
+        SV_loc = SV[SVptr['electrode']]*scale_nd_vec
         SVdot_loc = SVdot[SVptr['electrode']]
+
+        SVdot_loc_dim = SVdot[SVptr['electrode']]*scale_nd_vec
+
+        SV_loc_nd = SV[SVptr['electrode']]
+        SVdot_loc_nd = SVdot[SVptr['electrode']]
 
         # Start at the separator boundary:
         j = self.nodes[0]
@@ -451,7 +478,7 @@ class electrode():
             # Rate of change of the product phase volume fraction:
             resid[SVptr['eps_conversion'][j][ph_i]] = \
                 (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
-                - sw_conv[ph_i]*A_conversion[ph_i]*np.dot(sdot_conversion, nu))
+                - sw_conv[ph_i]*A_conversion[ph_i]*np.dot(sdot_conversion, nu)/scale_nd[SVptr['eps_conversion'][0][ph_i]])
 
         # Production rate of the electron (moles / m2 interface / s)
         sdot_electron = \
@@ -465,7 +492,7 @@ class electrode():
         i_dl = self.i_ext_flag*(i_io_in - i_io_out)/A_surf_ratio - i_Far
 
         resid[SVptr['phi_dl'][j]] = (SVdot_loc[SVptr['phi_dl'][j]]
-            - i_dl*self.C_dl_Inv)
+            - i_dl*self.C_dl_Inv/scale_nd[SVptr['phi_dl'][0]])
 
         # Molar production rate of electrolyte species at the electrolyte-
         #   electrode interface (kmol / m2 of interface / s)
@@ -487,11 +514,18 @@ class electrode():
         R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail
 
         dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
+        theta_eps_el = eps_elyte/self.scale_eps_el
+        theta_Ck = SV_loc[SVptr['C_k_elyte'][j]]/scale_nd[SVptr['C_k_elyte'][0]]
         # Rate of change of electrolyte chemical species molar concentration:
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
-            - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
-            + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)
+            - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
+            + theta_Ck*dEps_el/theta_eps_el)
 
+        #resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
+        #    - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
+        #    + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]])
+
+        #print(SV_loc)
         return resid
 
     def voltage_lim(self, SV, val):
@@ -565,6 +599,13 @@ class electrode():
         axs[ax_offset+self.n_conversion_phases].legend(self.plot_species)
         axs[ax_offset+self.n_conversion_phases].set_ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)')
         return axs
+
+    def adjust_scale_nd(self, SV):
+        # Update the scaling factor after equilibration
+        self.scale_nd = np.copy(SV[0:self.n_vars])
+        self.scale_nd[self.scale_nd == 0] = 1e-12
+        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
+
 
 #Official Soundtrack:
     #Passion Pit - Gossamer
