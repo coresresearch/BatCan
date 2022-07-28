@@ -85,8 +85,10 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         if i: # Not the first step. 'data_out' already exists:
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
+            scale_cell = np.hstack((an.scale_nd_vec, sep.scale_nd_vec, ca.scale_nd_vec))
+            SV_unscaled = scale_cell[:,None]*np.copy(solution.values.y.T)
             SV = np.vstack((solution.values.t+data_out[0,-1], cycle_number,
-                i_data, cycle_capacity, solution.values.y.T))
+                i_data, cycle_capacity, SV_unscaled))
             data_out = np.hstack((data_out, SV))
 
             # Use SV at the end of the simualtion as the new initial condition:
@@ -94,8 +96,11 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         else: # First step. 'data_out' does not yet exist:
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
+            scale_cell = np.hstack((an.scale_nd_vec, sep.scale_nd_vec, ca.scale_nd_vec))
+            SV_unscaled = scale_cell[:,None]*np.copy(solution.values.y.T)
             SV = np.vstack((solution.values.t, cycle_number, i_data,
-                cycle_capacity, solution.values.y.T))
+                cycle_capacity, SV_unscaled))
+
             data_out = SV
 
             # Use SV at the end of the simualtion as the new initial condition:

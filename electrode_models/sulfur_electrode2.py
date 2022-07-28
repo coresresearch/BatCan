@@ -245,7 +245,7 @@ class electrode():
         SVptr = self.SVptr
         scale_nd = self.scale_nd
         scale_nd_vec = self.scale_nd_vec
-        #print(scale_nd)
+        #print('cathode scaling', scale_nd)
         SV_loc = SV[SVptr['electrode']]*scale_nd_vec
         SVdot_loc = SVdot[SVptr['electrode']]
 
@@ -526,6 +526,7 @@ class electrode():
         #    + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]])
 
         #print(SV_loc)
+        #print(SV_loc, SV_loc/scale_nd_vec)
         return resid
 
     def voltage_lim(self, SV, val):
@@ -534,7 +535,7 @@ class electrode():
         """
         # Save local copies of the solution vector and pointers for this electrode:
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['electrode']]
+        SV_loc = SV[SVptr['electrode']]*self.scale_nd_vec
 
         # Calculate the current voltage, relative to the limit.  The simulation
         # looks for instances where this value changes sign (i.e. where it
@@ -549,7 +550,7 @@ class electrode():
         """
         # Save local copies of the solution vector and pointers for this electrode
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['electrode']]
+        SV_loc = SV[SVptr['electrode']]*self.scale_nd_vec
 
         # Default is that the minimum hasn't been exceeded
         species_eval = 1.

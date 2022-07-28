@@ -141,7 +141,7 @@ class electrode():
         SVptr = self.SVptr
         scale_nd = self.scale_nd
         scale_nd_vec = self.scale_nd_vec
-        #print(scale_nd)
+        #print('anode scaling', scale_nd)
         SV_loc = SV[SVptr['electrode']]*scale_nd_vec
         SVdot_loc = SVdot[SVptr['electrode']]
 
@@ -276,7 +276,7 @@ class electrode():
         """
         # Save local copies of the solution vector and pointers for this electrode:
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['electrode']]
+        SV_loc = SV[SVptr['electrode']]*self.scale_nd_vec
 
         # Calculate the current voltage, relative to the limit.  The simulation
         # looks for instances where this value changes sign (i.e. crosses zero)
@@ -290,7 +290,7 @@ class electrode():
         """
         # Save local copies of the solution vector and pointers for this electrode
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['electrode']]
+        SV_loc = SV[SVptr['electrode']]*self.scale_nd_vec
 
         # For each electrode point, find the minimum species concentration, and
         #   compare to the user provided minimum. Save only the minimum value

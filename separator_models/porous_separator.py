@@ -145,7 +145,7 @@ class separator():
         SVptr = self.SVptr
         scale_nd = self.scale_nd
         scale_nd_vec = self.scale_nd_vec
-        #print(scale_nd)
+        #print('separator scaling', scale_nd)
         SV_loc = SV[SVptr['sep']]*scale_nd_vec
         SVdot_loc = SVdot[SVptr['sep']]
 
@@ -319,7 +319,7 @@ class separator():
         """
         # Save local copies of the solution vector and pointers for this electrode
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['sep']]
+        SV_loc = SV[SVptr['sep']]*self.scale_nd_vec
 
         # Default is that the minimum hasn't been exceeded:
         species_eval = 1.

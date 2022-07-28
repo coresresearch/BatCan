@@ -117,13 +117,13 @@ parameters:
       C-rate: 1 # input C-rate
       n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
       first-step: 'discharge'  # Start with charge or discharge?
-      non-dimensionalize: False # scale by 'init' values, 'equil' values, or not at all
+      non-dimensionalize: 'init' # scale by 'init' values, 'equil' values, or not at all
       equilibrate:
         enable: True # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
       phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
       phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
-      species-cutoff: 1e-15 # Simulation cuts off if C_k <= this value, kmol/m3
+      species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
 
 # Cantera inputs:
 description: |-
