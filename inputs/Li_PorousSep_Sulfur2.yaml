@@ -121,9 +121,9 @@ parameters:
       equilibrate:
         enable: True # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
-      phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
+      phi-cutoff-lower: 0 # Simulation cuts off if E_Cell <= this value, V
       phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
-      species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
+      #species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
 
 # Cantera inputs:
 description: |-

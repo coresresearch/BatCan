@@ -18,7 +18,7 @@ import time
 from scikits.odes.dae import dae
 from math import floor
 
-def run(SV_0, an, sep, ca, algvars, params, sim):
+def run(SV_0, an, sep, ca, algvars, params, sim, constr_idx, constr_type):
     """
     Run the simulation
     """
@@ -56,9 +56,10 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':1e-17,
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':1e-6,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
-            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0'}
+            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
+            'constraints_type':constr_type}
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
@@ -117,6 +118,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
     t_elapsed = time.time() - t_count
     print('t_cpu =', t_elapsed, '\n')
+
     return data_out
 
 def calc_current(params, an, ca):

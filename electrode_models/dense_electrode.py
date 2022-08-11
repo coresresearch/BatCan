@@ -254,6 +254,13 @@ class electrode():
         # Save the SV indices of any algebraic variables:
         self.algvars = self.SV_offset + self.SVptr['phi_ed'][:]
 
+        # Save the indices for constrained variables
+        self.constraints_idx = self.SVptr['electrode']
+        self.constraints_idx = self.constraints_idx.flatten()
+        self.constraints_type = np.zeros_like(SV)
+        self.constraints_type[self.SV_offset + self.SVptr['C_k_elyte']] = 1.0
+        #self.constraints_type = np.ones_like(self.constraints_idx)
+
         # Load intial state variable values:
         SV[self.SVptr['phi_ed']] = inputs['phi_0']
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']

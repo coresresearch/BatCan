@@ -177,6 +177,13 @@ class electrode():
         # Save the indices of any algebraic variables:
         self.algvars = offset + self.SVptr['phi_ed'][:]
 
+        # Save the indices of constrained variables
+        self.constraints_idx = self.SVptr['electrode']
+        self.constraints_idx = self.constraints_idx.flatten()
+        #self.constraints_type = np.ones_like(self.constraints_idx)
+        self.constraints_type = np.zeros([self.n_vars_tot])
+        self.constraints_type[self.SVptr['C_k_elyte']] = 1.0
+
     def initialize(self, inputs, sep_inputs):
 
         # Initialize the solution vector for the electrode domain:
@@ -245,7 +252,7 @@ class electrode():
         SVptr = self.SVptr
         scale_nd = self.scale_nd
         scale_nd_vec = self.scale_nd_vec
-        #print('cathode scaling', scale_nd)
+        #print('cathode scaling', scale_nd_vec)
         SV_loc = SV[SVptr['electrode']]*scale_nd_vec
         SVdot_loc = SVdot[SVptr['electrode']]
 
@@ -357,7 +364,7 @@ class electrode():
                 resid[SVptr['eps_conversion'][j][ph_i]] = \
                     (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
                     - sw_conv[ph_i]*A_conversion[ph_i]
-                    * np.dot(sdot_conversion, nu))
+                    * np.dot(sdot_conversion, nu)/scale_nd[SVptr['eps_conversion'][0][ph_i]])
 
             # Production rate of the electron (moles / m2 interface / s)
             sdot_electron = \
@@ -371,7 +378,7 @@ class electrode():
             i_dl = self.i_ext_flag*(i_io_in - i_io_out)/A_surf_ratio - i_Far
 
             resid[SVptr['phi_dl'][j]] = (SVdot_loc[SVptr['phi_dl'][j]] -
-                i_dl*self.C_dl_Inv)
+                i_dl*self.C_dl_Inv/scale_nd[SVptr['phi_dl'][0]])
 
             # Species production rate for electrolyte species:
             sdot_elyte_host = \
@@ -391,10 +398,12 @@ class electrode():
             R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail
 
             # Change in electrolyte species concentration, per unit time:
-            dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
+            dEps_el = -np.dot(scale_nd[SVptr['eps_conversion'][0]], SVdot_loc[SVptr['eps_conversion'][j]])
+            theta_eps_el = eps_elyte/self.scale_eps_el
+            theta_Ck = SV_loc[SVptr['C_k_elyte'][j]]/scale_nd[SVptr['C_k_elyte'][0]]
             resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
-                - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
-                + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)
+                - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
+                + theta_Ck*dEps_el/eps_elyte)
 
             # Re-set "next" node state variables to be the new "current" node
             # state variables:
@@ -513,19 +522,20 @@ class electrode():
         #sdot_elyte_conv_ph *= A_conversion
         R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail
 
-        dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
+        #dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
+        dEps_el = -np.dot(scale_nd[SVptr['eps_conversion'][0]], SVdot_loc[SVptr['eps_conversion'][j]])
         theta_eps_el = eps_elyte/self.scale_eps_el
         theta_Ck = SV_loc[SVptr['C_k_elyte'][j]]/scale_nd[SVptr['C_k_elyte'][0]]
         # Rate of change of electrolyte chemical species molar concentration:
         resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
             - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
-            + theta_Ck*dEps_el/theta_eps_el)
+            + theta_Ck*dEps_el/eps_elyte)  #theta_Ck*dEps_el/theta_eps_el)
 
         #resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
         #    - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
         #    + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]])
-
-        #print(SV_loc)
+        #if params['i_ext'] != 0:
+        #    print(SV_loc)
         #print(SV_loc, SV_loc/scale_nd_vec)
         return resid
 

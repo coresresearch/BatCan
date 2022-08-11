@@ -79,6 +79,7 @@ class separator():
         self.C_Li_0 = self.elyte_obj.concentrations[self.index_Li] \
                     + self.flag_lithiated*2*np.sum(self.elyte_obj.concentrations[4:])
 
+
     def initialize(self, inputs):
         SV = np.zeros([self.n_points*self.n_vars])
 
@@ -102,6 +103,13 @@ class separator():
 
         # Save indices for any algebraic variables.
         self.algvars = self.SV_offset + self.SVptr['phi']
+
+        # Save indices for constrained variables
+        self.constraints_idx = self.SVptr['sep']
+        self.constraints_idx = self.constraints_idx.flatten()
+        #self.constraints_type = np.ones_like(self.constraints_idx)
+        self.constraints_type = np.zeros_like(SV)
+        self.constraints_type[self.SVptr['C_k_elyte']] = 1.0
 
         # Load intial state variables:
         SV[self.SVptr['phi']] = inputs['phi_0']

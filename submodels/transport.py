@@ -29,7 +29,6 @@ def dilute_solution(state_1, state_2, sep):
 def scale_Diff(C_k, sep):
     D_vec = np.zeros_like(C_k)
     C_Li = C_k[sep.index_Li] + sep.flag_lithiated*2*np.sum(C_k[4:])
-
     D_scale = sep.D_scale_coeff*abs(sep.C_Li_0 - C_Li)
     D_vec[sep.index_Li] = D_scale
 

@@ -72,6 +72,11 @@ def bat_can(input = None):
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
     # Ditto for the algebraic variable indices:
     algvars = np.hstack([an.algvars, sep.algvars, ca.algvars])
+    constraints_idx = None #np.hstack([an.constraints_idx, sep.constraints_idx,
+                            #     ca.constraints_idx])
+    constraints_type = np.hstack([an.constraints_type, sep.constraints_type,
+                                  ca.constraints_type])
+    print(constraints_idx)
 
     #===========================================================================
     #   RUN THE SIMULATION
@@ -81,7 +86,8 @@ def bat_can(input = None):
     for sim in parameters['simulations']:
         model = importlib.import_module('.'+sim['type'], package='simulations')
 
-        solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+        solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim,
+                            constraints_idx, constraints_type)
 
         #=======================================================================
         # RUN CONSERVATION TEST SUITE
