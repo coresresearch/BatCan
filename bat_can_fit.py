@@ -45,7 +45,7 @@ def bat_can(input, cores, print_flag):
     #   READ IN USER INPUTS
     #===========================================================================
     an_inputs, sep_inputs, ca_inputs, parameters, fit_params = \
-        initialize(input_file)
+        initialize(input_file, fit = True)
 
     now = datetime.now()
     dt =  now.strftime("%Y%m%d_%H%M")
@@ -108,7 +108,7 @@ def bat_can(input, cores, print_flag):
             sim = {'i_ext': None, 'C-rate': 0.0, 'n_cycles': 0, 
                 'first-step': 'discharge', 'equilibrate': 
                 {'enable': True, 'time':  5}, 'phi-cutoff-lower': 2.0, 
-                'phi-cutoff-upper': 4.8}
+                'phi-cutoff-upper': 4.8, 'init':True}
             
             solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
             
@@ -147,6 +147,8 @@ def bat_can(input, cores, print_flag):
                 model = importlib.import_module('.'+sim['type'], 
                     package='simulations')
 
+                sim['init'] = False
+
                 solution = model.run(SV_0, an, sep, ca, algvars, 
                     parameters, sim)
 
@@ -164,15 +166,15 @@ def bat_can(input, cores, print_flag):
                     phi_sim))
 
                 # This function calculates the SSR for this simulation:
-                # Scale to convert mAh to mAh/cm2:
-                InvArea = 1./0.7
+                # Scale to convert capacity units in validation data to mAh/cm2:
+                UnitsScale = 46.968
                 ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
-                        units_scale = InvArea)
+                        units_scale = UnitsScale)
                 print('SSR = ', ssr_calc)
 
                 if final_flag:
                     fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
-                        sim_data.T, fit_axs, fit_fig, units_scale = InvArea, 
+                        sim_data.T, fit_axs, fit_fig, units_scale = UnitsScale, 
                         color = colors[icolor])
                     icolor += 1
             except:

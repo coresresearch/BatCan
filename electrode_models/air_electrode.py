@@ -65,8 +65,17 @@ class electrode():
         self.th_product = inputs['th_product']
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
         self.A_host = 4. * np.pi * (self.r_host)**2 # Surface area of a single carbon / host particle [m2]
-        self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
+        # m2 of host-electrolyte interface / m3 of total volume [m^-1]
+        if 'host_form' not in inputs or inputs['host_form'] ==  'sphere':
+            self.A_init = self.eps_host * 3./self.r_host
+        elif inputs['host_form'] == 'cylinder':
+            self.A_init = self.eps_host * 2./self.r_host  
+        else:
+            raise ValueError("Support host_form values include: 'sphere'",
+                " or 'cylinder'.")
 
+        if 'host_surf_frac' in inputs:
+            self.A_init *= inputs['host_surf_frac']
         # For some models, the elyte thickness is different from that of the 
         # electrode, so we specify it separately:
         self.dy_elyte = self.dy
@@ -112,6 +121,8 @@ class electrode():
         [self.plot_species.append(sp['name']) for sp in inputs['plot-species']]
 
         # Set Cantera object state:
+        self.gas_obj.TP = params['T'], params['P']
+        self.gas_elyte_obj.TP = params['T'], params['P']
         self.host_obj.TP = params['T'], params['P']
         self.elyte_obj.TP = params['T'], params['P']
         self.surf_obj.TP = params['T'], params['P']
@@ -408,6 +419,9 @@ class electrode():
         # looks for instances where this value changes sign (i.e. where it 
         # crosses zero)    
         voltage_eval = SV_loc[SVptr['phi_ed'][-1]] - val
+
+        # if voltage_eval <= 0.:
+        #     print("Voltage")
         
         return voltage_eval
 
@@ -431,13 +445,12 @@ class electrode():
 
             if np.isnan(np.sum(Ck_loc)):
                 species_eval = -1
-                print("nan found")
-                break
 
+                break
 
         # The simulation  looks for instances where this value changes sign 
         # (i.e. where it equals zero)    
-        return abs(species_eval) + species_eval
+        return  species_eval
 
     def adjust_separator(self, sep):
         """ 
