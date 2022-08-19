@@ -99,10 +99,12 @@ def bat_can(input, cores):
             model = importlib.import_module('.'+'CC_cycle', 
                 package='simulations')
 
-            sim = {'i_ext': None, 'C-rate': 0.0, 'n_cycles': 0, 
+            t_span = parameters['initialize']['time']
+
+            sim = {'i_ext': '0 A/cm2', 'C-rate': None, 'n_cycles': 0, 
                 'first-step': 'discharge', 'equilibrate': 
-                {'enable': True, 'time':  5}, 'phi-cutoff-lower': 2.0, 
-                'phi-cutoff-upper': 4.8}
+                {'enable': True, 'time':  t_span}, 'phi-cutoff-lower': 2.0, 
+                'phi-cutoff-upper': 4.8, 'init':True}
             
             solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
             
@@ -113,27 +115,34 @@ def bat_can(input, cores):
         else:
             raise ValueError("Initialization method currently not implemented.")
 
-    # global model_run
-    # def model_run(sim):
-    for sim in parameters['simulations']:
+    global model_run
+    def model_run(sim):
+        
+        # Import the simulation to be run:
         model = importlib.import_module('.'+sim['type'], package='simulations')
 
+        sim['init'] = False
+        
+        # Run the simulation
         solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
 
-        #=======================================================================
-        #   CREATE FIGURES AND SAVE ALL OUTPUTS
-        #=======================================================================
         # Call any output routines related to the simulation type:
         model.output(solution, an, sep, ca, parameters, sim)
-
+        
+        SV_init = model.initial_state(solution)
+        return SV_init
+   
+    #=======================================================================
+    #   CREATE FIGURES AND SAVE ALL OUTPUTS
+    #=======================================================================
+        
     # If the user specified to use multiple cores (only relevant if there are 
-    # multiple simulations), run themin a multiprocessing pool:
-    # pool = mp.Pool(processes = int(cores))
-    # pool.map(model_run, list(parameters['simulations']))
-
+    # multiple simulations), run them in a multiprocessing pool:
+    pool = mp.Pool(processes = int(cores))
+    SV_0 = pool.map(model_run, list(parameters['simulations']))
     
     if len(parameters['simulations']) == 1:
-        filename = (parameters['output'] +'_' 
+        filename = (parameters['simulations']['output'] +'_' 
                     + sim['outputs']['save-name'] )
     else:
         filename = (parameters['output'] +'/')
