@@ -62,13 +62,20 @@ class electrode():
         # The following calculations assume spherical particles of a single 
         # radius, with no overlap.
         self.r_host = inputs['r_host']
-        self.th_oxide = inputs['th_oxide']
+        self.th_product = inputs['th_product']
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
-        self.A_host = 4. * np.pi * (self.r_host / 2)**2 # Surface area of a single carbon / host particle [m2]
-        self.A_init = self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
-        self.A_oxide = np.pi* inputs['d_oxide']**2/4.   # host-electrolyte interface area blocked by a single oxide/product particle [m2]
-        self.V_oxide = 2./3. * np.pi* (inputs['d_oxide']/2.)**2 * self.th_oxide # volume of a single oxide/product particle
+        self.A_host = 4. * np.pi * (self.r_host)**2 # Surface area of a single carbon / host particle [m2]
+        # m2 of host-electrolyte interface / m3 of total volume [m^-1]
+        if 'host_form' not in inputs or inputs['host_form'] ==  'sphere':
+            self.A_init = self.eps_host * 3./self.r_host
+        elif inputs['host_form'] == 'cylinder':
+            self.A_init = self.eps_host * 2./self.r_host  
+        else:
+            raise ValueError("Support host_form values include: 'sphere'",
+                " or 'cylinder'.")
 
+        if 'host_surf_frac' in inputs:
+            self.A_init *= inputs['host_surf_frac']
         # For some models, the elyte thickness is different from that of the 
         # electrode, so we specify it separately:
         self.dy_elyte = self.dy
@@ -87,7 +94,7 @@ class electrode():
         # Determine the electrode capacity (Ah/m2)
 
         # Max voume concentration of the product species (assuming all 
-        # electrolyte has been replaced by oxide)
+        # electrolyte has been replaced by product species)
         stored_species = inputs['stored-species']
         v_molar_prod = \
             self.product_obj[stored_species['name']].partial_molar_volumes[0]
@@ -100,7 +107,7 @@ class electrode():
         #   phase consumption reaction shut off:
         self.product_phase_min = inputs['product-phase-min']
         # Number of state variables: electrode potential, double layer 
-        #   potential, electrolyte composition, oxide volume fraction 
+        #   potential, electrolyte composition, product phase volume fraction 
         self.n_vars = 3 + self.elyte_obj.n_species
         self.n_vars_tot = self.n_points*self.n_vars
 
@@ -114,6 +121,8 @@ class electrode():
         [self.plot_species.append(sp['name']) for sp in inputs['plot-species']]
 
         # Set Cantera object state:
+        self.gas_obj.TP = params['T'], params['P']
+        self.gas_elyte_obj.TP = params['T'], params['P']
         self.host_obj.TP = params['T'], params['P']
         self.elyte_obj.TP = params['T'], params['P']
         self.surf_obj.TP = params['T'], params['P']
@@ -218,7 +227,12 @@ class electrode():
             # Set Cantera object properties:
             self.host_obj.electric_potential = phi_ed
             self.elyte_obj.electric_potential = phi_elyte
-            self.elyte_obj.X = c_k_elyte
+            try:
+                self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+            except:
+                X_elyte = params['species-default']
+                self.elyte_obj.X = X_elyte
+                
 
             # Set microstructure multiplier for effective diffusivities
             #TODO #48
@@ -248,7 +262,7 @@ class electrode():
             resid[SVptr['phi_ed'][j]] = i_io_in - i_io_out + i_el_in - i_el_out
             
             # Calculate available surface area (m2 interface per m3 electrode):
-            A_avail = self.A_init - eps_product/self.th_oxide
+            A_avail = self.A_init - eps_product/self.th_product
             # Convert to m2 interface per m2 geometric area:
             A_surf_ratio = A_avail*self.dy
             # Multiplier to scale phase destruction rates.  As eps_product 
@@ -317,7 +331,13 @@ class electrode():
         # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
-        self.elyte_obj.X = c_k_elyte
+        try:
+            self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+        except:
+            if 'species-default' in params:
+                self.elyte_obj.X = params['species-default']
+            else:
+                pass
 
         # Electric potential boundary condition:
         if self.name=='anode':
@@ -335,7 +355,7 @@ class electrode():
                     - params['potential']) 
         
         # Calculate available surface area (m2 interface per m3 electrode):
-        A_avail = self.A_init - eps_product/self.th_oxide
+        A_avail = self.A_init - eps_product/self.th_product
         # Convert to m2 interface per m2 geometric area:
         A_surf_ratio = A_avail*self.dy
 
@@ -399,8 +419,38 @@ class electrode():
         # looks for instances where this value changes sign (i.e. where it 
         # crosses zero)    
         voltage_eval = SV_loc[SVptr['phi_ed'][-1]] - val
+
+        # if voltage_eval <= 0.:
+        #     print("Voltage")
         
         return voltage_eval
+
+    def species_lim(self, SV, val):
+        """
+        Check to see if the minimum species concentration limit has been exceeded.
+        """
+        # Save local copies of the solution vector and pointers for this electrode:
+        SVptr = self.SVptr
+        SV_loc = SV[SVptr['electrode']]
+
+        # Default is that the minimum hasn't been exceeded:
+        species_eval = 1.
+
+        # For each electrode point, find the minimum species concentration, and # compare to the user-provided minimum.  Save only the minimum value:
+        for j in range(self.n_points):
+            Ck_loc = SV_loc[SVptr['C_k_elyte'][j,:]]
+            
+            local_eval = min(Ck_loc) - val
+            species_eval = min(species_eval, local_eval)
+
+            if np.isnan(np.sum(Ck_loc)):
+                species_eval = -1
+
+                break
+
+        # The simulation  looks for instances where this value changes sign 
+        # (i.e. where it equals zero)    
+        return  species_eval
 
     def adjust_separator(self, sep):
         """ 
@@ -433,6 +483,7 @@ class electrode():
         return axs
 
 #Official Soundtrack:
+    #Belle and Sebastian - The Boy with the Arab Strap
     #Passion Pit - Gossamer
     #CHVRCHES - Every Open Eye
     #Cursive - Happy Hollow
@@ -440,3 +491,4 @@ class electrode():
     #Jimmy Eat World - Chase the Light + Invented
     #Lay - Lit
     #George Ezra - Staying at Tamara's
+    

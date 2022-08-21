@@ -259,6 +259,21 @@ class electrode():
 
         return voltage_eval
 
+    def species_lim(self, SV, val):
+        """
+        Check to see if the minimum species concentration limit has been exceeded.
+        """
+        # Save local copies of the solution vector and pointers for this electrode:
+        SVptr = self.SVptr
+        SV_loc = SV[SVptr['electrode']]
+
+        # For each electrode point, find the minimum species concentration, and # compare to the user-provided minimum.  Save only the minimum value:
+        species_eval = min(SV_loc[SVptr['C_k_elyte'][0]]) - val
+        
+        # The simulation  looks for instances where this value changes sign 
+        # (i.e. where it crosses zero)    
+        return species_eval
+
     def adjust_separator(self, sep):
         """
         The electrode domain considers the electrode object plus a thin layer of the separator, adjacent to the self. We subtract this thickness from the total separator thickness, so that we do not inadvertently increase the total transport resistance through the separator.

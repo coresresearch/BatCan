@@ -25,7 +25,7 @@ cell-description:
   separator:
     class: 'porous_separator'
     thickness: 2.6e-4  # separator thickness, m
-    n_points: 5       # Number of finite volumes to discretize
+    n_points: 10       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 2.91 # Initial electric potential, V // Yin, 2017
@@ -38,16 +38,16 @@ cell-description:
         - species: 'C10H22O5[elyt]'
           D_k: 1.11e-10 # m2 S-1 // Saito, 2017
         - species: 'Li+[elyt]'
-          D_k: 6.98e-11 # m2 S-1 // Saito, 2017
+          D_k: 6.98e-10 # m2 S-1 // Saito, 2017
         - species: 'ClO4-[elyt]'
           D_k: 8.79e-11 # m2 S-1 // Saito, 2017
         - species: 'O2(e)'
-          D_k: 4.26e-11 # m2 s-1 // Gittleson, 2017
-        - species: 'Li2O2[elyt]'
-          D_k: 2e-13 # can't find (assume low?)
+          D_k: 2.5283e-8 #11 # m2 s-1 // Gittleson, 2017 for DMSO
+        # - species: 'Li2O2[elyt]'
+        #   D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'air_electrode'
-    n-points: 5
+    n-points: 15
     gas-phase: 'oxygen'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -57,9 +57,9 @@ cell-description:
     product-phase-min: 1e-6 # Minimum volume fraction for product phase
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 3.50e-4 # cathode thickness, m
-    r_host: 6e-6 # Carbon Particle radius, m
-    d_oxide: 1.0e-6 #Oxide diameter, m
-    th_oxide: 500e-9 #oxide thickness, m
+    r_host: 2.e-8 # Carbon Particle radius, m
+    d_oxide: 2.0e-8 #Oxide diameter, m
+    th_product: 80e-9 #oxide thickness, m
     phi_0: 2.95 # Initial electric potential, V // Yin, 2017
     sigma_el: 1.0E1 #electrical ondutivity of the host
     eps_host: 0.621138 # Solid phase volume fraction of carbon -
@@ -78,55 +78,97 @@ parameters:
   T: 23 # C
   P: 101325 # Pa
   # Describe simulation type, parameters, etc.
+  initialize: # Calculate a common inititial condition for all steps?
+    enable: True
+    type: 'open-circuit'
+    time: 5 # s   
   simulations:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
-      i_ext: 0.0004 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      i_ext: 0.0004 A/cm2 # A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: null # input C-rate
-      n_cycles: 1 # Number of cycles.
+      n_cycles: 0.25 # Number of cycles.
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+      species-cutoff: 1.E-20 # Simulation cuts off if C_k <= this value
+      species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
       equilibrate:
-        enable: True # Start with a hold at open circuit? (True or False)
+        enable: False # Start with a hold at open circuit? (True or False)
         time: 5 # If true, how long is the hold, s
       outputs:
         show-plots: True # Show the plots and save them (True), or just save
                          # them (False)?
-        savename: 'CPCN04' # Folder label for output files.
+        save-name: 'CPCN04_full_print' # Folder label for output files.
+      validation: 'LiAir_Test/CPC04.xls' #Location of validation data
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: 0.0005 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: null # input C-rate
-      n_cycles: 1 # Number of cycles.
+      n_cycles: 0.25 # Number of cycles.
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+      species-cutoff: 1.e-20  # Simulation cuts off if C_k <= this value
+      species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
       equilibrate:
-        enable: True # Start with a hold at open circuit? (True or False)
+        enable: False # Start with a hold at open circuit? (True or False)
         time: 5 # If true, how long is the hold, s
       outputs:
         show-plots: True # Show the plots and save them (True), or just save
                          # them (False)?
-        savename: 'CPCN05' # Folder label for output files.
+        save-name: 'CPCN05_full_print' # Folder label for output files.
+      validation: 'LiAir_Test/CPC05.xls' #Location of validation data
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: 0.0006 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: null # input C-rate
-      n_cycles: 1 # Number of cycles.
+      n_cycles: 0.15 # Number of cycles.
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+      species-cutoff: 1.e-20 # Simulation cuts off if C_k <= this value
+      species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
       equilibrate:
-        enable: True # Start with a hold at open circuit? (True or False)
+        enable: False # Start with a hold at open circuit? (True or False)
         time: 5 # If true, how long is the hold, s
       outputs:
         show-plots: True # Show the plots and save them (True), or just save
                          # them (False)?
-        savename: 'CPCN06' # Folder label for output files.
+        save-name: 'CPCN06_full_print' # Folder label for output files.
+      validation: 'LiAir_Test/CPC06.xls' #Location of validation data
+
+fit-parameters:
+  - type: 'elyte-transport'
+    species: 'O2(e)'
+    guess-value: 1.26e-8
+    min: 1e-10
+    max: 1e-7
+  # - type: 'elyte-transport'
+  #   species: 'Li+[elyt]'
+  #   guess-value: 6.98e-10
+  #   min: 1e-10
+  #   max: 1e-9
+  # - type: 'cathode-kinetics'
+  #   reaction-index: 0
+  #   guess-value: 0.01 # This is a multiplier to scale the value in the mech.
+  #   min: 0.01
+  #   max: 100
+  - type: 'air-kinetics'
+    reaction-index: 0
+    guess-value: 1. # This is a multiplier to scale the value in the mech.
+    min: 1.e-3
+    max: 1.e+3
+  # - type: 'cathode-microstructure'
+  #   parameter: 'th_product'
+  #   guess-value: 185e-9
+  #   min: 10e-9
+  #   max: 1e-6
+  # - type: 'cathode-microstructure'
+  #   parameter: 'r_host'
+  #   guess-value: 8e-6
+  #   min: 50e-9
+  #   max: 2e-7
 
 # Cantera inputs:
 description: |-
@@ -193,9 +235,9 @@ phases:
 - name: electrolyte
   thermo: ideal-condensed
   elements: [Li, Cl, C, H, O, E]
-  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'ClO4-[elyt]', 'O2(e)', 'Li2O2[elyt]']
+  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'ClO4-[elyt]', 'O2(e)']#, 'Li2O2[elyt]']
   state:
-    X: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 0.049610, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.39E-4, 'Li2O2[elyt]': 1E-9}
+    X: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 0.049610, 'ClO4-[elyt]': 0.049610, 'O2(e)': 6.39E-5} #,'O2(e)': 1.39E-4} 'Li2O2[elyt]': 1E-9}
   standard-concentration-basis: unity
 
 - name: air-elyte-interface
@@ -340,7 +382,7 @@ species:
   composition: {O: 2}
   thermo:
     model: constant-cp
-    h0: -39.2 kJ/mol
+    h0: -39.2 kJ/mol #-39.2 kJ/mol
     s0: 0. J/mol/K
   equation-of-state:
     model: constant-volume
@@ -386,20 +428,20 @@ species:
 lithium_electrolyte-reactions:
 - equation: Li[metal] <=> Li+[elyt] + electron
   id: lithium_faradaic_reaction
-  rate-constant: {A: 6.0e+13, b: 0.0, Ea: 0.0} #{A: 6.0e+09, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 6.0e+17, b: 0.0, Ea: 0.0} #{A: 6.0e+09, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 cathode-surf-reactions:
 - equation: 2 Li+[elyt] + O2(e) + 2 electron <=> Li2O2[cathode]  # Reaction 1
   id: cathode_reaction
-  rate-constant: {A: 5.629e+6, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
+  rate-constant: {A: 1.82745e+4, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate #5.629e+6, b: 0.0, Ea: 58.0 kJ/mol} #need a new reaction rate
   exchange-current-density-formulation: true
   beta: 0.5
 
 air-electrolyte-reactions:
 - equation: O2(g) <=> O2(e)  # Reaction 2
   id: cathode_gas_reaction
-  rate-constant: {A: 5.95, b: 0.0, Ea: 0 kJ/mol}
+  rate-constant: {A: 1.5e-6 , b: 0.0, Ea: 0 kJ/mol}
   exchange-current-density-formulation: true
   beta: 0.5
 

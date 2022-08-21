@@ -31,6 +31,11 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # Specify the boundary condition as galvanostatic:
     params['boundary'] = 'current'
 
+    # If specified, save the default mole fractions to replace an 
+    # errant concentration during simulation:
+    if 'species-default' in sim:
+        params['species-default'] = sim['species-default']
+
     # Figure out which steps and at what currents to run the model. This 
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a 
     # current for each step. 'equil' is a flag to indicate whether there is an 
@@ -40,14 +45,24 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
     # This function checks to see if certain limits are exceeded which will 
     # terminate the simulation:
+    # Default number of root functions:
+    n_roots = 2
+    if 'species-cutoff' in sim:
+        n_roots += 3
+    
     def terminate_check(t, SV, SVdot, return_val, inputs):
         return_val[0] = ca.voltage_lim(SV, sim['phi-cutoff-lower'])
         return_val[1] = ca.voltage_lim(SV, sim['phi-cutoff-upper'])
 
+        if 'species-cutoff' in sim:
+            return_val[2] = an.species_lim(SV, sim['species-cutoff'])
+            return_val[3] = sep.species_lim(SV, sim['species-cutoff'])
+            return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
+
     # Set up the differential algebraic equation (dae) solver:
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':1e-6, 
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
-            'rootfn':terminate_check, 'nr_rootfns':2, 'compute_initcond':'yp0'}
+            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0'}
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
@@ -67,7 +82,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         # Create an array of currents, one for each time step:
         i_data = currents[i]*np.ones_like(solution.values.t)
         cycle_number = int(i+1-equil)*np.ones_like(solution.values.t)
-        cycle_capacity = 1000*solution.values.t*abs(i_data)/3600
+        cycle_capacity = 0.1*solution.values.t*abs(i_data)/3600
 
         # Append the current data array to any preexisting data, for output.  
         # If this is the first step, create the output data array.
@@ -134,7 +149,11 @@ def calc_current(params, an, ca):
             "or the C-rate (C-rate).")
     
     # Use the capacity divided by current to find the max charge/discharge time:
-    t_final = cap*3600/i_ext
+    if i_ext > 0:
+        t_final = cap*3600/i_ext
+    else: 
+        # For an equilibration/ocv run, just run for a long time:
+        t_final = 1e6
 
     return i_ext, t_final
 
@@ -202,13 +221,13 @@ def residual(t, SV, SVdot, resid, inputs):
     
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
-def output(solution, an, sep, ca, params, sim):
+def output(solution, an, sep, ca, params, sim, plot_flag=True, 
+    return_flag=False, save_flag=True):
     """
     Prepare and save any output data to the correct location. Prepare, 
     create, and save any figures relevant to constant-current cycling.
     """
     #TODO #17    
-    from datetime import datetime   
     import matplotlib.pyplot as plt 
     import os
     import pandas as pd
@@ -223,46 +242,8 @@ def output(solution, an, sep, ca, params, sim):
     # (2) cycle number, (3) current density(A/cm2) , and (4) Capacity (mAh/cm2)
     SV_offset = 4
 
-    # Initialize the figure:
-    summary_fig, summary_axs = plt.subplots(n_plots, 1, sharex=True, 
-            gridspec_kw = {'wspace':0, 'hspace':0})
-    
-    summary_fig.set_size_inches((4.0,1.8*n_plots))
-    # Calculate cell potential:   
+    # Pointer for cell potential:   
     phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
- 
-    # Axis 1: Current vs. time (h):
-    summary_axs[0].plot(solution[0,:]/3600, 1000*solution[2,:]/10000)
-    summary_axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
-    
-    # Axis 2: Charge/discharge potential vs. time (h).
-    summary_axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
-    summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
-
-    # Add any relevant anode, cathode, and separator plots: 
-    summary_axs = an.output(summary_axs, solution, SV_offset, ax_offset=2)
-    summary_axs = ca.output(summary_axs, solution, SV_offset, 
-        ax_offset=2+an.n_plots)
-    summary_axs = sep.output(summary_axs, solution, an, ca, SV_offset, 
-        ax_offset=2+an.n_plots+ca.n_plots)
-
-    summary_axs[n_plots-1].set(xlabel='Time (h)')
-
-    # Format axis ticks:
-    for i in range(n_plots):
-        summary_axs[i].tick_params(axis="x",direction="in")
-        summary_axs[i].tick_params(axis="y",direction="in")
-        summary_axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
-        summary_axs[i].yaxis.set_label_coords(-0.2, 0.5)
-
-    # Trim down whitespace:
-    summary_fig.tight_layout()
-    
-    # Initialize cycle data figure:
-    cycle_fig, cycle_axs = plt.subplots(1, 1, sharex=True, 
-            gridspec_kw = {'wspace':0, 'hspace':0})
-
-    cycle_fig.set_size_inches((4.0,2.0))
 
     # Save the solution as a Pandas dataframe:
     labels = (['cycle', 'current', 'capacity'] + an.SVnames + sep.SVnames 
@@ -271,43 +252,102 @@ def output(solution, an, sep, ca, params, sim):
                                 index = solution.T[:,0],
                                 columns = labels)
 
-    solution_df.index.name = 'time (s)'                                
-
-    t_0 = 0
-    for i in range(int(solution[1,-1])):
-        cycle = solution_df[solution_df.iloc[:,0] == i+1]
-        cycle_axs.plot(1000*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
-            cycle.iloc[:,phi_ptr-1])
-
-        # Update time offset:
-        t_0 = cycle.index[-1]
-
-    cycle_axs.set(xlabel='Capacity (mAh/cm$^2$)')
-    cycle_axs.set(ylabel='Cell Potential (V)')
-
-    cycle_axs.tick_params(axis="x",direction="in")
-    cycle_axs.tick_params(axis="y",direction="in")
-    cycle_axs.get_yaxis().get_major_formatter().set_useOffset(False)
-    cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
-    cycle_fig.tight_layout()
-
-    # If no specification is given on whether to show plots, assume 'True'
-    if 'outputs' not in sim:
-        summary_fig.savefig('output.pdf')
-        cycle_fig.savefig('cycles.pdf')
-        plt.show()
-    else:
-        now = datetime.now()
-        dt =  now.strftime("%Y%m%d_%H%M")
-        if sim['outputs']['savename']:
-            filename = ('outputs/'+sim['outputs']['savename']+'_'+params['input']+'_'+dt)
-            os.makedirs(filename)
-            solution_df.to_pickle(filename+'/output.pkl')
-            solution_df.to_csv(filename+'/output.csv', sep=',')
-            summary_fig.savefig(filename+'/summary.pdf')
-            cycle_fig.savefig(filename+'/cycles.pdf')
+    solution_df.index.name = 'time (s)'     
+    
+    # If requested, create output figures:
+    if plot_flag:
+        # Initialize the figure:
+        summary_fig, summary_axs = plt.subplots(n_plots, 1, sharex=True, 
+                gridspec_kw = {'wspace':0, 'hspace':0})
         
-        if 'show-plots' not in sim['outputs'] or sim['outputs']['show-plots']:
+        summary_fig.set_size_inches((4.0,1.8*n_plots))
+    
+        # Axis 1: Current vs. time (h):
+        summary_axs[0].plot(solution[0,:]/3600, 1000*solution[2,:]/10000)
+        summary_axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
+        
+        # Axis 2: Charge/discharge potential vs. time (h).
+        summary_axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
+        summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
+
+        # Add any relevant anode, cathode, and separator plots: 
+        summary_axs = an.output(summary_axs, solution, SV_offset, ax_offset=2)
+        summary_axs = ca.output(summary_axs, solution, SV_offset, 
+            ax_offset=2+an.n_plots)
+        summary_axs = sep.output(summary_axs, solution, an, ca, SV_offset, 
+            ax_offset=2+an.n_plots+ca.n_plots)
+
+        summary_axs[n_plots-1].set(xlabel='Time (h)')
+
+        # Format axis ticks:
+        for i in range(n_plots):
+            summary_axs[i].tick_params(axis="x",direction="in")
+            summary_axs[i].tick_params(axis="y",direction="in")
+            summary_axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
+            summary_axs[i].yaxis.set_label_coords(-0.2, 0.5)
+
+        # Trim down whitespace:
+        summary_fig.tight_layout()
+        
+        # Initialize cycle data figure:
+        cycle_fig, cycle_axs = plt.subplots(1, 1, sharex=True, 
+                gridspec_kw = {'wspace':0, 'hspace':0})
+
+        cycle_fig.set_size_inches((4.0,2.0))                 
+
+        # iterate over cycles:
+        t_0 = 0
+        for i in range(int(solution[1,-1])):
+            cycle = solution_df[solution_df.iloc[:,0] == i+1]
+            cycle_axs.plot(0.1*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
+                cycle.iloc[:,phi_ptr-1])
+
+            # Update time offset:
+            t_0 = cycle.index[-1]
+
+        cycle_axs.set(xlabel='Capacity (mAh/cm$^2$)')
+        cycle_axs.set(ylabel='Cell Potential (V)')
+
+        cycle_axs.tick_params(axis="x",direction="in")
+        cycle_axs.tick_params(axis="y",direction="in")
+        cycle_axs.get_yaxis().get_major_formatter().set_useOffset(False)
+        cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
+        cycle_fig.tight_layout()
+
+    # If no specification is given on whether to show plots, assume 'True'    
+    if save_flag:
+        if 'outputs' not in sim:
+            summary_fig.savefig('output.pdf')
+            cycle_fig.savefig('cycles.pdf')
             plt.show()
-    
-    
+        else:
+            if 'save-name' in sim['outputs']:
+                if len(params['simulations']) == 1:
+                    sim['filename'] = (params['output'] +'_' 
+                        + sim['outputs']['save-name'] )
+                else:
+                    sim['filename'] = (params['output'] +'/'
+                        + sim['outputs']['save-name'] )
+                
+                if not os.path.exists(sim['filename']):
+                    os.makedirs( sim['filename'])
+
+                solution_df.to_pickle(sim['filename']+'/output_' 
+                    + sim['outputs']['save-name'] + '.pkl')
+                solution_df.to_csv(sim['filename']+'/output_' 
+                    + sim['outputs']['save-name'] + '.csv', sep=',')
+                summary_fig.savefig(sim['filename']+'/summary_' 
+                    + sim['outputs']['save-name'] + '.pdf')
+                cycle_fig.savefig(sim['filename']+'/cycles_' 
+                    + sim['outputs']['save-name'] + '.pdf')
+            
+            if ('show-plots' not in sim['outputs'] or 
+                sim['outputs']['show-plots']):
+                plt.show()
+
+    if return_flag:
+        return solution_df
+
+def final_state(solution):
+    # Return the state vector at the final simulation time:
+    return solution[4:, -1]

@@ -52,7 +52,7 @@ cell-description:
       name: Li[cathode]
       charge: 1
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
-    thickness: 20e-6 # anode thickness, m
+    thickness: 10e-6 # anode thickness, m
     r_p: 6e-6 # Particle radius, m
     phi_0: 4.125 # Initial electric potential, V
     eps_solid: 0.65 # Solid phase volume fraction, -
@@ -68,18 +68,25 @@ parameters:
     show-plots: True # Do you want the plots shown and saved, or just saved?
   # Describe simulation type, parameters, etc.
   simulation:
-    type: 'CC_cycle' # Constant current cycling
-    # Specify only one of i_ext or C-rate. The other should be null:
-    i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    C-rate: 0.1 # input C-rate
-    n_cycles: 5 # Number of cycles. Currently must be 0.5 or an int.
-    first-step: 'discharge'  # Start with charge or discharge?
-    equilibrate: 
-      enable: True # Start with a hold at open circuit?
-      time: 100 # If true, how long is the hold, s
-    phi-cutoff-lower: 3.4 # Simulation cuts off if E_Cell <= this value, V
-    phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
-    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m3
+    
+  simulations:
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: 0.1 # input C-rate
+      n_cycles: 5 # Number of cycles.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 2.95 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 5.15 # Simulation cuts off if E_Cell >= this value
+      species-cutoff: 1.e-12  # Simulation cuts off if C_k <= this value
+      species-default: {'C3H4O3[elyt]': 0.47901, 'C4H6O3[elyt]': 0.37563, 'Li+[elyt]': 1.e-12, 'PF6-[elyt]': 0.07268} # Replacement mole fractions if elyte composition goes to NaN.
+      equilibrate:
+        enable: True # Start with a hold at open circuit? (True or False)
+        time: 10 # If true, how long is the hold, s
+      outputs:
+        show-plots: True # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: 'LiMetal_LCO_demo' # Folder label for output files.
 
 # Cantera inputs:
 description: |-
