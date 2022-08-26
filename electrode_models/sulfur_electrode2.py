@@ -5,7 +5,7 @@
 """
 
 import cantera as ct
-from math import tanh, pi, isnan
+from math import tanh, pi, isnan, exp
 import numpy as np
 
 class electrode():
@@ -39,6 +39,8 @@ class electrode():
                 self.conversion_obj[self.n_conversion_phases]]))
             self.conversion_phase_min.append(ph["min-vol-frac"])
             self.n_conversion_phases += 1
+
+        self.sw_conv = np.ones((self.n_conversion_phases))
 
         self.index_conversion_elyte = np.zeros((self.n_conversion_phases))
         for ph_index, ph in enumerate(inputs["conversion-phases"]):
@@ -76,6 +78,8 @@ class electrode():
             j = self.conversion_phases.index(item["phase"])
             self.eps_conversion_init[j] = item["value"]
 
+        print(1 - self.eps_host - sum(self.eps_conversion_init))
+
         self.sigma_el =inputs['sigma_el']
         # The following calculations assume spherical particles of a single
         # radius, with no overlap.
@@ -83,7 +87,7 @@ class electrode():
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
         self.A_host = 4. * np.pi * (self.r_host / 2)**2 # Surface area of a single carbon / host particle [m2]
         self.A_init = 2e4 #self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
-        print(self.A_init)
+        #print(self.A_init)
         # For some models, the elyte thickness is different from that of the
         # electrode, so we specify it separately:
         self.dy_elyte = self.dy
@@ -103,14 +107,17 @@ class electrode():
         Conc = (self.conversion_obj[inputs["stored-ion"]["n_phase"]].
                 concentrations[0])
 
-        self.capacity = (Conc*inputs['stored-ion']['charge']*ct.faraday
-                * (1. - inputs['eps_host']))*inputs['thickness']/3600
+        #self.capacity = (Conc*inputs['stored-ion']['charge']*ct.faraday
+        #        * (1. - inputs['eps_host']))*inputs['thickness']/3600
+        self.capacity = 1675*self.eps_conversion_init[0]*inputs['thickness']*self.conversion_obj[0].density_mass
 
         # Constant nucleation density of conversion phases
         self.conversion_phase_np = np.zeros([self.n_conversion_phases])
         for item in inputs["nucleation-density"]:
             j = self.conversion_phases.index(item["phase"])
             self.conversion_phase_np[j] = item["value"]
+
+        self.conversion_phase_np[1] = 5e13*exp(2.4221*params['simulations'][0]['C-rate'])
 
         # Number of state variables: electrode potential, double layer
         #   potential, electrolyte composition, oxide volume fraction
@@ -183,6 +190,12 @@ class electrode():
         #self.constraints_type = np.ones_like(self.constraints_idx)
         self.constraints_type = np.zeros([self.n_vars_tot])
         self.constraints_type[self.SVptr['C_k_elyte']] = 1.0
+        self.constraints_type[self.SVptr['eps_conversion']] = 1.0
+
+        # Set array of atol to pass to solver
+        self.atol = np.ones([self.n_vars_tot])*1e-3
+        self.atol[self.SVptr['C_k_elyte']] = 1e-26
+        self.atol[self.SVptr['eps_conversion']] = 1e-8
 
     def initialize(self, inputs, sep_inputs):
 
@@ -265,18 +278,18 @@ class electrode():
         j = self.nodes[0]
 
         # Read out properties:
-        np_conversion = np.zeros((self.n_conversion_phases))
-        r_conversion = np.zeros((self.n_conversion_phases))
-        A_conversion = np.zeros((self.n_conversion_phases))
-        tpb_conversion = np.zeros((self.n_conversion_phases))
+        #np_conversion = np.zeros((self.n_conversion_phases))
+        #r_conversion = np.zeros((self.n_conversion_phases))
+        #A_conversion = np.zeros((self.n_conversion_phases))
+        #tpb_conversion = np.zeros((self.n_conversion_phases))
         np_conversion = self.conversion_phase_np
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
-        eps_conversion = np.zeros((self.n_conversion_phases))
+        #eps_conversion = np.zeros((self.n_conversion_phases))
         eps_conversion = SV_loc[SVptr['eps_conversion'][j]]
         eps_elyte = 1. - sum(eps_conversion[:]) - self.eps_host
-        mult = np.zeros((self.n_conversion_phases))
+        #mult = np.zeros((self.n_conversion_phases))
 
         # Read electrolyte fluxes at the separator boundary.  No matter the
         # electrode, the function returns a value where flux to the electrode
@@ -346,12 +359,13 @@ class electrode():
             # Multiplier to scale phase destruction rates.  As eps_product
             # drops below the user-specified minimum, any reactions that
             # consume the phase have their rates quickly go to zero:
-            sw_conv = np.zeros((self.n_conversion_phases))
-            for ph_i, ph in enumerate(eps_conversion):
-                if ph < 1e-5 and ph_i == 0:
-                    sw_conv[ph_i] = 0
-                else:
-                    sw_conv[ph_i] = 1
+            sw_conv = np.where(eps_conversion < 1e-7, 0, self.sw_conv)
+            #sw_conv = np.zeros((self.n_conversion_phases))
+            #for ph_index, ph in enumerate(eps_conversion):
+            #    if ph < 1e-5 and ph_index == 0:
+            #        sw_conv[ph_index] = 0
+            #    else:
+            #        sw_conv[ph_index] = 1
 
             # Chemical production rate of the conversion phases:
             # (kmol/m2-interface/s)
@@ -470,15 +484,22 @@ class electrode():
         # Multiplier to scale phase destruction rates.  As eps_product drops
         # below the user-specified minimum, any reactions that consume the
         # phase have their rates quickly go to zero:
-        sw_conv = np.zeros((self.n_conversion_phases))
-        for ph_index, ph in enumerate(eps_conversion):
-            if ph < 1e-5 and ph_index == 0:
-                sw_conv[ph_index] = 0
-            else:
-                sw_conv[ph_index] = 1
+        sw_conv = np.where(eps_conversion < 1e-7, 0, self.sw_conv)
+        #sw_conv = np.zeros((self.n_conversion_phases))
+        #for ph_index, ph in enumerate(eps_conversion):
+        #    if ph < 1e-5 and ph_index == 0:
+        #        sw_conv[ph_index] = 0
+        #    else:
+        #        sw_conv[ph_index] = 1
 
         # Chemical production rate of the product phase: (mol/m2 interface/s)
         #for ph in np.arange(0, self.n_conversion_phases):
+        #gnpr = [ph.get_net_production_rates for ph in self.conversion_surf_obj]
+        #sdot_conversion = [gnpr[ph](self.conversion_obj[ph]) for ph in range(self.n_conversion_phases)]
+        #nu = [self.conversion_obj[ph].partial_molar_volumes for ph in range(self.n_conversion_phases)]
+        #sdot_nu = [np.dot(sdot_conversion[ph], nu[ph]) for ph in range(self.n_conversion_phases)]
+        #resid[SVptr['eps_conversion'][j][:]] = SVdot_loc[SVptr['eps_conversion'][j][:]] - \
+        #                            sw_conv[:]*A_conversion[:]*sdot_nu[:]/scale_nd[SVptr['eps_conversion'][0][:]]
         for ph_i, ph in enumerate(self.conversion_surf_obj):
             sdot_conversion = \
                 ph.get_net_production_rates(self.conversion_obj[ph_i])
@@ -535,7 +556,7 @@ class electrode():
         #    - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
         #    + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]])
         #if params['i_ext'] != 0:
-        #    print(SV_loc)
+        #    print(resid)
         #print(SV_loc, SV_loc/scale_nd_vec)
         return resid
 
@@ -606,8 +627,9 @@ class electrode():
                     + self.SVptr['C_k_elyte'][j, species_ptr])
                 axs[ax_offset+self.n_conversion_phases].plot(solution[0,:]/3600,
                     solution[C_k_elyte_ptr,:])
+                axs[ax_offset+self.n_conversion_phases].set_ylim((0.0, 2.0))
 
-        axs[ax_offset+self.n_conversion_phases].legend(self.plot_species)
+        axs[ax_offset+self.n_conversion_phases].legend(self.plot_species, loc=2)
         axs[ax_offset+self.n_conversion_phases].set_ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)')
         return axs
 

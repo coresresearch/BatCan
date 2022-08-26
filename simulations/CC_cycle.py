@@ -30,6 +30,9 @@ def run(SV_0, an, sep, ca, algvars, params, sim, constr_idx, constr_type):
     # Store the location of all algebraic variables.
     params['algvars'] = algvars
 
+    # Concatenate atol arrays from each component
+    atol_vec = np.hstack([an.atol, sep.atol, ca.atol])
+
     # Specify the boundary condition as galvanostatic:
     params['boundary'] = 'current'
 
@@ -56,10 +59,11 @@ def run(SV_0, an, sep, ca, algvars, params, sim, constr_idx, constr_type):
             return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':1e-6,
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':atol_vec,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
             'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
-            'constraints_type':constr_type}
+            'constraints_type':constr_type, 'linsolver':'band', 'lband':30, 'uband':30}
+
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
@@ -106,6 +110,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim, constr_idx, constr_type):
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
+
             if rescale:
                 SV_0_ca = ca.scale_nd_vec*np.copy(SV_0[ca.SVptr['electrode']])
                 phi_el_scale = SV_0_ca[ca.SVptr['phi_dl']] \
@@ -313,6 +318,7 @@ def output(solution, an, sep, ca, params, sim):
     # Axis 2: Charge/discharge potential vs. time (h).
     summary_axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
     summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
+    summary_axs[1].set_ylim((1.8, 2.5))
 
     # Add any relevant anode, cathode, and separator plots:
     summary_axs = an.output(summary_axs, solution, SV_offset, ax_offset=2)

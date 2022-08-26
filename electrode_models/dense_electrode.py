@@ -261,6 +261,10 @@ class electrode():
         self.constraints_type[self.SV_offset + self.SVptr['C_k_elyte']] = 1.0
         #self.constraints_type = np.ones_like(self.constraints_idx)
 
+        # Set array of atol to pass to solver
+        self.atol = np.ones_like(SV)*1e-3
+        self.atol[self.SVptr['C_k_elyte']] = 1e-17
+
         # Load intial state variable values:
         SV[self.SVptr['phi_ed']] = inputs['phi_0']
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']

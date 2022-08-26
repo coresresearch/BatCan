@@ -4,11 +4,11 @@ import cantera as ct
 import numpy as np
 
 def dilute_solution(state_1, state_2, sep):
-    dy_inv = 1. / (state_1['dy'] + state_2['dy'])
+    dy_inv = 1. / ((state_1['dy'] + state_2['dy']))
 
-    C_k_int = ((state_1['dy'] * state_1['C_k'] + state_2['dy'] * state_2['C_k'])
+    C_k_int = ((state_2['dy'] * state_1['C_k'] + state_1['dy'] * state_2['C_k'])
         * dy_inv)
-    T_int = ((state_1['dy'] * state_1['T'] + state_2['dy'] * state_2['T'])
+    T_int = ((state_2['dy'] * state_1['T'] + state_1['dy'] * state_2['T'])
         * dy_inv)
     D_scale = scale_Diff(C_k_int, sep)
     D_k_scale = sep.D_k - D_scale

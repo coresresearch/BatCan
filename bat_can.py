@@ -76,7 +76,6 @@ def bat_can(input = None):
                             #     ca.constraints_idx])
     constraints_type = np.hstack([an.constraints_type, sep.constraints_type,
                                   ca.constraints_type])
-    print(constraints_idx)
 
     #===========================================================================
     #   RUN THE SIMULATION

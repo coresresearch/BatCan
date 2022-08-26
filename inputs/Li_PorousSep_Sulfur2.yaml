@@ -18,13 +18,13 @@ cell-description:
     thickness: 15e-6 # Initial anode thickness, m
     minimum-thickness: 1e-9 # minimum anode thickness, m
     phi_0: 0. # Initial electric potential, V
-    A_surf_ratio: 1.0 # Interface area per unit geometric area
+    A_surf_ratio: 1.5 # Interface area per unit geometric area
     C_dl: 1.5e-1 #F/m2
     dy_elyte: 5e-6
   separator:
     class: 'porous_separator'
-    thickness: 25e-6  # separator thickness, m
-    n_points: 5       # Number of finite volumes to discretize
+    thickness: 30e-6  # separator thickness, m
+    n_points: 6       # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 50.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
     transport:
@@ -80,7 +80,7 @@ cell-description:
       - phase: sulfur
         value: 4521477015825
       - phase: lithium_sulfide
-        value: 51225835553319
+        value: 563475021696499.4
     stored-ion: # Details on the stored species. Used for capacity calc.
       phase: "lithium_sulfide"
       name: Li2S(s)
@@ -121,7 +121,7 @@ parameters:
       equilibrate:
         enable: True # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
-      phi-cutoff-lower: 0 # Simulation cuts off if E_Cell <= this value, V
+      phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
       phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
       #species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
 
@@ -190,7 +190,7 @@ phases:
   species: [(dummy)]
   kinetics: surface
   reactions: [carbon-elyte-reactions]
-  site-density: 0.01 mol/cm^2
+  site-density: 3.48e-2
 
 - name: lithium_sulfide_surf
   thermo: ideal-surface

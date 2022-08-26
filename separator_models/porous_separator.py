@@ -111,6 +111,10 @@ class separator():
         self.constraints_type = np.zeros_like(SV)
         self.constraints_type[self.SVptr['C_k_elyte']] = 1.0
 
+        # Set array of atol to pass to solver
+        self.atol = np.ones_like(SV)*1e-3
+        self.atol[self.SVptr['C_k_elyte']] = 1e-17
+
         # Load intial state variables:
         SV[self.SVptr['phi']] = inputs['phi_0']
         for i in range(self.n_points):
