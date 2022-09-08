@@ -312,19 +312,22 @@ def output(solution, an, sep, ca, params, sim):
     phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
 
     # Axis 1: Current vs. time (h):
-    summary_axs[0].plot(solution[0,:]/3600, 1000*solution[2,:]/10000)
+    x_vec = params['i_ext']*np.copy(solution[0,:]/3600/ca.m_S_tot_0)
+    summary_axs[0].plot(x_vec, 1000*solution[2,:]/10000)
     summary_axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
+    summary_axs[0].set_xlim((0, 1700))
+    summary_axs[0].set_xticks([200, 400, 600, 800, 1000, 1200, 1400, 1600])
 
     # Axis 2: Charge/discharge potential vs. time (h).
-    summary_axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
+    summary_axs[1].plot(x_vec, solution[phi_ptr,:])
     summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
     summary_axs[1].set_ylim((1.8, 2.5))
 
     # Add any relevant anode, cathode, and separator plots:
-    summary_axs = an.output(summary_axs, solution, SV_offset, ax_offset=2)
-    summary_axs = ca.output(summary_axs, solution, SV_offset,
+    summary_axs = an.output(summary_axs, solution, SV_offset, x_vec, ax_offset=2)
+    summary_axs = ca.output(summary_axs, solution, SV_offset, x_vec,
         ax_offset=2+an.n_plots)
-    summary_axs = sep.output(summary_axs, solution, an, ca, SV_offset,
+    summary_axs = sep.output(summary_axs, solution, an, ca, SV_offset, x_vec,
         ax_offset=2+an.n_plots+ca.n_plots)
 
     summary_axs[n_plots-1].set(xlabel='Time (h)')

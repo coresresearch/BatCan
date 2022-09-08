@@ -24,7 +24,8 @@ class electrode():
         self.conductor_obj = ct.Solution(input_file, inputs['conductor-phase'])
         self.surf_obj = ct.Interface(input_file, inputs['surf-phase'],
             [self.bulk_obj, self.elyte_obj, self.conductor_obj])
-        #print(-self.surf_obj.delta_standard_gibbs/ct.faraday)
+
+        print('E_eq_an =', -self.surf_obj.delta_standard_gibbs/ct.faraday)
         # Anode or cathode? Positive external current delivers positive charge
         # to the anode, and removes positive charge from the cathode.
         self.name = electrode_name
@@ -326,9 +327,9 @@ class electrode():
 
         return sep
 
-    def output(self, axs, solution, SV_offset, ax_offset):
+    def output(self, axs, solution, SV_offset, x_vec, ax_offset):
 
-        axs[ax_offset].plot(solution[0,:]/3600,
+        axs[ax_offset].plot(x_vec,
             1e6*solution[SV_offset+int(self.SVptr['thickness'])])
         axs[ax_offset].set_ylabel(self.name+' Thickness \n($\mu$m)')
 

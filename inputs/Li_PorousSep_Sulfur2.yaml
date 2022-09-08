@@ -73,9 +73,9 @@ cell-description:
       method: "porosity"
       eps_init:
         - phase: sulfur
-          value: 0.12
+          value: 0.091787
         - phase: lithium_sulfide
-          value: 1E-06
+          value: 1E-05
     nucleation-density:
       - phase: sulfur
         value: 4521477015825
@@ -93,6 +93,9 @@ cell-description:
     sigma_el: 6.0e1 #electrical ondutivity of the host
     eps_host: 0.056 # Solid phase volume fraction, -
     C_dl: 1.5e-2 #F/m2
+    plot_conv_ph:
+      - name: 'S8'
+      - name: 'Li2S8'
     plot-species: # any extra species in the electrolyte that you want to plot.
       - name: 'S8(e)'
       - name: 'S8-(e)'
@@ -103,7 +106,7 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 60 # C
+  T: 25.15 # C
   P: 101325 # Pa
   # Describe what to do with the results:
   outputs:
@@ -146,7 +149,7 @@ phases:
 
 # The carbon is inert here, and is just a source of electrons:
 - name: carbon
-  thermo: electron-cloud
+  thermo: fixed-stoichiometry
   elements: [E]
   species: [electron]
   state:
@@ -203,11 +206,11 @@ phases:
   site-density: 3.48e-2
 
 - name: lithium_metal
-  thermo: ideal-condensed
+  thermo: fixed-stoichiometry
   species: ['Li(b)']
   density: 0.534 g/cm^3
   state:
-    T: 300.0
+    T: 300.0 K
     P: 1 atm
 
 - name: electron
@@ -223,7 +226,7 @@ phases:
   species: [(dummy)]
   kinetics: surface
   reactions: [lithium-electrolyte-reactions]
-  site-density: 0.01 mol/cm^2
+  site-density: 3.48e-2
 
 species:
 - name: Li(b)
@@ -231,7 +234,7 @@ species:
   thermo:
     model: constant-cp
     h0: 0.0 kJ/mol
-    s0: 0.0 J/mol/K
+    s0: 29.1 J/mol/K
   equation-of-state:
     model: constant-volume
     molar-volume: 12.998 cm^3/mol
@@ -386,10 +389,10 @@ carbon-elyte-reactions:
 
 - equation: 0.5 S2-(e) + electron <=> S-(e)
   id: sulfur_reduction_4
-  rate-constant: {A: 4.655e13, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 8.655e13, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 lithium-sulfide-elyte-reactions:
 - equation: 2 Li+(e) + S-(e) <=> Li2S(s)
   id: sulfur_reduction_6
-  rate-constant: {A: 1.075e0, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 10.75e-1, b: 0.0, Ea: 0.0}
