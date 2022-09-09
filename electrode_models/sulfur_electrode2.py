@@ -166,6 +166,7 @@ class electrode():
         # Set Cantera object state:
         self.host_obj.electric_potential = inputs["phi_0"]
         self.host_obj.TP = params["T"], params["P"]
+        self.elyte_obj.electric_potential = sep_inputs['phi_0']
         self.elyte_obj.TP = params["T"], params["P"]
         self.host_surf_obj.TP = params["T"], params["P"]
         for ph in self.conversion_obj:
@@ -213,7 +214,7 @@ class electrode():
 
         # Set array of atol to pass to solver
         self.atol = np.ones([self.n_vars_tot])*1e-3
-        self.atol[self.SVptr['C_k_elyte']] = 1e-26
+        self.atol[self.SVptr['C_k_elyte']] = 1e-16
         self.atol[self.SVptr['eps_conversion']] = 1e-8
 
     def initialize(self, inputs, sep_inputs):

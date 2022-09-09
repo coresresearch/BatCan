@@ -62,7 +62,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim, constr_idx, constr_type):
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':atol_vec,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
             'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
-            'constraints_type':constr_type, 'linsolver':'band', 'lband':30, 'uband':30}
+            'constraints_type':constr_type, 'linsolver':'band', 'lband':26, 'uband':26}
 
     solver = dae('ida', residual, **options)
 
@@ -74,7 +74,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim, constr_idx, constr_type):
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'A/m^2 \n')
 
-        t_out = np.linspace(0, times[i], 100000)
+        t_out = np.linspace(0, times[i], 1000)
 
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)

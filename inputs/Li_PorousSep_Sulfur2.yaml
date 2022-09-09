@@ -117,7 +117,7 @@ parameters:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 1 # input C-rate
+      C-rate: 0.1 # input C-rate
       n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
       first-step: 'discharge'  # Start with charge or discharge?
       non-dimensionalize: 'init' # scale by 'init' values, 'equil' values, or not at all
