@@ -56,7 +56,7 @@ cell-description:
     D_scale_coeff: 1e-11
   cathode:
     class: 'sulfur_electrode2'
-    n-points: 1
+    n-points: 2
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -106,27 +106,51 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 25.15 # C
-  P: 101325 # Pa
-  # Describe what to do with the results:
-  outputs:
-    show-plots: True # Do you want the plots shown and saved, or just saved?
-    savename: 'Test'
+  T: 25.15 C
+  P: 101325 Pa
+  initialize:
+    enable: True
+    type: 'open-circuit'
+    time: 5
   # Describe simulation type, parameters, etc.
   simulations:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 0.1 # input C-rate
+      C-rate: 1 # input C-rate
       n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
       first-step: 'discharge'  # Start with charge or discharge?
-      non-dimensionalize: 'init' # scale by 'init' values, 'equil' values, or not at all
+      non-dimensionalize: False # scale by 'init' values, 'equil' values, or not at all
       equilibrate:
-        enable: True # Start with a hold at open circuit?
+        enable: False # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
       phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
       phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
+      n_ca: 1
+      outputs:
+        show-plots: False # Show the plots and save them (True), or just save
+                          # them (False)
+        save-name: 'Test_output1'
       #species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: 1 # input C-rate
+      n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
+      first-step: 'discharge'  # Start with charge or discharge?
+      non-dimensionalize: False # scale by 'init' values, 'equil' values, or not at all
+      equilibrate:
+        enable: False # Start with a hold at open circuit?
+        time: 5 # If true, how long is the hold, s
+      phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
+      phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
+      n_ca: 2
+      outputs:
+        show-plots: False # Show the plots and save them (True), or just save
+                          # them (False)
+        save-name: 'Test_output2'
+      #species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
+
 
 # Cantera inputs:
 description: |-
