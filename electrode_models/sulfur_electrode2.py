@@ -51,6 +51,9 @@ class electrode():
 
         # Electrode thickness and inverse thickness:
         self.n_points = inputs['n-points']
+        #if len(params['simulations']) > 1 and params['simulations'][0]['n_ca']:
+            #for sim_runs in len(params['simulations']):
+
         self.dy = inputs['thickness']/self.n_points
         self.dyInv = 1/self.dy
         self.dyinv_n = self.n_points/self.dy*np.ones((self.n_points, 1))
@@ -665,6 +668,9 @@ class electrode():
         self.scale_nd = np.copy(SV[0:self.n_vars])
         self.scale_nd[self.scale_nd == 0] = 1e-12
         self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
+
+    def adjust_npoints(self, n_ca):
+        self.n_points = n_ca
 
 
 #Official Soundtrack:

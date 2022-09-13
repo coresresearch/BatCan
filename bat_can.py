@@ -6,14 +6,24 @@
 
 """
 # Import modules
+from datetime import datetime
 import importlib # allows us to import from user input string.
+#import multiprocessing as mp
+from multiprocessing.pool import ThreadPool as Pool
 import numpy as np
+import os
+from shutil import copy2
+import timeit
+#import model_run_def
 
 from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it
 # is called by "main," below:
-def bat_can(input = None):
+def bat_can(input, cores):
+    # Record the start time:
+    start = timeit.default_timer()
+
     if input is None:
         # Default is a single-particle model of graphite/LCO
         input_file = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
@@ -26,13 +36,19 @@ def bat_can(input = None):
         else:
             input_file = 'inputs/'+input+'.yaml'
 
+    if not cores:
+        cores = 1
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
     an_inputs, sep_inputs, ca_inputs, parameters = initialize(input_file)
 
+    now = datetime.now()
+    dt =  now.strftime("%Y%m%d_%H%M")
+
     # Save name of input file, without path or extension:
     parameters['input'] = input
+    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
@@ -54,6 +70,7 @@ def bat_can(input = None):
 
     # Check to see if the anode object needs to adjust the separator properties:
     sep = an.adjust_separator(sep)
+    #ca_inputs['n_points'] = n_ca
     ca_module = importlib.import_module('electrode_models.'
         + ca_inputs['class'])
     ca = ca_module.electrode(input_file, ca_inputs, sep_inputs, an_inputs,
@@ -72,34 +89,80 @@ def bat_can(input = None):
     SV_0 = np.hstack([SV_an_0, SV_sep_0, SV_ca_0])
     # Ditto for the algebraic variable indices:
     algvars = np.hstack([an.algvars, sep.algvars, ca.algvars])
-    constraints_idx = None #np.hstack([an.constraints_idx, sep.constraints_idx,
-                            #     ca.constraints_idx])
-    constraints_type = np.hstack([an.constraints_type, sep.constraints_type,
-                                  ca.constraints_type])
 
     #===========================================================================
     #   RUN THE SIMULATION
     #===========================================================================
     # The inputs tell us what type of experiment we will simulate.  Load the
     # module, then call its 'run' function:
-    for sim in parameters['simulations']:
+
+    # If the user requests a specific initailization routine, run that first:
+    if 'initialize' in parameters and parameters['initialize']['enable']:
+        if parameters['initialize']['type'] == 'open-circuit':
+            model = importlib.import_module('.'+'CC_cycle',
+                package='simulations')
+
+            t_span = parameters['initialize']['time']
+
+            sim = {'i_ext': None, 'C-rate': 0., 'n_cycles': 0,
+                'first-step': 'discharge', 'equilibrate':
+                {'enable': True, 'time':  t_span}, 'phi-cutoff-lower': 2.0,
+                'phi-cutoff-upper': 4.8, 'init':True}
+
+            solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
+
+            # Save final state as the initial state for all subsequent
+            # simulation steps:
+            SV_0 = model.final_state(solution)
+
+        else:
+            raise ValueError("Initialization method currently not implemented.")
+
+    global model_run
+    def model_run(sim):
+
+        # Import the simulation to be run:
         model = importlib.import_module('.'+sim['type'], package='simulations')
 
-        solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim,
-                            constraints_idx, constraints_type)
+        sim['init'] = False
+        #ca_inputs['n_points'] = sim['n_ca']
+        #ca_module = importlib.import_module('electrode_models.'
+        #    + ca_inputs['class'])
+        #ca = ca_module.electrode(input_file, ca_inputs, sep_inputs, an_inputs,
+        #    'cathode', parameters, offset= an.n_vars+sep.n_vars*sep.n_points)
+        # Run the simulation
+        solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
 
-        #=======================================================================
-        # RUN CONSERVATION TEST SUITE
-        #=======================================================================
-        model.conservation_test(solution, an, sep, ca, parameters, sim)
-
-        #=======================================================================
-        #   CREATE FIGURES AND SAVE ALL OUTPUTS
-        #=======================================================================
         # Call any output routines related to the simulation type:
         model.output(solution, an, sep, ca, parameters, sim)
 
+        SV_init = model.initial_state(solution)
+        return SV_init
 
+    #=======================================================================
+    #   CREATE FIGURES AND SAVE ALL OUTPUTS
+    #=======================================================================
+
+    # If the user specified to use multiple cores (only relevant if there are
+    # multiple simulations), run them in a multiprocessing pool:
+    #sim = parameters['simulations']
+    pool = Pool(int(cores))
+    SV_0 = pool.map(model_run, list(parameters['simulations']))
+
+    #if len(parameters['simulations']) == 1:
+    #    filename = (parameters['simulations'][0]['outputs'] +'_'
+    #                + sim['outputs']['save-name'] )
+    #else:
+    #    filename = (parameters['output'] +'/')
+
+    #if not os.path.exists(filename):
+    #    os.makedirs(filename)
+
+    #copy2(input_file, filename)
+
+    # Record time when finished:
+    stop = timeit.default_timer()
+    print('Time: ', stop - start)
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE
 #===========================================================================
@@ -110,6 +173,7 @@ if __name__ == '__main__':
     # the input file location:
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
+    parser.add_argument('--cores')
     args = parser.parse_args()
 
-    bat_can(args.input)
+    bat_can(args.input, args.cores)
