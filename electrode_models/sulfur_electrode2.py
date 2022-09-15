@@ -659,7 +659,7 @@ class electrode():
                 axs[ax_offset+self.n_conversion_phases-1].set_ylim((0.0, 2.0))
 
         axs[ax_offset+self.n_conversion_phases-1].legend(self.plot_species, loc=1)
-        axs[ax_offset+self.n_conversion_phases-1].set_ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)')
+        axs[ax_offset+self.n_conversion_phases-1].set_ylabel('Elyte Species Conc. \n (kmol m^{-3})')
         axs[ax_offset+self.n_conversion_phases-1].set_ylim((-0.1, 1.1))
         return axs
 

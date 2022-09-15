@@ -264,7 +264,7 @@ class electrode():
 
         # Set array of atol to pass to solver
         self.atol = np.ones_like(SV)*1e-3
-        self.atol[self.SVptr['C_k_elyte']] = 1e-17
+        self.atol[self.SVptr['C_k_elyte']] = 1e-16
 
         # Load intial state variable values:
         SV[self.SVptr['phi_ed']] = inputs['phi_0']
@@ -331,7 +331,7 @@ class electrode():
 
         axs[ax_offset].plot(x_vec,
             1e6*solution[SV_offset+int(self.SVptr['thickness'])])
-        axs[ax_offset].set_ylabel(self.name+' Thickness \n($\mu$m)')
+        axs[ax_offset].set_ylabel(self.name+' Thickness \n(\mu-m)')
 
         return axs
 

@@ -66,7 +66,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':atol_vec,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
             'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
-            'constraints_type':constr_type}#, 'linsolver':'band', 'lband':30, 'uband':30}
+            'constraints_type':constr_type, 'linsolver':'band', 'lband':30, 'uband':30}
 
     solver = dae('ida', residual, **options)
 
@@ -78,7 +78,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'A/m^2 \n')
 
-        t_out = np.linspace(0, times[i], 1000)
+        t_out = np.linspace(0, times[i], 10000)
 
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
@@ -326,7 +326,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
         # Axis 1: Current vs. time (h):
         x_vec = params['i_ext']*np.copy(solution[0,:]/3600/ca.m_S_tot_0)
         summary_axs[0].plot(x_vec, 1000*solution[2,:]/10000)
-        summary_axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
+        summary_axs[0].set_ylabel('Current Density \n (mA/cm^2)',labelpad=lp)
         summary_axs[0].set_xlim((0, 1700))
         summary_axs[0].set_xticks([200, 400, 600, 800, 1000, 1200, 1400, 1600])
 
@@ -378,7 +378,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
             # Update time offset:
             t_0 = cycle.index[-1]
 
-        cycle_axs.set(xlabel='Capacity (mAh/cm$^2$)')
+        cycle_axs.set(xlabel='Capacity (mAh/cm^2)')
         cycle_axs.set(ylabel='Cell Potential (V)')
 
         cycle_axs.tick_params(axis="x",direction="in")
@@ -397,9 +397,12 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
             #now = datetime.now()
             #dt =  now.strftime("%Y%m%d_%H%M")
             if 'save-name' in sim['outputs']:
-                if len(params['simulations']) == 1:
+                if len(params['simulations']) == 1 and not params['cell-test']['enable']:
                     sim['filename'] = (params['output'] +'_'
                                         + sim['outputs']['save-name'])
+                elif params['cell-test']['enable']:
+                    sim['filename'] = (params['output'] +'/'
+                                        + sim['outputs']['save-name'] +'_'+str(ca.n_points)+'nodes')
                 else:
                     sim['filename'] = (params['output'] +'/'
                                         + sim['outputs']['save-name'])

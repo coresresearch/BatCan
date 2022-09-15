@@ -113,7 +113,7 @@ class separator():
 
         # Set array of atol to pass to solver
         self.atol = np.ones_like(SV)*1e-3
-        self.atol[self.SVptr['C_k_elyte']] = 1e-17
+        self.atol[self.SVptr['C_k_elyte']] = 1e-16
 
         # Load intial state variables:
         SV[self.SVptr['phi']] = inputs['phi_0']
@@ -321,7 +321,7 @@ class separator():
             axs[ax_offset+1].plot(x_vec,
                 Ck_elyte_ca[ca.index_Li,:])
 
-        axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m$^3$')
+        axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m^3')
 
         return axs
 

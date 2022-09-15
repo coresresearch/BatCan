@@ -20,7 +20,7 @@ from bat_can_init import initialize
 
 # This is the main function that runs the model.  We define it this way so it
 # is called by "main," below:
-def bat_can(input, cores):
+def bat_can(input, cores, n_ca):
     # Record the start time:
     start = timeit.default_timer()
 
@@ -38,6 +38,9 @@ def bat_can(input, cores):
 
     if not cores:
         cores = 1
+
+    if not n_ca:
+        n_ca = 0
     #===========================================================================
     #   READ IN USER INPUTS
     #===========================================================================
@@ -70,7 +73,8 @@ def bat_can(input, cores):
 
     # Check to see if the anode object needs to adjust the separator properties:
     sep = an.adjust_separator(sep)
-    #ca_inputs['n_points'] = n_ca
+    if n_ca != 0:
+        ca_inputs['n-points'] = n_ca
     ca_module = importlib.import_module('electrode_models.'
         + ca_inputs['class'])
     ca = ca_module.electrode(input_file, ca_inputs, sep_inputs, an_inputs,
@@ -149,16 +153,16 @@ def bat_can(input, cores):
     pool = Pool(int(cores))
     SV_0 = pool.map(model_run, list(parameters['simulations']))
 
-    #if len(parameters['simulations']) == 1:
-    #    filename = (parameters['simulations'][0]['outputs'] +'_'
-    #                + sim['outputs']['save-name'] )
-    #else:
-    #    filename = (parameters['output'] +'/')
+    if len(parameters['simulations']) == 1 and not parameters['cell-test']['enable']:
+        filename = (parameters['output'] +'_'
+                    + parameters['simulations'][0]['outputs']['save-name'] )
+    else:
+        filename = (parameters['output'] +'/')
 
-    #if not os.path.exists(filename):
-    #    os.makedirs(filename)
+    if not os.path.exists(filename):
+        os.makedirs(filename)
 
-    #copy2(input_file, filename)
+    copy2(input_file, filename)
 
     # Record time when finished:
     stop = timeit.default_timer()
@@ -174,6 +178,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
     parser.add_argument('--cores')
+    parser.add_argument('--n_ca')
     args = parser.parse_args()
 
-    bat_can(args.input, args.cores)
+    bat_can(args.input, args.cores, args.n_ca)
