@@ -47,6 +47,9 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     steps, currents, times, equil, rescale = setup_cycles(sim, current, t_final)
     n_steps = len(steps)
 
+    # Calculate the bandwidth used for the band linsolver
+    lband, uband = calc_bandwidth(residual, SV_0, an, sep, ca, params)
+    print(stop_sim)
     # This function checks to see if certain limits are exceeded which will
     # terminate the simulation:
     n_roots = 2
@@ -66,7 +69,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':atol_vec,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
             'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
-            'constraints_type':constr_type, 'linsolver':'band', 'lband':30, 'uband':30}
+            'constraints_type':constr_type, 'linsolver':'band', 'lband':lband, 'uband':uband}
 
     solver = dae('ida', residual, **options)
 
@@ -246,6 +249,49 @@ def residual(t, SV, SVdot, resid, inputs):
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
 
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
+
+
+def calc_bandwidth(residual, SV_0, an, sep, ca, params):
+    # Calculate size N of Jacobian
+    N = np.size(SV_0)
+    lband = 1
+    uband = 1
+    SVdot = np.ones_like(SV_0)
+    params['i_ext'] = 0
+
+    def calc_resid(SV):
+        # Call residual functions for anode, separator, and cathode. Assemble them
+        # into a single residual vector 'resid':
+        resid_i = np.zeros_like(SV)
+        resid_i[an.SVptr['electrode']] = an.residual(0, SV, SVdot, sep, ca, params)
+
+        resid_i[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
+
+        resid_i[ca.SVptr['electrode']] = ca.residual(0, SV, SVdot, sep, an, params)
+        return resid_i
+
+    resid_0 = calc_resid(SV_0)
+    print(N)
+    for i in range(N):
+        for j in range(N):
+            dSV = np.copy(SV_0)
+            dSV[j] = 1.01*SV_0[j]
+            dF = resid_0 - calc_resid(dSV)
+
+            if abs(dF[i]) > 0:
+                if j > i and abs(i - j) > uband:
+                    uband = abs(i - j)
+                    print('j > i', i, j, uband, lband)
+                elif i > j and abs(i - j) > lband:
+                    lband = abs(i - j)
+                    print('i > j', i, j, uband, lband)
+            #if abs(dF[i]) > 0 and abs(i - j) > lband:
+            #    lband = abs(i - j)
+            #    uband = abs(i - j)
+                #print(lband, uband, i, j)
+    print(lband, uband, an.SVptr, sep.SVptr['sep'], ca.SVptr['electrode'], sep.SVptr, ca.SVptr)
+
+    return lband, uband
 
 def conservation_test(solution, an, sep, ca, params, sim):
 

@@ -137,6 +137,9 @@ def bat_can(input, cores, n_ca):
         # Run the simulation
         solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
 
+        # Run tests to verify results
+        model.conservation_test(solution, an, sep, ca, parameters, sim)
+
         # Call any output routines related to the simulation type:
         model.output(solution, an, sep, ca, parameters, sim)
 
