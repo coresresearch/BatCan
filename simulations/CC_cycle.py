@@ -49,7 +49,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
     # Calculate the bandwidth used for the band linsolver
     lband, uband = calc_bandwidth(residual, SV_0, an, sep, ca, params)
-    print(stop_sim)
+    #print(stop_sim)
     # This function checks to see if certain limits are exceeded which will
     # terminate the simulation:
     n_roots = 2
@@ -271,7 +271,7 @@ def calc_bandwidth(residual, SV_0, an, sep, ca, params):
         return resid_i
 
     resid_0 = calc_resid(SV_0)
-    print(N)
+    #print(N)
     for i in range(N):
         for j in range(N):
             dSV = np.copy(SV_0)
@@ -281,15 +281,15 @@ def calc_bandwidth(residual, SV_0, an, sep, ca, params):
             if abs(dF[i]) > 0:
                 if j > i and abs(i - j) > uband:
                     uband = abs(i - j)
-                    print('j > i', i, j, uband, lband)
+                    #print('j > i', i, j, uband, lband)
                 elif i > j and abs(i - j) > lband:
                     lband = abs(i - j)
-                    print('i > j', i, j, uband, lband)
+                    #print('i > j', i, j, uband, lband)
             #if abs(dF[i]) > 0 and abs(i - j) > lband:
             #    lband = abs(i - j)
             #    uband = abs(i - j)
                 #print(lband, uband, i, j)
-    print(lband, uband, an.SVptr, sep.SVptr['sep'], ca.SVptr['electrode'], sep.SVptr, ca.SVptr)
+    print(lband, uband) #, an.SVptr, sep.SVptr['sep'], ca.SVptr['electrode'], sep.SVptr, ca.SVptr)
 
     return lband, uband
 

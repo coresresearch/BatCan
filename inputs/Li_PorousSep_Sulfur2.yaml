@@ -56,7 +56,7 @@ cell-description:
     D_scale_coeff: 1e-11
   cathode:
     class: 'sulfur_electrode2'
-    n-points: 2
+    n-points: 1
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -109,11 +109,11 @@ parameters:
   T: 25.15 C
   P: 101325 Pa
   initialize:
-    enable: False
+    enable: True
     type: 'open-circuit'
     time: 5
   cell-test:
-    enable: False
+    enable: True
     type: 'grid-analysis' # Flag to indicate if multiple simulations are run from a shell
   # Describe simulation type, parameters, etc.
   simulations:
@@ -125,7 +125,7 @@ parameters:
       first-step: 'discharge'  # Start with charge or discharge?
       non-dimensionalize: False # scale by 'init' values, 'equil' values, or not at all
       equilibrate:
-        enable: True # Start with a hold at open circuit?
+        enable: False # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
       phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
       phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
