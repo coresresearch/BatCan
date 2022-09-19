@@ -51,9 +51,6 @@ class electrode():
 
         # Electrode thickness and inverse thickness:
         self.n_points = inputs['n-points']
-        #if len(params['simulations']) > 1 and params['simulations'][0]['n_ca']:
-            #for sim_runs in len(params['simulations']):
-
         self.dy = inputs['thickness']/self.n_points
         self.dyInv = 1/self.dy
         self.dyinv_n = self.n_points/self.dy*np.ones((self.n_points, 1))
@@ -578,12 +575,7 @@ class electrode():
             - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
             + theta_Ck*dEps_el/eps_elyte)  #theta_Ck*dEps_el/theta_eps_el)
 
-        #resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]]
-        #    - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
-        #    + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]])
-        #if params['i_ext'] != 0:
-        #    print(resid)
-        #print(SV_loc, SV_loc/scale_nd_vec)
+        
         return resid
 
     def voltage_lim(self, SV, val):
@@ -659,7 +651,7 @@ class electrode():
                 axs[ax_offset+self.n_conversion_phases-1].set_ylim((0.0, 2.0))
 
         axs[ax_offset+self.n_conversion_phases-1].legend(self.plot_species, loc=1)
-        axs[ax_offset+self.n_conversion_phases-1].set_ylabel('Elyte Species Conc. \n (kmol m^{-3})')
+        axs[ax_offset+self.n_conversion_phases-1].set_ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)')
         axs[ax_offset+self.n_conversion_phases-1].set_ylim((-0.1, 1.1))
         return axs
 
@@ -668,9 +660,6 @@ class electrode():
         self.scale_nd = np.copy(SV[0:self.n_vars])
         self.scale_nd[self.scale_nd == 0] = 1e-12
         self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
-
-    def adjust_npoints(self, n_ca):
-        self.n_points = n_ca
 
 
 #Official Soundtrack:
