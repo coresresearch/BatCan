@@ -25,6 +25,8 @@ class electrode():
         self.host_surf_obj = ct.Interface(input_file, inputs['surf-phase'],
             [self.elyte_obj, self.host_obj])
 
+        self.C_k_0 = [species['C_k'] for species in sep_inputs['transport']['diffusion-coefficients']]
+
         # Create conversion phases and associated electrolyte interfaces:
         self.conversion_phases = []
         self.conversion_obj = []
@@ -51,6 +53,7 @@ class electrode():
 
         # Electrode thickness and inverse thickness:
         self.n_points = inputs['n-points']
+        print('Cathode points =', self.n_points)
         self.dy = inputs['thickness']/self.n_points
         self.dyInv = 1/self.dy
         self.dyinv_n = self.n_points/self.dy*np.ones((self.n_points, 1))
@@ -98,7 +101,7 @@ class electrode():
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
-        self.elyte_microstructure = self.eps_elyte_init**1.5 # where would we use this?
+        self.elyte_microstructure = (self.eps_elyte_init - sum(self.eps_conversion_init))**1.5 # where would we use this?
 
         # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
@@ -214,7 +217,7 @@ class electrode():
 
         # Set array of atol to pass to solver
         self.atol = np.ones([self.n_vars_tot])*1e-3
-        self.atol[self.SVptr['C_k_elyte']] = 1e-16
+        self.atol[self.SVptr['C_k_elyte']] = sep_inputs['C_k_atol']
         self.atol[self.SVptr['eps_conversion']] = 1e-8
 
     def initialize(self, inputs, sep_inputs):
@@ -229,7 +232,7 @@ class electrode():
             for item in inputs["initial-state"]["eps_init"]:
                 j = self.conversion_phases.index(item["phase"])
                 SV[self.SVptr['eps_conversion'][:,j]] = item["value"]
-        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations
+        SV[self.SVptr['C_k_elyte']] = self.C_k_0
 
         if self.scale_nd_flag:
             self.scale_nd = np.copy(SV[0:self.n_vars])
@@ -285,7 +288,7 @@ class electrode():
         SVptr = self.SVptr
         scale_nd = self.scale_nd
         scale_nd_vec = self.scale_nd_vec
-        #print('cathode scaling', scale_nd_vec)
+
         SV_loc = SV[SVptr['electrode']]*scale_nd_vec
         SVdot_loc = SVdot[SVptr['electrode']]
 
@@ -298,10 +301,6 @@ class electrode():
         j = self.nodes[0]
 
         # Read out properties:
-        #np_conversion = np.zeros((self.n_conversion_phases))
-        #r_conversion = np.zeros((self.n_conversion_phases))
-        #A_conversion = np.zeros((self.n_conversion_phases))
-        #tpb_conversion = np.zeros((self.n_conversion_phases))
         np_conversion = self.conversion_phase_np
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
@@ -310,17 +309,15 @@ class electrode():
         for ph_i in range(self.n_conversion_phases):
             eps_conversion[ph_i] = max(SV_loc[SVptr['eps_conversion'][j][ph_i]], 1e-15)
         eps_elyte = 1. - sum(eps_conversion[:]) - self.eps_host
-        #if params['i_ext'] != 0:
-            #print(eps_conversion)
-        #mult = np.zeros((self.n_conversion_phases))
 
         # Read electrolyte fluxes at the separator boundary.  No matter the
         # electrode, the function returns a value where flux to the electrode
         # is considered positive. We multiply by `i_ext_flag` to get the
         # correct sign.
-        N_k_in, i_io_in = (self.i_ext_flag*X for X in
-            sep.electrode_boundary_flux(SV, self, params['T']))
+        self.elyte_microstructure = eps_elyte**1.5
 
+        N_k_in, i_io_in = (sep.electrode_boundary_flux(SV, self, params['T']))
+        #N_k_in, i_io_in = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])*N_k_in, i_io_in*0
         # No electronic current at the separator boundary:
         i_el_in = 0
 
@@ -329,7 +326,7 @@ class electrode():
             # Set Cantera object properties:
             self.host_obj.electric_potential = phi_ed
             self.elyte_obj.electric_potential = phi_elyte
-            self.elyte_obj.X = c_k_elyte
+            self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
             for ph in self.conversion_obj:
                 ph.electric_potential = phi_ed
             for ph in self.conversion_surf_obj:
@@ -337,13 +334,15 @@ class electrode():
 
             # Set microstructure multiplier for effective diffusivities
             #TODO #48
-            self.elyte_microstructure = eps_elyte**1.5
 
+            #print(self.elyte_microstructure)
             # Read out state variables for 'next' node toward CC boundary:
             phi_ed_next = SV_loc[SVptr['phi_ed'][j_next]]
             phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j_next]]
             c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j_next]]
-            eps_conversion_next = SV_loc[SVptr['eps_conversion'][j_next]]
+            eps_conversion_next = np.zeros((self.n_conversion_phases))
+            for ph_i in range(self.n_conversion_phases):
+                eps_conversion_next[ph_i] = max(SV_loc[SVptr['eps_conversion'][j_next][ph_i]], 1e-15)
             eps_elyte_next = 1. - sum(eps_conversion_next[:]) - self.eps_host
 
             # Load the node properties into dict structures
@@ -383,12 +382,6 @@ class electrode():
             # drops below the user-specified minimum, any reactions that
             # consume the phase have their rates quickly go to zero:
             sw_conv = np.where(eps_conversion < 1e-7, 0, self.sw_conv)
-            #sw_conv = np.zeros((self.n_conversion_phases))
-            #for ph_index, ph in enumerate(eps_conversion):
-            #    if ph < 1e-5 and ph_index == 0:
-            #        sw_conv[ph_index] = 0
-            #    else:
-            #        sw_conv[ph_index] = 1
 
             # Chemical production rate of the conversion phases:
             # (kmol/m2-interface/s)
@@ -465,7 +458,7 @@ class electrode():
         # Set Cantera object properties:
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
-        self.elyte_obj.X = c_k_elyte
+        self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
         for ph in self.conversion_obj:
             ph.electric_potential = phi_ed
         for ph in self.conversion_surf_obj:
@@ -508,21 +501,8 @@ class electrode():
         # below the user-specified minimum, any reactions that consume the
         # phase have their rates quickly go to zero:
         sw_conv = np.where(eps_conversion < 1e-5, 0, self.sw_conv)
-        #sw_conv = np.zeros((self.n_conversion_phases))
-        #for ph_index, ph in enumerate(eps_conversion):
-        #    if ph < 1e-5 and ph_index == 0:
-        #        sw_conv[ph_index] = 0
-        #    else:
-        #        sw_conv[ph_index] = 1
 
         # Chemical production rate of the product phase: (mol/m2 interface/s)
-        #for ph in np.arange(0, self.n_conversion_phases):
-        #gnpr = [ph.get_net_production_rates for ph in self.conversion_surf_obj]
-        #sdot_conversion = [gnpr[ph](self.conversion_obj[ph]) for ph in range(self.n_conversion_phases)]
-        #nu = [self.conversion_obj[ph].partial_molar_volumes for ph in range(self.n_conversion_phases)]
-        #sdot_nu = [np.dot(sdot_conversion[ph], nu[ph]) for ph in range(self.n_conversion_phases)]
-        #resid[SVptr['eps_conversion'][j][:]] = SVdot_loc[SVptr['eps_conversion'][j][:]] - \
-        #                            sw_conv[:]*A_conversion[:]*sdot_nu[:]/scale_nd[SVptr['eps_conversion'][0][:]]
         for ph_i, ph in enumerate(self.conversion_surf_obj):
             sdot_conversion = \
                 ph.get_net_production_rates(self.conversion_obj[ph_i])
@@ -575,7 +555,7 @@ class electrode():
             - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte/scale_nd[SVptr['C_k_elyte'][0]]
             + theta_Ck*dEps_el/eps_elyte)  #theta_Ck*dEps_el/theta_eps_el)
 
-        
+
         return resid
 
     def voltage_lim(self, SV, val):
@@ -639,7 +619,7 @@ class electrode():
 
             axs[ax_offset].legend(self.plot_conv_ph, loc=1)
             axs[ax_offset].set_ylabel(self.name+' product \n volume fraction')
-            axs[ax_offset].set_ylim((0, 0.15))
+            axs[ax_offset].set_ylim((0, 1))
 
         for name in self.plot_species:
             species_ptr = self.elyte_obj.species_index(name)
@@ -652,7 +632,7 @@ class electrode():
 
         axs[ax_offset+self.n_conversion_phases-1].legend(self.plot_species, loc=1)
         axs[ax_offset+self.n_conversion_phases-1].set_ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)')
-        axs[ax_offset+self.n_conversion_phases-1].set_ylim((-0.1, 1.1))
+        #axs[ax_offset+self.n_conversion_phases-1].set_ylim((-0.1, 1.1))
         return axs
 
     def adjust_scale_nd(self, SV):

@@ -15,6 +15,8 @@ class separator():
 
         self.elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
 
+        self.C_k_0 = [species['C_k'] for species in inputs['transport']['diffusion-coefficients']]
+
         # State variables: electrolyte potential, electrolyte composition (nsp)
         self.n_vars = 1 + self.elyte_obj.n_species
         self.H = inputs['thickness']
@@ -76,8 +78,8 @@ class separator():
 
         self.elyte_obj.electric_potential = inputs['phi_0']
 
-        self.C_Li_0 = self.elyte_obj.concentrations[self.index_Li] \
-                    + self.flag_lithiated*2*np.sum(self.elyte_obj.concentrations[4:])
+        self.C_Li_0 = self.C_k_0[self.index_Li] \
+                    + self.flag_lithiated*2*np.sum(self.C_k_0[4:])
 
 
     def initialize(self, inputs):
@@ -113,12 +115,12 @@ class separator():
 
         # Set array of atol to pass to solver
         self.atol = np.ones_like(SV)*1e-3
-        self.atol[self.SVptr['C_k_elyte']] = 1e-16
+        self.atol[self.SVptr['C_k_elyte']] = inputs['C_k_atol']
 
         # Load intial state variables:
         SV[self.SVptr['phi']] = inputs['phi_0']
         for i in range(self.n_points):
-            SV[self.SVptr['C_k_elyte'][i,:]] = self.elyte_obj.concentrations
+            SV[self.SVptr['C_k_elyte'][i,:]] = self.C_k_0
 
         if self.scale_nd_flag:
             self.scale_nd = np.copy(SV[0:self.n_vars])
@@ -187,11 +189,15 @@ class separator():
                 (SVdot_loc[self.SVptr['C_k_elyte'][j]]
                 - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte / scale_nd[SVptr['C_k_elyte'][0]])
 
-            N_k_elyte_in, i_io_in = N_k_elyte_out, i_io_out
+            N_k_elyte_in = N_k_elyte_out
+            i_io_in = i_io_out
 
         j = self.n_points-1
+
         N_k_elyte_out, i_io_out = self.electrode_boundary_flux(SV, ca,
             params['T'])
+        #print(N_k_elyte_out, i_io_out)
+        #N_k_elyte_out, i_io_out = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])*N_k_elyte_out, i_io_out*0
 
         resid[self.SVptr['C_k_elyte'][j]] = \
             (SVdot_loc[self.SVptr['C_k_elyte'][j]]
@@ -248,6 +254,8 @@ class separator():
         state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':ed.dy_elyte,
             'microstructure':ed.elyte_microstructure}
 
+        #if ed.name == 'cathode':
+            #print(state_1, '\n', state_2, '\n\n')
         # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
         N_k_elyte, i_io = tuple(x*ed.i_ext_flag
             for x in self.elyte_transport(state_1, state_2, self))

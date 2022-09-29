@@ -34,29 +34,39 @@ cell-description:
       #definition, below:
         - species: 'TEGDME(e)'
           D_k: 1e-12
+          C_k: 1.023e1 # kmol_k/m^3
         - species: 'Li+(e)'
           D_k: 1e-10
+          C_k: 1.024 # kmol_k/m^3
         - species: 'TFSI-(e)'
           D_k: 4e-10
+          C_k: 1.0229321 # kmol_k/m^3
         - species: S8(e)
           D_k: 1e-11
+          C_k: 1.943e-2 # kmol_k/m^3
         - species: S8-(e)
           D_k: 6e-11
+          C_k: 1.821e-4 # kmol_k/m^3
         - species: S6-(e)
           D_k: 6e-11
+          C_k: 3.314e-4 # kmol_k/m^3
         - species: S4-(e)
           D_k: 1e-10
+          C_k: 2.046e-5 # kmol_k/m^3
         - species: s2-(e)
           D_k: 1e-10
+          C_k: 5.348e-10 # kmol_k/m^3
         - species: s-(e)
           D_k: 1e-10
+          C_k: 8.456e-13 # kmol_k/m^3
     phi_0: 1.014 # Initial electric potential, V
     eps_electrolyte: 0.5 # Electrolyte volume fraction, -
     flag_lithiated: 0
     D_scale_coeff: 1e-11
+    C_k_atol: 1e-18
   cathode:
     class: 'sulfur_electrode2'
-    n-points: 1
+    n-points: 3
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -109,7 +119,7 @@ parameters:
   T: 25.15 C
   P: 101325 Pa
   initialize:
-    enable: True
+    enable: False
     type: 'open-circuit'
     time: 5
   cell-test:
@@ -120,12 +130,12 @@ parameters:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 1 # input C-rate
+      C-rate: 0.1 # input C-rate
       n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
       first-step: 'discharge'  # Start with charge or discharge?
       non-dimensionalize: False # scale by 'init' values, 'equil' values, or not at all
       equilibrate:
-        enable: False # Start with a hold at open circuit?
+        enable: True # Start with a hold at open circuit?
         time: 5 # If true, how long is the hold, s
       phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
       phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
@@ -134,22 +144,22 @@ parameters:
                           # them (False)
         save-name: 'Test_output1'
       #species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
-    #- type: 'CC_cycle' # Constant current cycling
+    - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
-    #  i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    #  C-rate: 1 # input C-rate
-    #  n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
-    #  first-step: 'discharge'  # Start with charge or discharge?
-    #  non-dimensionalize: False # scale by 'init' values, 'equil' values, or not at all
-    #  equilibrate:
-    #    enable: False # Start with a hold at open circuit?
-    #    time: 5 # If true, how long is the hold, s
-    #  phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
-    #  phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
-    #  outputs:
-    #    show-plots: False # Show the plots and save them (True), or just save
+      i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: 1 # input C-rate
+      n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
+      first-step: 'discharge'  # Start with charge or discharge?
+      non-dimensionalize: False # scale by 'init' values, 'equil' values, or not at all
+      equilibrate:
+        enable: True # Start with a hold at open circuit?
+        time: 5 # If true, how long is the hold, s
+      phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
+      phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
+      outputs:
+        show-plots: False # Show the plots and save them (True), or just save
                           # them (False)
-    #    save-name: 'Test_output2'
+        save-name: 'Test_output2'
       #species-cutoff: 0 # Simulation cuts off if C_k <= this value, kmol/m3
 
 

@@ -25,6 +25,8 @@ class electrode():
         self.surf_obj = ct.Interface(input_file, inputs['surf-phase'],
             [self.bulk_obj, self.elyte_obj, self.conductor_obj])
 
+        self.C_k_0 = [species['C_k'] for species in sep_inputs['transport']['diffusion-coefficients']]
+
         print('E_eq_an =', -self.surf_obj.delta_standard_gibbs/ct.faraday)
         # Anode or cathode? Positive external current delivers positive charge
         # to the anode, and removes positive charge from the cathode.
@@ -149,11 +151,13 @@ class electrode():
         # Read electrode and electrolyte electric potentials:
         phi_ed = SV_loc[SVptr['phi_ed']]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
+        c_k_elyte = SV_loc[SVptr['C_k_elyte']]
 
         # Set electric potentials for Cantera objects:
         self.bulk_obj.electric_potential = phi_ed
         self.conductor_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
+        self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
 
         # Multiplier on the electrode removal reaction. Quickly goes to zero,
         # for thicknesses below a user-specified minimum:
@@ -264,13 +268,13 @@ class electrode():
 
         # Set array of atol to pass to solver
         self.atol = np.ones_like(SV)*1e-3
-        self.atol[self.SVptr['C_k_elyte']] = 1e-16
+        self.atol[self.SVptr['C_k_elyte']] = sep_inputs['C_k_atol']
 
         # Load intial state variable values:
         SV[self.SVptr['phi_ed']] = inputs['phi_0']
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0']
         SV[self.SVptr['thickness']] = inputs['thickness']
-        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations
+        SV[self.SVptr['C_k_elyte']] = self.C_k_0
 
         if self.scale_nd_flag:
             self.scale_nd = np.copy(SV[0:self.n_vars])

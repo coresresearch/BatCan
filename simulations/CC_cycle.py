@@ -48,8 +48,8 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     n_steps = len(steps)
 
     # Calculate the bandwidth used for the band linsolver
-    lband, uband = calc_bandwidth(residual, SV_0, an, sep, ca, params)
-    #print(stop_sim)
+    lband, uband = calc_bandwidth(SV_0, an, sep, ca, params)
+    lband, uband = 25, 25
     # This function checks to see if certain limits are exceeded which will
     # terminate the simulation:
     n_roots = 2
@@ -66,8 +66,8 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-6, 'atol':atol_vec,
-            'algebraic_vars_idx':algvars, 'first_step_size':1e-18,
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':atol_vec,
+            'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 'max_step_size':1,
             'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
             'constraints_type':constr_type, 'linsolver':'band', 'lband':lband, 'uband':uband}
 
@@ -251,12 +251,12 @@ def residual(t, SV, SVdot, resid, inputs):
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
 
-def calc_bandwidth(residual, SV_0, an, sep, ca, params):
+def calc_bandwidth(SV_0, an, sep, ca, params):
     # Calculate size N of Jacobian
     N = np.size(SV_0)
     lband = 1
     uband = 1
-    SVdot = np.ones_like(SV_0)
+    SVdot = np.zeros_like(SV_0)
     params['i_ext'] = 0
 
     def calc_resid(SV):
@@ -271,26 +271,21 @@ def calc_bandwidth(residual, SV_0, an, sep, ca, params):
         return resid_i
 
     resid_0 = calc_resid(SV_0)
-    #print(N)
-    for i in range(N):
-        for j in range(N):
-            dSV = np.copy(SV_0)
-            dSV[j] = 1.01*SV_0[j]
-            dF = resid_0 - calc_resid(dSV)
 
-            if abs(dF[i]) > 0:
+    for j in range(N):
+        dSV = np.copy(SV_0)
+        dSV[j] *= 1.01 #1.01*SV_0[j]
+        dF = resid_0 - calc_resid(dSV)
+        for i in range(N):
+            if abs(dF[i]) > 0: # and j != 78 and j != 79:
                 if j > i and abs(i - j) > uband:
                     uband = abs(i - j)
                     #print('j > i', i, j, uband, lband)
                 elif i > j and abs(i - j) > lband:
                     lband = abs(i - j)
                     #print('i > j', i, j, uband, lband)
-            #if abs(dF[i]) > 0 and abs(i - j) > lband:
-            #    lband = abs(i - j)
-            #    uband = abs(i - j)
-                #print(lband, uband, i, j)
-    print(lband, uband) #, an.SVptr, sep.SVptr['sep'], ca.SVptr['electrode'], sep.SVptr, ca.SVptr)
 
+    print('lband =', lband, 'uband =', uband)
     return lband, uband
 
 def conservation_test(solution, an, sep, ca, params, sim):
@@ -368,9 +363,11 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
                 gridspec_kw = {'wspace':0, 'hspace':0})
 
         summary_fig.set_size_inches((4.0,1.8*n_plots))
-
+        #print(solution[0,::len(solution[0])-1])
         # Axis 1: Current vs. time (h):
-        x_vec = params['i_ext']*np.copy(solution[0,:]/3600/ca.m_S_tot_0)
+        x_vec = np.zeros_like(solution[0,:])
+        x_vec = params['i_ext']*np.copy(solution[0,:])/3600/ca.m_S_tot_0
+        #print(x_vec[::len(x_vec)])
         summary_axs[0].plot(x_vec, 1000*solution[2,:]/10000)
         summary_axs[0].set_ylabel('Current Density \n (mA/cm^2)',labelpad=lp)
         summary_axs[0].set_xlim((0, 1700))
