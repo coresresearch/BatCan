@@ -51,7 +51,7 @@ def bat_can(input, cores, n_ca):
     print('\n Simulation start time is ', dt)
     # Save name of input file, without path or extension:
     parameters['input'] = input
-    parameters['output'] = 'outputs/' + parameters['input']+ '_grid_independence'# + dt
+    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
