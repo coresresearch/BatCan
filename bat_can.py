@@ -48,10 +48,10 @@ def bat_can(input, cores, n_ca):
 
     now = datetime.now()
     dt =  now.strftime("%Y%m%d_%H%M")
-
+    print('\n Simulation start time is ', dt)
     # Save name of input file, without path or extension:
     parameters['input'] = input
-    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
+    parameters['output'] = 'outputs/' + parameters['input']+ '_grid_independence'# + dt
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
@@ -136,7 +136,7 @@ def bat_can(input, cores, n_ca):
         #    'cathode', parameters, offset= an.n_vars+sep.n_vars*sep.n_points)
         # Run the simulation
         solution = model.run(SV_0, an, sep, ca, algvars, parameters, sim)
-
+        #print(solution[0,::len(solution[0])-1])
         # Run tests to verify results
         model.conservation_test(solution, an, sep, ca, parameters, sim)
 
