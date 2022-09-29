@@ -10,15 +10,15 @@ def dilute_solution(state_1, state_2, sep):
         * dy_inv)
     T_int = ((state_2['dy'] * state_1['T'] + state_1['dy'] * state_2['T'])
         * dy_inv)
-    D_scale = scale_Diff(C_k_int, sep)
+
     D_scale_1 = scale_Diff(state_1['C_k'], sep)
     D_scale_2 = scale_Diff(state_2['C_k'], sep)
+
     D_k_scale_1 = sep.D_k - D_scale_1
     D_k_scale_2 = sep.D_k - D_scale_2
+    
     D_k_eff = (state_2['dy']*D_k_scale_1*state_1['microstructure'] + state_1['dy']*D_k_scale_2*state_2['microstructure'])*dy_inv
-    #D_k_scale = sep.D_k - D_scale
-    #D_k_eff = ((state_2['dy'] * state_1['microstructure']
-    #    + state_1['dy'] * state_2['microstructure']) * D_k_scale * dy_inv)
+
     D_k_mig = (D_k_eff * sep.elyte_obj.charges * ct.faraday * C_k_int
         / ct.gas_constant / T_int)
 
