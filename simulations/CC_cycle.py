@@ -17,6 +17,7 @@ import numpy as np
 import time
 from scikits.odes.dae import dae
 from math import floor
+from submodels import bandwidth
 
 def run(SV_0, an, sep, ca, algvars, params, sim):
     """
@@ -48,7 +49,8 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     n_steps = len(steps)
 
     # Calculate the bandwidth used for the band linsolver
-    lband, uband = calc_bandwidth(SV_0, an, sep, ca, params)
+    lband, uband = bandwidth.calc_bandwidth(SV_0, an, sep, ca, params)
+    print('lband =', lband, 'uband =', uband)
     lband, uband = 25, 25
     # This function checks to see if certain limits are exceeded which will
     # terminate the simulation:
@@ -249,44 +251,6 @@ def residual(t, SV, SVdot, resid, inputs):
     resid[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
 
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
-
-
-def calc_bandwidth(SV_0, an, sep, ca, params):
-    # Calculate size N of Jacobian
-    N = np.size(SV_0)
-    lband = 1
-    uband = 1
-    SVdot = np.zeros_like(SV_0)
-    params['i_ext'] = 0
-
-    def calc_resid(SV):
-        # Call residual functions for anode, separator, and cathode. Assemble them
-        # into a single residual vector 'resid':
-        resid_i = np.zeros_like(SV)
-        resid_i[an.SVptr['electrode']] = an.residual(0, SV, SVdot, sep, ca, params)
-
-        resid_i[sep.SVptr['sep']] = sep.residual(SV, SVdot, an, ca, params)
-
-        resid_i[ca.SVptr['electrode']] = ca.residual(0, SV, SVdot, sep, an, params)
-        return resid_i
-
-    resid_0 = calc_resid(SV_0)
-
-    for j in range(N):
-        dSV = np.copy(SV_0)
-        dSV[j] *= 1.01 #1.01*SV_0[j]
-        dF = resid_0 - calc_resid(dSV)
-        for i in range(N):
-            if abs(dF[i]) > 0: # and j != 78 and j != 79:
-                if j > i and abs(i - j) > uband:
-                    uband = abs(i - j)
-                    #print('j > i', i, j, uband, lband)
-                elif i > j and abs(i - j) > lband:
-                    lband = abs(i - j)
-                    #print('i > j', i, j, uband, lband)
-
-    print('lband =', lband, 'uband =', uband)
-    return lband, uband
 
 def conservation_test(solution, an, sep, ca, params, sim):
 
