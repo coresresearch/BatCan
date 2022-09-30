@@ -15,7 +15,7 @@
 import numpy as np
 from scikits.odes.dae import dae
 
-def run(SV_0, an, sep, ca, algvars, params):
+def run(SV_0, an, sep, ca, algvars, params, sim):
     """ 
     Run the simulation
     """
@@ -42,7 +42,7 @@ def run(SV_0, an, sep, ca, algvars, params):
     """ Equilibration: Optional """
     # If requested by the user, begin with a hold at zero current, to 
     # equilibrate the system:
-    if params['simulation']['equilibrate']['enable']:
+    if sim['equilibrate']['enable']:
 
         # Set the boundary condition to galvanostatic and the external current 
         # to 0.0:
@@ -54,7 +54,7 @@ def run(SV_0, an, sep, ca, algvars, params):
         print('    i_ext = 0.0 A/cm2.\n')
 
         # Read out and set the OCV hold time:
-        t_equil = params['simulation']['equilibrate']['time']
+        t_equil = sim['equilibrate']['time']
         t_out = np.linspace(0, t_equil, 10000)
 
         # Run the solver
@@ -80,7 +80,7 @@ def run(SV_0, an, sep, ca, algvars, params):
     params['boundary'] = 'potential'
 
     """ Run the potential hold(s) """
-    for step in params['simulation']['steps']:
+    for step in sim['steps']:
         
         # Store the potential. We do this as an array of potential vs. time, 
         # which the residual function interpolates.  For a constant potnetial, 
