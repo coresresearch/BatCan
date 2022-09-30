@@ -60,9 +60,10 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':1e-6, 
-            'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 
-            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0'}
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-4, 'atol':1e-6, 
+            'algebraic_vars_idx':algvars, 'first_step_size':1e-12,
+            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0', 'max_steps':10000, 'compute_initcond_t0':1.e-6}
+        
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
@@ -77,6 +78,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
+        solver.init_step(0.0, SV_0, SVdot_0)
         solution = solver.solve(t_out, SV_0, SVdot_0)
 
         # Create an array of currents, one for each time step:
@@ -351,3 +353,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
 def final_state(solution):
     # Return the state vector at the final simulation time:
     return solution[4:, -1]
+
+def initial_state(solution):
+    # Return the state vector at the final simulation time:
+    return solution[4:, 0]
