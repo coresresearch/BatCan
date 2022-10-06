@@ -63,7 +63,7 @@ cell-description:
     eps_electrolyte: 0.5 # Electrolyte volume fraction, -
     flag_lithiated: 0
     D_scale_coeff: 1e-11
-    C_k_atol: 1e-18
+    C_k_atol: 1e-22
   cathode:
     class: 'conversion_electrode'
     n-points: 3
