@@ -23,6 +23,13 @@ def calc_bandwidth(SV_0, an, sep, ca, params):
         return resid_i
 
     resid_0 = calc_resid(SV_0)
+
+    #dSV_73 = np.copy(SV_0)
+    #dSV_73[73] *= 1.01
+    #dF_73 = calc_resid(dSV_73)
+    #print(SV_0 - dSV_73, '\n', resid_0 - dF_73)
+    #print(stop_sim)
+
     for j in range(N):
         dSV = np.copy(SV_0)
         dSV[j] = 1.01*SV_0[j]
@@ -31,7 +38,9 @@ def calc_bandwidth(SV_0, an, sep, ca, params):
             if abs(dF[i]) > 0:
                 if j > i and abs(i - j) > uband:
                     uband = abs(i - j)
+                    #print('j > i', i, j, uband, lband)
                 elif i > j and abs(i - j) > lband:
                     lband = abs(i - j)
-
+                    #print('i > j', i, j, uband, lband)
+    #print(an.SVptr, sep.SVptr, ca.SVptr)
     return lband, uband

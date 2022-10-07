@@ -51,7 +51,8 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # Calculate the bandwidth used for the band linsolver
     lband, uband = bandwidth.calc_bandwidth(SV_0, an, sep, ca, params)
     print('lband =', lband, 'uband =', uband)
-    #lband, uband = 25, 25
+    #print(stop_sim)
+
     # This function checks to see if certain limits are exceeded which will
     # terminate the simulation:
     n_roots = 2

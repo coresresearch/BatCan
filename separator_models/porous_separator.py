@@ -60,6 +60,13 @@ class separator():
             raise ValueError('Please specify a valid electrolyte transport ',
                 'model.')
 
+        if inputs['transport']['diffusion-scaling'] == 'ideal':
+            self.scale_diff = transport.scale_diff_ideal
+        elif inputs['transport']['diffusion-scaling'] == 'zhang':
+            self.scale_diff = transport.scale_diff_zhang
+        else:
+            raise ValueError('Please specify a valid diffusion scaling model')
+
         self.SV_offset = offset
 
         # Ionic conductivity of bulk electrolyte (S/m):
@@ -196,8 +203,6 @@ class separator():
 
         N_k_elyte_out, i_io_out = self.electrode_boundary_flux(SV, ca,
             params['T'])
-        #print(N_k_elyte_out, i_io_out)
-        #N_k_elyte_out, i_io_out = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])*N_k_elyte_out, i_io_out*0
 
         resid[self.SVptr['C_k_elyte'][j]] = \
             (SVdot_loc[self.SVptr['C_k_elyte'][j]]
@@ -255,7 +260,7 @@ class separator():
             'microstructure':ed.elyte_microstructure}
 
         #if ed.name == 'cathode':
-            #print(state_1, '\n', state_2, '\n\n')
+        #    print(state_1, '\n', state_2, '\n\n')
         # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
         N_k_elyte, i_io = tuple(x*ed.i_ext_flag
             for x in self.elyte_transport(state_1, state_2, self))

@@ -30,6 +30,7 @@ cell-description:
     transport:
       mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
       model: 'dilute-solution'
+      diffusion-scaling: 'zhang'
       diffusion-coefficients: # Species names must match those in the phase
       #definition, below:
         - species: 'TEGDME(e)'
@@ -63,10 +64,10 @@ cell-description:
     eps_electrolyte: 0.5 # Electrolyte volume fraction, -
     flag_lithiated: 0
     D_scale_coeff: 1e-11
-    C_k_atol: 1e-22
+    C_k_atol: 1e-26
   cathode:
     class: 'conversion_electrode'
-    n-points: 3
+    n-points: 20
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -83,7 +84,7 @@ cell-description:
       method: "porosity"
       eps_init:
         - phase: sulfur
-          value: 0.091787
+          value: 0.11835748635371181 #0.091787
         - phase: lithium_sulfide
           value: 1E-05
     nucleation-density:
