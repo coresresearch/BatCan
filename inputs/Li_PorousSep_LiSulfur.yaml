@@ -424,7 +424,7 @@ carbon-elyte-reactions:
   beta: 0.5
 
 - equation: 0.5 Li2S2(e) + Li+(e) + electron <=> Li2S(e)
-  id: sulfur_reduction_4
+  id: sulfur_reduction_5
   rate-constant: {A: 8.655e13, b: 0.0, Ea: 0.0}
   beta: 0.5
 

@@ -332,11 +332,12 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
         # Axis 1: Current vs. time (h):
         x_vec = np.zeros_like(solution[0,:])
         x_vec = params['i_ext']*np.copy(solution[0,:])/3600/ca.m_S_tot_0
+        #x_vec = solution[0,:]/3600
         #print(x_vec[::len(x_vec)])
         summary_axs[0].plot(x_vec, 1000*solution[2,:]/10000)
         summary_axs[0].set_ylabel('Current Density \n (mA/cm^2)',labelpad=lp)
-        summary_axs[0].set_xlim((0, 1700))
-        summary_axs[0].set_xticks([200, 400, 600, 800, 1000, 1200, 1400, 1600])
+        #summary_axs[0].set_xlim((0, 1700))
+        #summary_axs[0].set_xticks([200, 400, 600, 800, 1000, 1200, 1400, 1600])
 
         # Axis 2: Charge/discharge potential vs. time (h).
         summary_axs[1].plot(x_vec, solution[phi_ptr,:])

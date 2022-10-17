@@ -17,7 +17,7 @@ data = config
 param_section = 'cell-description'
 param_field = 'cathode'
 param_name = 'n-points'
-param_list = []
+param_list = [25]
 
 for param_new in param_list:
     for elem in data[param_section]:

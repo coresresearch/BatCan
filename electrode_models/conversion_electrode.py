@@ -31,15 +31,20 @@ class electrode():
         self.conversion_phases = []
         self.conversion_obj = []
         self.conversion_surf_obj = []
+        self.conversion_tpb_obj = []
         self.n_conversion_phases = 0
-        self.conversion_phase_min = []
+        self.conv_ph_min = []
         for ph in inputs["conversion-phases"]:
             self.conversion_phases.append(ph["bulk-name"])
             self.conversion_obj.append(ct.Solution(input_file, ph["bulk-name"]))
             self.conversion_surf_obj.append(ct.Interface(input_file,
                 ph["surf-name"],[self.elyte_obj, self.host_obj,
                 self.conversion_obj[self.n_conversion_phases]]))
-            self.conversion_phase_min.append(ph["min-vol-frac"])
+            if ph["tpb-name"]:
+                self.conversion_tpb_obj.append(ct.Interface(input_file,
+                    ph["tpb-name"], [self.elyte_obj, self.host_obj,
+                    self.conversion_obj[self.n_conversion_phases]]))
+            self.conv_ph_min.append(ph["min-vol-frac"])
             self.n_conversion_phases += 1
 
         E0_ca = self.host_surf_obj.delta_standard_gibbs/ct.faraday
@@ -381,7 +386,7 @@ class electrode():
             # Multiplier to scale phase destruction rates.  As eps_product
             # drops below the user-specified minimum, any reactions that
             # consume the phase have their rates quickly go to zero:
-            sw_conv = np.where(eps_conversion < 1e-7, 0, self.sw_conv)
+            sw_conv = np.where(eps_conversion < self.conv_ph_min, 0, self.sw_conv)
 
             # Chemical production rate of the conversion phases:
             # (kmol/m2-interface/s)
@@ -389,12 +394,15 @@ class electrode():
                 sdot_conversion = \
                     ph.get_net_production_rates(self.conversion_obj[ph_i])
 
+                sdot_tpb = \
+                    self.conversion_tpb_obj[ph_i].get_net_production_rates(self.conversion_obj[ph_i])
+
                 nu = self.conversion_obj[ph_i].partial_molar_volumes
                 # Rate of change of the conversion phase volume fraction:
                 resid[SVptr['eps_conversion'][j][ph_i]] = \
                     (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
-                    - sw_conv[ph_i]*A_conversion[ph_i]
-                    * np.dot(sdot_conversion, nu)/scale_nd[SVptr['eps_conversion'][0][ph_i]])
+                    - sw_conv[ph_i]*(A_conversion[ph_i]*np.dot(sdot_conversion, nu)
+                    + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu))/scale_nd[SVptr['eps_conversion'][0][ph_i]])
 
             # Production rate of the electron (moles / m2 interface / s)
             sdot_electron = \
@@ -418,8 +426,11 @@ class electrode():
                                      self.n_conversion_phases))
             for ph_i, ph in enumerate(self.conversion_surf_obj):
                 sdot_elyte_conv = ph.get_net_production_rates(self.elyte_obj)
-                R_elyte_conv[:,ph_i] = (sdot_elyte_conv) \
-                                            *sw_conv[ph_i]*A_conversion[ph_i]
+                ph_tpb = self.conversion_tpb_obj[ph_i]
+                sdot_elyte_conv_tpb = ph_tpb.get_net_production_rates(self.elyte_obj)
+                R_elyte_conv[:,ph_i] = ((sdot_elyte_conv) \
+                                            * sw_conv[ph_i]*A_conversion[ph_i]
+                                        + sdot_elyte_conv_tpb*sw_conv[ph_i]*tpb_conversion[ph_i])
 
             # The double layer current acts as an additional chemical source/
             # sink term:
@@ -500,18 +511,22 @@ class electrode():
         # Multiplier to scale phase destruction rates.  As eps_product drops
         # below the user-specified minimum, any reactions that consume the
         # phase have their rates quickly go to zero:
-        sw_conv = np.where(eps_conversion < 1e-5, 0, self.sw_conv)
+        sw_conv = np.where(eps_conversion < self.conv_ph_min, 0, self.sw_conv)
 
         # Chemical production rate of the product phase: (mol/m2 interface/s)
         for ph_i, ph in enumerate(self.conversion_surf_obj):
             sdot_conversion = \
                 ph.get_net_production_rates(self.conversion_obj[ph_i])
 
+            sdot_tpb = \
+                self.conversion_tpb_obj[ph_i].get_net_production_rates(self.conversion_obj[ph_i])
+
             nu = self.conversion_obj[ph_i].partial_molar_volumes
             # Rate of change of the product phase volume fraction:
             resid[SVptr['eps_conversion'][j][ph_i]] = \
                 (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
-                - sw_conv[ph_i]*A_conversion[ph_i]*np.dot(sdot_conversion, nu)/scale_nd[SVptr['eps_conversion'][0][ph_i]])
+                - sw_conv[ph_i]*(A_conversion[ph_i]*np.dot(sdot_conversion, nu)
+                + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu))/scale_nd[SVptr['eps_conversion'][0][ph_i]])
 
         # Production rate of the electron (moles / m2 interface / s)
         sdot_electron = \
@@ -536,8 +551,11 @@ class electrode():
                                  self.n_conversion_phases))
         for ph_i, ph in enumerate(self.conversion_surf_obj):
             sdot_elyte_conv = ph.get_net_production_rates(self.elyte_obj)
-            R_elyte_conv[:,ph_i] = (sdot_elyte_conv) \
+            ph_tpb = self.conversion_tpb_obj[ph_i]
+            sdot_elyte_conv_tpb = ph_tpb.get_net_production_rates(self.elyte_obj)
+            R_elyte_conv[:,ph_i] = ((sdot_elyte_conv) \
                                         * sw_conv[ph_i]*A_conversion[ph_i]
+                                    + sdot_elyte_conv_tpb*sw_conv[ph_i]*tpb_conversion[ph_i])
 
         # Double layer current represents an additional chemical source/sink
         # term, for electrolyte chemical species:

@@ -67,7 +67,7 @@ cell-description:
     C_k_atol: 1e-26
   cathode:
     class: 'conversion_electrode'
-    n-points: 20
+    n-points: 2
     host-phase: 'carbon' # Cantera phase name
     surf-phase: 'carbon_electrolyte' # Cantera phase name
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -76,10 +76,12 @@ cell-description:
         surf-name: "sulfur_surf" # Cantera name for surface phase
         elyte-name: "S8(e)"
         min-vol-frac: 1E-10
+        tpb-name: sulfur_tpb
       - bulk-name: "lithium_sulfide" # Cantera phase name
         surf-name: "lithium_sulfide_surf" # Cantera name for surface phase
         elyte-name: "s-(e)"
         min-vol-frac: 1E-8
+        tpb-name: lithium_sulfide_tpb
     initial-state: # Determine initial state of electrode
       method: "porosity"
       eps_init:
@@ -238,6 +240,26 @@ phases:
   reactions: [lithium-sulfide-elyte-reactions]
   state:
     T: 300.0 K
+    P: 1 atm
+  site-density: 3.48e-2
+
+- name: lithium_sulfide_tpb
+  thermo: edge
+  species: [(dummy)]
+  kinetics: edge
+  reactions: none
+  state:
+    T: 300.0
+    P: 1 atm
+  site-density: 3.48e-2
+
+- name: sulfur_tpb
+  thermo: edge
+  species: [(dummy)]
+  kinetics: edge
+  reactions: none
+  state:
+    T: 300.0
     P: 1 atm
   site-density: 3.48e-2
 
@@ -424,7 +446,7 @@ carbon-elyte-reactions:
   beta: 0.5
 
 - equation: 0.5 S2-(e) + electron <=> S-(e)
-  id: sulfur_reduction_4
+  id: sulfur_reduction_5
   rate-constant: {A: 8.655e13, b: 0.0, Ea: 0.0}
   beta: 0.5
 
