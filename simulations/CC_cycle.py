@@ -331,8 +331,8 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
         #print(solution[0,::len(solution[0])-1])
         # Axis 1: Current vs. time (h):
         x_vec = np.zeros_like(solution[0,:])
-        x_vec = params['i_ext']*np.copy(solution[0,:])/3600/ca.m_S_tot_0
-        #x_vec = solution[0,:]/3600
+        #x_vec = params['i_ext']*np.copy(solution[0,:])/3600/ca.m_S_tot_0
+        x_vec = solution[0,:]/3600
         #print(x_vec[::len(x_vec)])
         summary_axs[0].plot(x_vec, 1000*solution[2,:]/10000)
         summary_axs[0].set_ylabel('Current Density \n (mA/cm^2)',labelpad=lp)
