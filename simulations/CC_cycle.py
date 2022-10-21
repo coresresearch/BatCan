@@ -45,7 +45,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a
     # current for each step. 'equil' is a flag to indicate whether there is an
     # equilibration step.
-    steps, currents, times, equil, rescale = setup_cycles(sim, current, t_final)
+    steps, currents, times, equil = setup_cycles(sim, current, t_final)
     n_steps = len(steps)
 
     # Calculate the bandwidth used for the band linsolver
@@ -93,43 +93,30 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         # Create an array of currents, one for each time step:
         i_data = currents[i]*np.ones_like(solution.values.t)
         cycle_number = int(i+1-equil)*np.ones_like(solution.values.t)
-        cycle_capacity = 1000*solution.values.t*abs(i_data)/3600
+        cycle_capacity = solution.values.t*abs(i_data)/3600/ca.m_S_tot_0 #1000*solution.values.t*abs(i_data)/3600
 
         # Append the current data array to any preexisting data, for output.
         # If this is the first step, create the output data array.
         if i: # Not the first step. 'data_out' already exists:
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
-            scale_cell = np.hstack((an.scale_nd_vec, sep.scale_nd_vec, ca.scale_nd_vec))
-            SV_unscaled = scale_cell[:,None]*np.copy(solution.values.y.T)
             SV = np.vstack((solution.values.t+data_out[0,-1], cycle_number,
-                i_data, cycle_capacity, SV_unscaled))
+                i_data, cycle_capacity, solution.values.y.T))
             data_out = np.hstack((data_out, SV))
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
+            
         else: # First step. 'data_out' does not yet exist:
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
-            scale_cell = np.hstack((an.scale_nd_vec, sep.scale_nd_vec, ca.scale_nd_vec))
-            SV_unscaled = scale_cell[:,None]*np.copy(solution.values.y.T)
             SV = np.vstack((solution.values.t, cycle_number, i_data,
-                cycle_capacity, SV_unscaled))
+                cycle_capacity, solution.values.y.T))
 
             data_out = SV
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
-
-            if rescale:
-                SV_0_ca = ca.scale_nd_vec*np.copy(SV_0[ca.SVptr['electrode']])
-                phi_el_scale = SV_0_ca[ca.SVptr['phi_dl']] \
-                             + SV_0_ca[ca.SVptr['phi_ed']]
-                Ck_scale = SV_0_ca[ca.SVptr['C_k_elyte'][-1,:]]
-                elyte_scale = np.concatenate((phi_el_scale, Ck_scale))
-                ca.adjust_scale_nd(ca.scale_nd_vec*SV_0[ca.SVptr['electrode']])
-                sep.adjust_scale_nd(sep.scale_nd_vec*SV_0[sep.SVptr['sep']], elyte_scale)
-                an.adjust_scale_nd(an.scale_nd_vec*SV_0[an.SVptr['electrode']], elyte_scale)
 
     #t_elapsed = time.time() - t_count
     #print('t_cpu =', t_elapsed, '\n')
@@ -195,7 +182,6 @@ def setup_cycles(params, current, time):
     currents = ()
     times = ()
     equil = 0
-    rescale_nd = 0
 
     if params['first-step'] == "discharge":
         cycle = ('discharge', 'charge')
@@ -231,10 +217,8 @@ def setup_cycles(params, current, time):
         steps = ('equilibrate',)+ steps
         currents = (0,) + currents
         times = (params['equilibrate']['time'],) + times
-        #if params['non-dimensionalize'] == 'equil':
-        #    rescale_nd = 1
 
-    return steps, currents, times, equil, rescale_nd
+    return steps, currents, times, equil
 
 def residual(t, SV, SVdot, resid, inputs):
     """
@@ -332,7 +316,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
         # Axis 1: Current vs. time (h):
         x_vec = np.zeros_like(solution[0,:])
         #x_vec = params['i_ext']*np.copy(solution[0,:])/3600/ca.m_S_tot_0
-        x_vec = solution[0,:]/3600
+        x_vec = solution[3,:]
         #print(x_vec[::len(x_vec)])
         summary_axs[0].plot(x_vec, 1000*solution[2,:]/10000)
         summary_axs[0].set_ylabel('Current Density \n (mA/cm^2)',labelpad=lp)

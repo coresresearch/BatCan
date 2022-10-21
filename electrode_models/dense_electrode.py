@@ -82,17 +82,6 @@ class electrode():
         # Number of discretized points in anode (not currently used, just 1)
         self.n_points = 1
 
-        # If user input for non-dimensionalization is true, initialize the
-        #   vector that will hold the scaling values for each variable in the
-        #   anode
-        self.scale_nd = np.ones([self.n_vars])
-        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
-        nd_type = params['simulations'][0]['non-dimensionalize']
-        if nd_type == 'init' or nd_type == 'equil':
-            self.scale_nd_flag = 1
-        else:
-            self.scale_nd_flag = 0
-
         # This model produces one plot, for the electrode thickness:
         self.n_plots = 1
 
@@ -142,10 +131,7 @@ class electrode():
 
         # Save local copies of the solution vectors, pointers for this electrode:
         SVptr = self.SVptr
-        scale_nd = self.scale_nd
-        scale_nd_vec = self.scale_nd_vec
-        #print('anode scaling', scale_nd)
-        SV_loc = SV[SVptr['electrode']]*scale_nd_vec
+        SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
 
         # Read electrode and electrolyte electric potentials:
@@ -206,11 +192,11 @@ class electrode():
 
         # Differential equation for the double layer potential difference:
         resid[SVptr['phi_dl']] = (SVdot_loc[SVptr['phi_dl']]
-            - i_dl*self.C_dl_Inv/scale_nd[SVptr['phi_dl'][0]])
+            - i_dl*self.C_dl_Inv)
 
         # Change in thickness per time:
         dH_dt = np.dot(sdot_electrode, self.bulk_obj.partial_molar_volumes)
-        resid[SVptr['thickness']] = SVdot_loc[SVptr['thickness']] - dH_dt/scale_nd[SVptr['thickness'][0]]
+        resid[SVptr['thickness']] = SVdot_loc[SVptr['thickness']] - dH_dt
 
         # Set time derivatives for electrolyte species concentrations to zero
         # (temporary)
@@ -227,7 +213,7 @@ class electrode():
         dCk_elyte_dt = \
             (sdot_electrolyte * self.A_surf_ratio
             + self.i_ext_flag * N_k_sep) / self.dy_elyte
-        resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt/scale_nd[SVptr['C_k_elyte'][0]]
+        resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
 
         return resid
 
@@ -276,14 +262,6 @@ class electrode():
         SV[self.SVptr['thickness']] = inputs['thickness']
         SV[self.SVptr['C_k_elyte']] = self.C_k_0
 
-        if self.scale_nd_flag:
-            self.scale_nd = np.copy(SV[0:self.n_vars])
-            self.scale_nd[self.scale_nd == 0] = 1e-12
-
-        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
-
-        SV /= self.scale_nd_vec
-
         return SV
 
     def voltage_lim(self, SV, val):
@@ -292,7 +270,7 @@ class electrode():
         """
         # Save local copies of the solution vector and pointers for this electrode:
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['electrode']]*self.scale_nd_vec
+        SV_loc = SV[SVptr['electrode']]
 
         # Calculate the current voltage, relative to the limit.  The simulation
         # looks for instances where this value changes sign (i.e. crosses zero)
@@ -306,7 +284,7 @@ class electrode():
         """
         # Save local copies of the solution vector and pointers for this electrode
         SVptr = self.SVptr
-        SV_loc = SV[SVptr['electrode']]*self.scale_nd_vec
+        SV_loc = SV[SVptr['electrode']]
 
         # For each electrode point, find the minimum species concentration, and
         #   compare to the user provided minimum. Save only the minimum value

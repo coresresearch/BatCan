@@ -44,27 +44,27 @@ cell-description:
           C_k: 1.024 # kmol_k/m^3
         - species: S8(e)
           D_k: 1e-11
-          C_k: 1.943e-2 # kmol_k/m^3
+          C_k: 1.943e-4 # kmol_k/m^3
         - species: Li2S8(e)
           D_k: 6e-11
           C_k: 1.821e-4 # kmol_k/m^3
         - species: Li2S6(e)
           D_k: 6e-11
-          C_k: 3.314e-4 # kmol_k/m^3
+          C_k: 3.314e-6 # kmol_k/m^3
         - species: Li2S4(e)
           D_k: 1e-10
-          C_k: 2.046e-5 # kmol_k/m^3
+          C_k: 2.046e-8 # kmol_k/m^3
         - species: Li2S3(e)
           D_k: 1e-10
-          C_k: 5.348e-10 # kmol_k/m^3
+          C_k: 2.046e-10 # kmol_k/m^3
         - species: Li2S2(e)
           D_k: 1e-10
-          C_k: 8.456e-13 # kmol_k/m^3
+          C_k: 5.348e-16 # kmol_k/m^3
     phi_0: 1.014 # Initial electric potential, V
     eps_electrolyte: 0.5 # Electrolyte volume fraction, -
     flag_lithiated: 1
     D_scale_coeff: 1e-11
-    C_k_atol: 1e-24
+    C_k_atol: 1e-26
   cathode:
     class: 'conversion_electrode'
     n-points: 2
@@ -87,7 +87,7 @@ cell-description:
       method: "porosity"
       eps_init:
         - phase: sulfur
-          value: 0.11835748635371181 #0.091787
+          value: 0.091787  #0.11835748635371181 #0.091787
         - phase: lithium_sulfide
           value: 1E-05
     nucleation-density:
@@ -448,7 +448,7 @@ carbon-elyte-reactions:
 
 - equation: Li2S6(e) + 2 Li+(e) + 2 electron <=> 2 Li2S3(e)
   id: sulfur_reduction_new_1
-  rate-constant: {A: 0.0, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 1e6, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: Li2S4(e) + 2 Li+(e) + 2 electron <=> 2 Li2S2(e)
