@@ -106,7 +106,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
-            
+
         else: # First step. 'data_out' does not yet exist:
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
@@ -394,14 +394,24 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
                     sim['filename'] = (params['output'] +'_'
                                         + sim['outputs']['save-name'])
                 elif params['cell-test']['enable']:
-                    sim['filename'] = (params['output'] +'/'
-                                        + sim['outputs']['save-name'] +'_'+str(ca.n_points)+'nodes')
+                    if params['cell-test']['type'] == 'grid-analysis':
+                        sim['filename'] = (params['output'] +'/'
+                                            + sim['outputs']['save-name'] +'_'+
+                                            str(ca.n_points)+'nodes')
+                    elif params['cell-test']['type'] == 'fitting':
+                        dataset_num = 1
+                        for root, dirs, files in os.walk(params['output']):
+                            if root == params['output']:
+                                dataset_num = len(dirs) + 1
+                        sim['filename'] = (params['output'] + '/'
+                                        + 'dataset' + str(dataset_num))
                 else:
                     sim['filename'] = (params['output'] +'/'
                                         + sim['outputs']['save-name'])
 
                 if not os.path.exists(sim['filename']):
                     os.makedirs( sim['filename'])
+
 
                 solution_df.to_pickle(sim['filename']+'/output_'
                                         + sim['outputs']['save-name'] + '.pkl')

@@ -51,7 +51,10 @@ def bat_can(input, cores, n_ca):
     print('\n Simulation start time is ', dt)
     # Save name of input file, without path or extension:
     parameters['input'] = input
-    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
+    if parameters['cell-test']['enable'] and parameters['cell-test']['type'] == 'fitting':
+        parameters['output'] = 'outputs/Fitting/' + parameters['input']
+    else:
+        parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
@@ -159,8 +162,16 @@ def bat_can(input, cores, n_ca):
     if len(parameters['simulations']) == 1 and not parameters['cell-test']['enable']:
         filename = (parameters['output'] +'_'
                     + parameters['simulations'][0]['outputs']['save-name'] )
+    elif parameters['cell-test']['enable'] and parameters['cell-test']['type'] == 'fitting':
+        dataset_num = 1
+        for root, dirs, files in os.walk(parameters['output']):
+            if root == parameters['output']:
+                dataset_num = len(dirs)
+        filename = (parameters['output'] + '/'
+                        + 'dataset' + str(dataset_num))
     else:
         filename = (parameters['output'] +'/')
+
 
     if not os.path.exists(filename):
         os.makedirs(filename)

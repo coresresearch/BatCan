@@ -7,6 +7,7 @@
 import cantera as ct
 from math import tanh, pi, isnan, exp
 import numpy as np
+import matplotlib
 
 class electrode():
     """
@@ -51,10 +52,6 @@ class electrode():
         print('E_eq_ca =', -E0_ca)
 
         self.sw_conv = np.ones((self.n_conversion_phases))
-
-        self.index_conversion_elyte = np.zeros((self.n_conversion_phases))
-        for ph_index, ph in enumerate(inputs["conversion-phases"]):
-            self.index_conversion_elyte[ph_index] = self.elyte_obj.species_index(ph["elyte-name"])
 
         # Electrode thickness and inverse thickness:
         self.n_points = inputs['n-points']
@@ -414,7 +411,11 @@ class electrode():
             # sink term:
             sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday
 
-            R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail
+            # Bulk elyte reactions
+            sdot_elyte_bulk = self.elyte_obj.net_production_rates
+
+            R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail \
+                    + sdot_elyte_bulk*eps_elyte
 
             # Change in electrolyte species concentration, per unit time:
             dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
@@ -527,13 +528,14 @@ class electrode():
         #   electrode interface (kmol / m2 of interface / s)
         sdot_elyte_host = \
             self.host_surf_obj.get_net_production_rates(self.elyte_obj)
-
         R_elyte_conv = np.zeros((self.elyte_obj.n_species,
                                  self.n_conversion_phases))
         for ph_i, ph in enumerate(self.conversion_surf_obj):
             sdot_elyte_conv = ph.get_net_production_rates(self.elyte_obj)
+
             ph_tpb = self.conversion_tpb_obj[ph_i]
             sdot_elyte_conv_tpb = ph_tpb.get_net_production_rates(self.elyte_obj)
+
             R_elyte_conv[:,ph_i] = ((sdot_elyte_conv) \
                                         * sw_conv[ph_i]*A_conversion[ph_i]
                                     + sdot_elyte_conv_tpb*sw_conv[ph_i]*tpb_conversion[ph_i])
@@ -542,10 +544,12 @@ class electrode():
         # term, for electrolyte chemical species:
         sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday
 
-        #sdot_elyte_conv_ph *= A_conversion
-        R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail
+        # Bulk elyte reactions
+        sdot_elyte_bulk = self.elyte_obj.net_production_rates
 
-        #dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
+        R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail \
+                + sdot_elyte_bulk*eps_elyte
+
         dEps_el = -sum(SVdot_loc[SVptr['eps_conversion'][j]])
 
         # Rate of change of electrolyte chemical species molar concentration:
@@ -619,16 +623,22 @@ class electrode():
             axs[ax_offset].set_ylabel(self.name+' product \n volume fraction')
             axs[ax_offset].set_ylim((0, 1))
 
+        grad = np.linspace(0, 1, 8)
+        species_cmap = np.zeros((len(grad), 4))
+        for i, val in enumerate(grad):
+            species_cmap[i] = matplotlib.cm.plasma(val)
+        i = 0
         for name in self.plot_species:
             species_ptr = self.elyte_obj.species_index(name)
             for j in np.arange(self.n_points):
                 C_k_elyte_ptr = (SV_offset + self.SV_offset
                     + self.SVptr['C_k_elyte'][j, species_ptr])
                 axs[ax_offset+self.n_conversion_phases-1].plot(x_vec,
-                    solution[C_k_elyte_ptr,:])
+                    solution[C_k_elyte_ptr,:], color=species_cmap[i])
                 axs[ax_offset+self.n_conversion_phases-1].set_ylim((0.0, 2.0))
+            i += 1
 
-        axs[ax_offset+self.n_conversion_phases-1].legend(self.plot_species, loc=1)
+        axs[ax_offset+self.n_conversion_phases-1].legend(self.plot_species, loc=0, ncol=2)
         axs[ax_offset+self.n_conversion_phases-1].set_ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)')
         #axs[ax_offset+self.n_conversion_phases-1].set_ylim((-0.1, 1.1))
         return axs
