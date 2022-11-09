@@ -24,10 +24,9 @@ def bat_can(input, cores):
 
     if input is None:
         # Default is a single-particle model of graphite/LCO
-        input_file = 'inputs/spmGraphite_PorousSep_spmLCO_input.yaml'
+        input = 'spmGraphite_PorousSep_spmLCO_input'
+        input_file = 'inputs/'+input+'.yaml'
 
-        # Strip the file extension:
-        input = input_file[:-4]
     else:
         if input[-5:] == '.yaml':
             input_file  = 'inputs/'+input
@@ -138,9 +137,11 @@ def bat_can(input, cores):
 
     # If the user specified to use multiple cores (only relevant if there are
     # multiple simulations), run them in a multiprocessing pool:
-    pool = Pool(processes = int(cores))
+    # pool = Pool(processes = int(cores))
 
-    SV_0 = pool.map(model_run, list(parameters['simulations']))
+    # SV_0 = pool.map(model_run, list(parameters['simulations']))
+    with Pool(processes = int(cores)) as p:
+        SV_0 = p.map(model_run, list(parameters['simulations']))
 
     if len(parameters['simulations']) == 1:
         filename = (parameters['output'] +'_'
@@ -156,6 +157,14 @@ def bat_can(input, cores):
     # Record time when finished:
     stop = timeit.default_timer()
     print('Time: ', stop - start)
+
+    print('\nPlotting...')
+
+    for sim in parameters['simulations']:
+        model = importlib.import_module('.'+sim['type'], package='simulations')
+
+        solution = model.plot(an, sep, ca, parameters, sim)
+
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE
 #===========================================================================
