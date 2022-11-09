@@ -230,7 +230,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
     create, and save any figures relevant to constant-current cycling.
     """
     #TODO #17    
-    import matplotlib.pyplot as plt 
+    # import matplotlib.pyplot as plt 
     import os
     import pandas as pd
     
@@ -257,7 +257,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
     solution_df.index.name = 'time (s)'     
     
     # If requested, create output figures:
-    if plot_flag:
+    if 0: #plot_flag:
         # Initialize the figure:
         summary_fig, summary_axs = plt.subplots(n_plots, 1, sharex=True, 
                 gridspec_kw = {'wspace':0, 'hspace':0})
@@ -319,9 +319,10 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
     # If no specification is given on whether to show plots, assume 'True'    
     if save_flag:
         if 'outputs' not in sim:
-            summary_fig.savefig('output.pdf')
-            cycle_fig.savefig('cycles.pdf')
-            plt.show()
+            pass
+            # summary_fig.savefig('output.pdf')
+            # cycle_fig.savefig('cycles.pdf')
+            # plt.show()
         else:
             if 'save-name' in sim['outputs']:
                 if len(params['simulations']) == 1:
@@ -338,14 +339,14 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
                     + sim['outputs']['save-name'] + '.pkl')
                 solution_df.to_csv(sim['filename']+'/output_' 
                     + sim['outputs']['save-name'] + '.csv', sep=',')
-                summary_fig.savefig(sim['filename']+'/summary_' 
-                    + sim['outputs']['save-name'] + '.pdf')
-                cycle_fig.savefig(sim['filename']+'/cycles_' 
-                    + sim['outputs']['save-name'] + '.pdf')
+                # summary_fig.savefig(sim['filename']+'/summary_' 
+                #     + sim['outputs']['save-name'] + '.pdf')
+                # cycle_fig.savefig(sim['filename']+'/cycles_' 
+                #     + sim['outputs']['save-name'] + '.pdf')
             
             if ('show-plots' not in sim['outputs'] or 
                 sim['outputs']['show-plots']):
-                plt.show()
+                pass # plt.show()
 
     if return_flag:
         return solution_df
