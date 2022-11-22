@@ -557,7 +557,7 @@ class electrode():
             - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
             + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)  #theta_Ck*dEps_el/theta_eps_el)
 
-
+        #print(resid)
         return resid
 
     def voltage_lim(self, SV, val):
@@ -623,7 +623,7 @@ class electrode():
             axs[ax_offset].set_ylabel(self.name+' product \n volume fraction')
             axs[ax_offset].set_ylim((0, 1))
 
-        grad = np.linspace(0, 1, 8)
+        grad = np.linspace(0, 1, 10)
         species_cmap = np.zeros((len(grad), 4))
         for i, val in enumerate(grad):
             species_cmap[i] = matplotlib.cm.plasma(val)

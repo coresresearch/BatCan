@@ -72,7 +72,8 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':atol_vec,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 'max_step_size':1,
             'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
-            'constraints_type':constr_type, 'linsolver':'band', 'lband':lband, 'uband':uband}
+            'constraints_type':constr_type, 'linsolver':'band', 'lband':lband, 'uband':uband,
+            'max_steps':500, 'compute_initcond_t0':1e-6}
 
     solver = dae('ida', residual, **options)
 

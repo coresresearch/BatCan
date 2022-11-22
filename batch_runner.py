@@ -3,11 +3,14 @@ import numpy as np
 from bat_can_init import initialize
 import sys
 import ruamel.yaml
+from fitting import fitting
+import os
+import shutil
 
-input_file = 'Li_PorousSep_Sulfur_Assary1'
-input_path = 'inputs/Li_PorousSep_Sulfur_Assary1.yaml'
-write_file = 'Li_PorousSep_Sulfur_Assary1w'
-write_path = 'inputs/Li_PorousSep_Sulfur_Assary1w.yaml'
+input_file = 'Li_PorousSep_Sulfur_Assary_2step'
+input_path = 'inputs/Li_PorousSep_Sulfur_Assary_2step.yaml'
+write_file = 'Li_PorousSep_Sulfur_Assary_2stepw'
+write_path = 'inputs/Li_PorousSep_Sulfur_Assary_2stepw.yaml'
 
 config, ind, bsi = ruamel.yaml.util.load_yaml_guess_indent(open(input_path))
 data = config
@@ -72,13 +75,17 @@ for param_new in param_list:
 
 "=============================================================================="
 # modify then dump and run a new yaml file for modifications to reaction params
-param_section = 'elyte-bulk-reactions'
-param_field = 'Li2S8(e) => Li2S6(e) + 0.25 S8(e)'
+source_dir = 'C:/users/korff/research/BatCan2/outputs/Fitting/' + write_file
+target_dir = 'C:/users/korff/research/BatCan2/outputs/Fitting/finished'
+
+param_section = 'carbon-elyte-reactions'
+param_field = 'S8(e) + 2 electron <=> S8-(e)'
 param_name = 'rate-constant'
 param_coeff = 'A'
-param_list = [1e-3, 2e-3, 3e-3]
+param_list = [1e12, 1e13]
 if param_list != []:
     print('Running batch for rate constant of reaction', param_field)
+
 for param_new in param_list:
     for elem in data[param_section]:
         if elem['equation'] == param_field:
@@ -90,3 +97,69 @@ for param_new in param_list:
         yaml.dump(data, file)
 
     bat_can(write_file, 1, None)
+
+SSR_min, SSR_dict = fitting(write_file)
+param_opt = param_list[int(SSR_min[-1])-1]
+print(param_opt)
+take_dir = os.listdir(source_dir)
+
+dest = os.path.join(target_dir, param_section, 'rxn1')
+
+if not os.path.exists(dest):
+    os.makedirs(dest)
+
+for dir in take_dir:
+    source = os.path.join(source_dir, dir)
+    shutil.move(source, dest)
+
+for elem in data[param_section]:
+    if elem['equation'] == param_field:
+        elem[param_name][param_coeff] = param_opt
+
+yaml = ruamel.yaml.YAML()
+yaml.indent(mapping=ind, sequence=ind, offset=bsi)
+with open(write_path, 'w') as file:
+    yaml.dump(data, file)
+"------------------------------------------------------------------------------"
+param_section = 'carbon-elyte-reactions'
+param_field = 'Li2S8(e) + 2 electron <=> Li2S8-(e)'
+param_name = 'rate-constant'
+param_coeff = 'A'
+param_list = [1e9, 1e10, 1e11]
+if param_list != []:
+    print('Running batch for rate constant of reaction', param_field)
+
+for param_new in param_list:
+    for elem in data[param_section]:
+        if elem['equation'] == param_field:
+            elem[param_name][param_coeff] = param_new
+
+    yaml = ruamel.yaml.YAML()
+    yaml.indent(mapping=ind, sequence=ind, offset=bsi)
+    with open(write_path, 'w') as file:
+        yaml.dump(data, file)
+
+    bat_can(write_file, 1, None)
+
+SSR_min, SSR_dict = fitting(write_file)
+param_opt = param_list[int(SSR_min[-1])-1]
+print(param_opt)
+take_dir = os.listdir(source_dir)
+
+dest = os.path.join(target_dir, param_section, 'rxn2')
+
+if not os.path.exists(dest):
+    os.makedirs(dest)
+
+for dir in take_dir:
+    source = os.path.join(source_dir, dir)
+    shutil.move(source, dest)
+
+for elem in data[param_section]:
+    if elem['equation'] == param_field:
+        elem[param_name][param_coeff] = param_opt
+
+yaml = ruamel.yaml.YAML()
+yaml.indent(mapping=ind, sequence=ind, offset=bsi)
+with open(write_path, 'w') as file:
+    yaml.dump(data, file)

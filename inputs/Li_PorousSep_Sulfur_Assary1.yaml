@@ -135,7 +135,7 @@ parameters:
     type: 'open-circuit'
     time: 5
   cell-test:
-    enable: True # Flag to indicate if multiple simulations are run from a shell
+    enable: False # Flag to indicate if multiple simulations are run from a shell
     type: 'fitting' # 'grid-analysis' or 'fitting'
   # Describe simulation type, parameters, etc.
   simulations:
@@ -448,6 +448,7 @@ lithium-electrolyte-reactions:
   id: lithium_faradaic_reaction
   rate-constant: {A: 1e4, b: 0.0, Ea: 0.0}
   beta: 0.5
+  note: Original Assary mech reaction
 
 elyte-bulk-reactions:
 - equation: Li2S8(e) => Li2S6(e) + 0.25 S8(e)
@@ -468,25 +469,30 @@ elyte-bulk-reactions:
 - equation: 2 Li2S3(e) => 2 Li2S2(e) + 0.25 S8(e)
   id: elyte_bulk_6
   rate-constant: {A: 1e-1, b: 0.0, Ea: 0.0}
+  note: Original Assary mech reaction
 
 sulfur-elyte-reactions:
 - equation: S8(s) <=> S8(e)
   id: sulfur_dissolution
   rate-constant: {A: 1.0e-6, b: 0.0, Ea: 0.0}
+  note: Original Assary mech reaction
 
 carbon-elyte-reactions:
 - equation: S8(e) + 2 Li+(e) + 2 electron <=> Li2S8(e)
   id: carbon_elyte_1
   rate-constant: {A: 1e13, b: 0.0, Ea: 0.0}
   beta: 0.5
+  note: Original Assary mech reaction
 - equation: Li2S8(e) + 2 Li+(e) + 2 electron <=> Li2S6(e) + Li2S2(e)
   id: carbon_elyte_2
   rate-constant: {A: 1e10, b: 0.0, Ea: 0.0}
   beta: 0.5
+  note: Original Assary mech reaction
 - equation: Li2S8(e) + 2 Li+(e) + 2 electron <=> 2 Li2S4(e)
   id: carbon_elyte_3
   rate-constant: {A: 1e7, b: 0.0, Ea: 0.0}
   beta: 0.5
+  note: Original Assary mech reaction
 - equation: Li2S8(e) + 2 Li+(e) + 2 electron <=> Li2S3(e) + Li2S5(e)
   id: carbon_elyte_4
   rate-constant: {A: 1e8, b: 0.0, Ea: 0.0}
@@ -503,6 +509,7 @@ carbon-elyte-reactions:
   id: carbon_elyte_7
   rate-constant: {A: 1e7, b: 0.0, Ea: 0.0}
   beta: 0.5
+  note: Original Assary mech reaction
 - equation: Li2S6(e) + 2 Li+(e) + 2 electron <=> 2 Li2S3(e)
   id: carbon_elyte_8
   rate-constant: {A: 1e1, b: 0.0, Ea: 0.0}
@@ -537,8 +544,10 @@ lithium-sulfide-edge-reactions:
   id: li_sulfide_tpb_5
   rate-constant: {A: 1e1, b: 0.0, Ea: 0.0}
   beta: 0.5
+  note: Original Assary mech reaction
 
 lithium-sulfide-elyte-reactions:
 - equation: 2 Li2S2(e) => 2 Li2S(s) + 0.25 S8(e)
   id: lithium_sulfide_elyte_1
   rate-constant: {A: 2e-5, b: 0.0, Ea: 0.0}
+  note: Original Assary mech reaction
