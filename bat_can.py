@@ -181,6 +181,13 @@ def bat_can(input, cores, n_ca):
     # Record time when finished:
     stop = timeit.default_timer()
     print('Time: ', stop - start)
+
+    print('\nPlotting...')
+
+    for sim in parameters['simulations']:
+        model = importlib.import_module('.'+sim['type'], package='simulations')
+
+        solution = model.plot(an, sep, ca, parameters, sim)
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE
 #===========================================================================

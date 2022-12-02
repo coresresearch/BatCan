@@ -307,7 +307,89 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
     # Calculate cell potential:
     phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
 
-    if plot_flag:
+    # Save the solution as a Pandas dataframe
+    labels = (['cycle', 'current', 'capacity'] + an.SVnames + sep.SVnames
+        + ca.SVnames)
+    solution_df = pd.DataFrame(data = solution.T[:,1:],
+                                index = solution.T[:,0],
+                                columns = labels)
+
+    solution_df.index.name = 'time (s)'
+
+    # If no specification is given on whether to show plots, assume 'True'
+    if save_flag:
+        if 'outputs' not in sim:
+            pass
+            #summary_fig.savefig('output.pdf')
+            #cycle_fig.savefig('cycles.pdf')
+            #plt.show()
+        else:
+            if 'save-name' in sim['outputs']:
+                if len(params['simulations']) == 1 and not params['cell-test']['enable']:
+                    sim['filename'] = (params['output'] +'_'
+                                        + sim['outputs']['save-name'])
+                elif params['cell-test']['enable']:
+                    if params['cell-test']['type'] == 'grid-analysis':
+                        sim['filename'] = (params['output'] +'/'
+                                            + sim['outputs']['save-name'] +'_'+
+                                            str(ca.n_points)+'nodes')
+                    elif params['cell-test']['type'] == 'fitting':
+                        dataset_num = 1
+                        for root, dirs, files in os.walk(params['output']):
+                            if root == params['output']:
+                                dataset_num = len(dirs) + 1
+                        sim['filename'] = (params['output'] + '/'
+                                        + 'dataset' + str(dataset_num))
+                else:
+                    sim['filename'] = (params['output'] +'/'
+                                        + sim['outputs']['save-name'])
+
+                if not os.path.exists(sim['filename']):
+                    os.makedirs( sim['filename'])
+
+
+                solution_df.to_pickle(sim['filename']+'/output_'
+                                        + sim['outputs']['save-name'] + '.pkl')
+                solution_df.to_csv(sim['filename']+'/output_'
+                    + sim['outputs']['save-name'] + '.csv', sep=',')
+
+    if return_flag:
+        return solution_df
+
+def plot(an, sep, ca, params, sim):
+    #TODO #17
+    import matplotlib.pyplot as plt
+    import os
+    import pandas as pd
+
+
+    # Create figure:
+    lp = 30 #labelpad
+    # Number of subplots
+    # (this simulation produces 2: current and voltage, vs. time):
+    n_plots = 2 + an.n_plots + ca.n_plots + sep.n_plots
+
+    # There are 4 variables stored before the state variables: (1) time (s),
+    # (2) cycle number, (3) current density(A/cm2) , and (4) Capacity (mAh/cm2)
+    SV_offset = 4
+
+    # Pointer for cell potential:
+    phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
+
+    # Save the solution as a Pandas dataframe:
+    labels = (['cycle', 'current', 'capacity'] + an.SVnames + sep.SVnames
+        + ca.SVnames)
+
+    filename = sim['filename']+'/output_' + sim['outputs']['save-name'] + '.pkl'
+    solution_df = pd.read_pickle(filename)
+    solution = solution_df.reset_index().to_numpy().T #solution_df.to_numpy().T
+    # solution_df = pd.DataFrame(data = solution.T[:,1:],
+    #                             index = solution.T[:,0],
+    #                             columns = labels)
+
+    # solution_df.index.name = 'time (s)'
+
+    if 1: # plot_flag:
         # Initialize the figure:
         summary_fig, summary_axs = plt.subplots(n_plots, 1, sharex=True,
                 gridspec_kw = {'wspace':0, 'hspace':0})
@@ -381,50 +463,43 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
         cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
         cycle_fig.tight_layout()
 
-    # If no specification is given on whether to show plots, assume 'True'
-    if save_flag:
-        if 'outputs' not in sim:
-            summary_fig.savefig('output.pdf')
-            cycle_fig.savefig('cycles.pdf')
-            plt.show()
-        else:
-            #now = datetime.now()
-            #dt =  now.strftime("%Y%m%d_%H%M")
-            if 'save-name' in sim['outputs']:
-                if len(params['simulations']) == 1 and not params['cell-test']['enable']:
-                    sim['filename'] = (params['output'] +'_'
-                                        + sim['outputs']['save-name'])
-                elif params['cell-test']['enable']:
-                    if params['cell-test']['type'] == 'grid-analysis':
-                        sim['filename'] = (params['output'] +'/'
-                                            + sim['outputs']['save-name'] +'_'+
-                                            str(ca.n_points)+'nodes')
-                    elif params['cell-test']['type'] == 'fitting':
-                        dataset_num = 1
-                        for root, dirs, files in os.walk(params['output']):
-                            if root == params['output']:
-                                dataset_num = len(dirs) + 1
-                        sim['filename'] = (params['output'] + '/'
-                                        + 'dataset' + str(dataset_num))
-                else:
+        # If no specification is given on whether to show plots, assume 'True'
+    if 1:
+        if 'save-name' in sim['outputs']:
+            if len(params['simulations']) == 1 and not params['cell-test']['enable']:
+                sim['filename'] = (params['output'] +'_'
+                                    + sim['outputs']['save-name'])
+            elif params['cell-test']['enable']:
+                if params['cell-test']['type'] == 'grid-analysis':
                     sim['filename'] = (params['output'] +'/'
-                                        + sim['outputs']['save-name'])
+                                        + sim['outputs']['save-name'] +'_'+
+                                        str(ca.n_points)+'nodes')
+                elif params['cell-test']['type'] == 'fitting':
+                    dataset_num = 1
+                    for root, dirs, files in os.walk(params['output']):
+                        if root == params['output']:
+                            dataset_num = len(dirs)
+                    sim['filename'] = (params['output'] + '/'
+                                    + 'dataset' + str(dataset_num))
+            else:
+                sim['filename'] = (params['output'] +'/'
+                                    + sim['outputs']['save-name'])
 
-                if not os.path.exists(sim['filename']):
-                    os.makedirs( sim['filename'])
+            if not os.path.exists(sim['filename']):
+                os.makedirs( sim['filename'])
 
+            #solution_df.to_pickle(sim['filename']+'/output_'
+            #    + sim['outputs']['save-name'] + '.pkl')
+            #solution_df.to_csv(sim['filename']+'/output_'
+            #    + sim['outputs']['save-name'] + '.csv', sep=',')
+            summary_fig.savefig(sim['filename']+'/summary_'
+                + sim['outputs']['save-name'] + '.pdf')
+            cycle_fig.savefig(sim['filename']+'/cycles_'
+                + sim['outputs']['save-name'] + '.pdf')
 
-                solution_df.to_pickle(sim['filename']+'/output_'
-                                        + sim['outputs']['save-name'] + '.pkl')
-                solution_df.to_csv(sim['filename']+'/output_'
-                    + sim['outputs']['save-name'] + '.csv', sep=',')
-                summary_fig.savefig(sim['filename']+'/summary_'
-                    + sim['outputs']['save-name'] + '.pdf')
-                cycle_fig.savefig(sim['filename']+'/cycles_'
-                    + sim['outputs']['save-name'] + '.pdf')
-
-            #if 'show-plots' not in sim['outputs'] or sim['outputs']['show-plots']:
-                #plt.show()
+            if ('show-plots' not in sim['outputs'] or
+                sim['outputs']['show-plots']):
+                plt.show()
 
 def final_state(solution):
     # Return the state vector at the final simulation time:
