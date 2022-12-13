@@ -90,15 +90,70 @@ def run_kinetics(param_section, param_field, param_list, param_opt_dict):
 
     return param_opt_dict
 
+coeff_mult = np.linspace(-5, 5, 11)
+"------------------------------------------------------------------------------"
+A = 1e4
+coeff_list = A*10**coeff_mult
+run_kinetics('lithium-electrolyte-reactions', 'Li(b) <=> Li+(e) + electron',
+                coeff_list, param_opt_dict)
+"------------------------------------------------------------------------------"
+#A = 1.9e-2
+#coeff_list = A*10**coeff_mult
+#run_kinetics('sulfur-elyte-reactions', 'S8(s) <=> S8(e)', coeff_list, param_opt_dict)
+"------------------------------------------------------------------------------"
 A = 1e13
-coeff_mult = np.linspace(0, 1, 2)
-coeff_list = [1e12, 1e130, 1e14] #A*10**coeff_mult
+coeff_list = A*10**coeff_mult
 run_kinetics('carbon-elyte-reactions', 'S8(e) + 2 electron <=> S8-(e)',
                 coeff_list, param_opt_dict)
 
 A = 1e10
 coeff_list = A*10**coeff_mult
 run_kinetics('carbon-elyte-reactions', 'Li2S8(e) + 2 electron <=> Li2S8-(e)',
+                coeff_list, param_opt_dict)
+
+A = 1e7
+coeff_list = A*10**coeff_mult
+run_kinetics('carbon-elyte-reactions', 'Li2S6(e) + 2 electron <=> Li2S6-(e)',
+                coeff_list, param_opt_dict)
+
+A = 1e7
+coeff_list = A*10**coeff_mult
+run_kinetics('carbon-elyte-reactions', 'Li2S4(e) + 2 electron <=> Li2S4-(e)',
+                coeff_list, param_opt_dict)
+"------------------------------------------------------------------------------"
+A = 1e13
+coeff_list = A*10**coeff_mult
+run_kinetics('elyte-bulk-reactions', 'S8-(e) + 2 Li+(e) <=> Li2S8(e)',
+                coeff_list, param_opt_dict)
+
+A = 1e6
+coeff_list = A*10**coeff_mult
+run_kinetics('elyte-bulk-reactions', 'Li2S8-(e) + 2 Li+(e) <=> Li2S2(e) + Li2S6(e)',
+                coeff_list, param_opt_dict)
+
+A = 1e5
+coeff_list = A*10**coeff_mult
+run_kinetics('elyte-bulk-reactions', 'Li2S8-(e) + 2 Li+(e) <=> 2 Li2S4(e)',
+                coeff_list, param_opt_dict)
+
+A = 1e5
+coeff_list = A*10**coeff_mult
+run_kinetics('elyte-bulk-reactions', 'Li2S6-(e) + 2 Li+(e) <=> Li2S2(e) + Li2S4(e)',
+                coeff_list, param_opt_dict)
+
+A = 1e2
+coeff_list = A*10**coeff_mult
+run_kinetics('elyte-bulk-reactions', '2 Li2S3(e) => 2 Li2S2(e) + 0.25 S8(e)',
+                coeff_list, param_opt_dict)
+"------------------------------------------------------------------------------"
+A = 1e-5
+coeff_list = A*10**coeff_mult
+run_kinetics('lithium-sulfide-edge-reactions', 'Li2S4-(e) + 2 Li+(e) <=> Li2S(s) + Li2S3(e)',
+                coeff_list, param_opt_dict)
+"------------------------------------------------------------------------------"
+A = 1e-5
+coeff_list = A*10**coeff_mult
+run_kinetics('lithium-sulfide-elyte-reactions', '2 Li2S2(e) => 2 Li2S(s) + 0.25 S8(e)',
                 coeff_list, param_opt_dict)
 
 print(param_opt_dict)
