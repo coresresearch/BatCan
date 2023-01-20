@@ -79,16 +79,26 @@ def fitting(input):
         return
 
     "Import data into a dictionary of all data sets"
-    data_dict, n_sets = list_files(data_folder)
+    #data_dict, n_sets = list_files(data_folder)
 
     "Import reference data"
     ref_data_file = get_file_name('.csv', ref_data, flag=1)
+    model_data_file = get_file_name('.csv', data_folder, flag=1)
 
     print('importing reference data')
     os.chdir(owd)
     os.chdir(ref_data)
     ref_data = read_file(ref_data_file)
     os.chdir(owd)
+
+    print('importing model data')
+    os.chdir(owd)
+    os.chdir(data_folder)
+    model_data = read_file(model_data_file)
+    os.chdir(owd)
+    #print(model_data)
+    Cap_model = model_data['output']['capacity'].to_numpy()
+    Vcell_model = model_data['output']['phi_ed.1'].to_numpy()
 
     "Sort reference data into capacity and voltage"
     Cap_ref = ref_data['0.1C Data.csv'].iloc[:,0].to_numpy()
@@ -98,33 +108,48 @@ def fitting(input):
     Cap_ref_avg = np.average(np.ediff1d(Cap_ref))
 
     "Loop over all data sets and sort into dictionaries for capacity and voltage"
-    Cap_dict = {}
-    Vcell_dict = {}
-    for i in np.arange(n_sets):
-        key_str = 'set' + str(i+1)
-        Cap_dict[key_str] = data_dict[key_str]['output']['capacity'].to_numpy()
-        Vcell_dict[key_str] = data_dict[key_str]['output']['phi_ed.1'].to_numpy()
+    #Cap_dict = {}
+    #Vcell_dict = {}
+    #for i in np.arange(n_sets):
+    #    key_str = 'set' + str(i+1)
+    #    Cap_dict[key_str] = data_dict[key_str]['output']['capacity'].to_numpy()
+    #    Vcell_dict[key_str] = data_dict[key_str]['output']['phi_ed.1'].to_numpy()
+
+    if Cap_model[-1] > Cap_ref[-1]:
+        Cap_append = np.arange(Cap_ref[-1], Cap_model[-1], Cap_ref_avg)
+        Cap_append = np.append(Cap_append, Cap_model[-1])
+        V_append = 1.8*np.ones_like(Cap_append)
+
+        Cap_ref = np.append(Cap_ref, Cap_append)
+        V_cell_ref = np.append(V_cell_ref, V_append)
+    elif Cap_model[-1] < Cap_ref[-1]:
+        Cap_append = np.arange(Cap_model[-1], Cap_ref[-1], Cap_ref_avg)
+        Cap_append = np.append(Cap_append, Cap_ref[-1])
+        V_append = 1.8*np.ones_like(Cap_append)
+
+        Cap_model = np.append(Cap_model, Cap_append)
+        Vcell_model = np.append(Vcell_model, V_append)
 
     "Add zeros to either reference data or the datasets, whichever is shorter"
-    V_cell_ref_dict = {}
-    Cap_ref_dict = {}
-    for i, key in enumerate(Cap_dict.keys()):
-        if Cap_dict[key][-1] > Cap_ref[-1]:
-            Cap_append = np.arange(Cap_ref[-1], Cap_dict[key][-1], Cap_ref_avg)
-            Cap_append = np.append(Cap_append, Cap_dict[key][-1])
-            V_append = np.zeros_like(Cap_append)
+    #V_cell_ref_dict = {}
+    #Cap_ref_dict = {}
+    #for i, key in enumerate(Cap_dict.keys()):
+    #    if Cap_dict[key][-1] > Cap_ref[-1]:
+    #        Cap_append = np.arange(Cap_ref[-1], Cap_dict[key][-1], Cap_ref_avg)
+    #        Cap_append = np.append(Cap_append, Cap_dict[key][-1])
+    #        V_append = np.zeros_like(Cap_append)
 
-            Cap_ref_dict[key] = np.append(Cap_ref, Cap_append)
-            V_cell_ref_dict[key] = np.append(V_cell_ref, V_append)
-        elif Cap_dict[key][-1] < Cap_ref[-1]:
-            Cap_append = np.arange(Cap_dict[key][-1], Cap_ref[-1], Cap_ref_avg)
-            Cap_append = np.append(Cap_append, Cap_ref[-1])
-            V_append = np.zeros_like(Cap_append)
+    #        Cap_ref_dict[key] = np.append(Cap_ref, Cap_append)
+    #        V_cell_ref_dict[key] = np.append(V_cell_ref, V_append)
+    #    elif Cap_dict[key][-1] < Cap_ref[-1]:
+    #        Cap_append = np.arange(Cap_dict[key][-1], Cap_ref[-1], Cap_ref_avg)
+    #        Cap_append = np.append(Cap_append, Cap_ref[-1])
+    #        V_append = np.zeros_like(Cap_append)
 
-            Cap_dict[key] = np.append(Cap_dict[key], Cap_append)
-            Vcell_dict[key] = np.append(Vcell_dict[key], V_append)
-            Cap_ref_dict[key] = Cap_ref
-            V_cell_ref_dict[key] = V_cell_ref
+    #        Cap_dict[key] = np.append(Cap_dict[key], Cap_append)
+    #        Vcell_dict[key] = np.append(Vcell_dict[key], V_append)
+    #        Cap_ref_dict[key] = Cap_ref
+    #        V_cell_ref_dict[key] = V_cell_ref
 
     "Figure 1 plots all data before processing to calculate goodness of fit"
     #format_fig(1)
@@ -135,9 +160,9 @@ def fitting(input):
 
     "Interpolate voltage data to match reference capacity values in order to"
     "   calculate goodness of fit parameters such as SSR"
-    Vcell_int = {}
-    for i, key in enumerate(Cap_dict.keys()):
-        Vcell_int[key] = np.interp(Cap_ref_dict[key], Cap_dict[key], Vcell_dict[key])
+    #Vcell_int = {}
+    #for i, key in enumerate(Cap_dict.keys()):
+    Vcell_int = np.interp(Cap_ref, Cap_model, Vcell_model)
 
     #format_fig(2)
     #for i, key in enumerate(Cap_dict.keys()):
@@ -146,14 +171,14 @@ def fitting(input):
     #plt.ylim((1.8, 2.4))
 
     "Calculate SSR for all data sets and print values"
-    SSR_dict = {}
-    for i, key in enumerate(Cap_dict.keys()):
-        SSR_dict[key] = sum((V_cell_ref_dict[key] - Vcell_int[key])**2)
-        print('SSR', i+1, '=', SSR_dict[key])
+    #SSR_dict = {}
+    #for i, key in enumerate(Cap_dict.keys()):
+    #    SSR_dict[key] = sum((V_cell_ref_dict[key] - Vcell_int[key])**2)
+    #    print('SSR', i+1, '=', SSR_dict[key])
+    SSR = sum((V_cell_ref - Vcell_int)**2)
+    #SSR_min = min(SSR_dict, key=SSR_dict.get)
 
-    SSR_min = min(SSR_dict, key=SSR_dict.get)
-
-    return(SSR_min, SSR_dict)
+    return SSR
 
 if __name__ == '__main__':
     import argparse

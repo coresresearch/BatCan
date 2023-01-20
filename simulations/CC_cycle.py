@@ -338,8 +338,8 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
                         for root, dirs, files in os.walk(params['output']):
                             if root == params['output']:
                                 dataset_num = len(dirs) + 1
-                        sim['filename'] = (params['output'] + '/'
-                                        + 'dataset' + str(dataset_num))
+                        sim['filename'] = (params['output']) #+ '/'
+                                        #+ 'dataset' + str(dataset_num))
                 else:
                     sim['filename'] = (params['output'] +'/'
                                         + sim['outputs']['save-name'])
@@ -479,8 +479,8 @@ def plot(an, sep, ca, params, sim):
                     for root, dirs, files in os.walk(params['output']):
                         if root == params['output']:
                             dataset_num = len(dirs)
-                    sim['filename'] = (params['output'] + '/'
-                                    + 'dataset' + str(dataset_num))
+                    sim['filename'] = (params['output']) #+ '/'
+                                    #+ 'dataset' + str(dataset_num))
             else:
                 sim['filename'] = (params['output'] +'/'
                                     + sim['outputs']['save-name'])

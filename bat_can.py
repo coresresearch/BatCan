@@ -167,8 +167,8 @@ def bat_can(input, cores, n_ca):
         for root, dirs, files in os.walk(parameters['output']):
             if root == parameters['output']:
                 dataset_num = len(dirs)
-        filename = (parameters['output'] + '/'
-                        + 'dataset' + str(dataset_num))
+        filename = (parameters['output']) #+ '/'
+                        #+ 'dataset' + str(dataset_num))
     else:
         filename = (parameters['output'] +'/')
 
