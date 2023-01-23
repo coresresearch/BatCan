@@ -16,8 +16,8 @@ write_path = 'inputs/Li_PorousSep_Sulfur_Assary_2stepw.yaml'
 config, ind, bsi = ruamel.yaml.util.load_yaml_guess_indent(open(input_path))
 data = config
 
-p0 = np.array([1e13, 1e6, 1e5, 1e5,
-                1e2, 1e-5, 1e-5]) #3.94520912e8
+p0 = np.array([1., 1., 1., 1.,
+                1., 1., 1.]) #3.94520912e8
 b0 = np.array([[p0[0]*0, p0[0]*1e1], [p0[1]*0, p0[1]*1e1],
                [p0[2]*0, p0[2]*1e1], [p0[3]*0, p0[3]*1e1],
                [p0[4]*0, p0[4]*1e1], [p0[5]*0, p0[5]*1e1],
@@ -44,6 +44,8 @@ def run_kinetics(p_opt):
     param_field5 = ['2 Li2S2(e) => 2 Li2S(s) + 0.25 S8(e)']
     param_name = 'rate-constant'
     param_coeff = 'A'
+    p_opt *= np.array([1e13, 1e6, 1e5, 1e5,
+                    1e2, 1e-5, 1e-5])
     param_list = [float(p) for p in p_opt]
     param_list1 = []#[param_list[0]]#param_list[0]
     param_list2 = []#param_list[1:5]
