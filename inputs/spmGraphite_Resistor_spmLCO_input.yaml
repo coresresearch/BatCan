@@ -47,22 +47,26 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 60 # C
-  P: 101325 # Pa
+  T: 60 C
+  P: 101325 Pa
   # Describe simulation type, parameters, etc.
-  simulation:
-    type: 'CC_cycle' # Constant current cycling
-    # Specify only one of i_ext or C-rate. The other should be null:
-    i_ext: null #0.00001 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    C-rate: 1 # input C-rate
-    n_cycles: 5.75 # Number of cycles. Currently must be 0.5 or an int.
-    equilibrate: 
-      enable: True # Start with a hold at open circuit?
-      time: 3600 # If above is 'True,' length of hold, s
-    first-step: 'discharge'  # Start with charge or discharge?
-    phi-cutoff-lower: 3.9 # Simulation cuts off if E_Cell <= this value, V
-    phi-cutoff-upper: 4.4 # Simulation cuts off if E_Cell >= this value, V
-    species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m3
+  simulations:
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: null #0.00001 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: 1 # input C-rate
+      n_cycles: 5.1 # Number of cycles. Currently must be 0.5 or an int.
+      equilibrate: 
+        enable: True # Start with a hold at open circuit?
+        time: 3600 # If above is 'True,' length of hold, s
+      outputs:
+        show-plots: True # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: 'spmGraphite_resistor_spmLCO_test' # Folder label for output files.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 3.9 # Simulation cuts off if E_Cell <= this value, V
+      phi-cutoff-upper: 4.4 # Simulation cuts off if E_Cell >= this value, V
+      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m3
 
 # Cantera inputs:
 description: |-

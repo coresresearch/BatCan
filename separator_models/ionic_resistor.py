@@ -42,6 +42,8 @@ class separator():
         # Save indices for any algebraic variables.
         self.algvars = [self.SV_offset + self.SVptr['phi'][0]]
         SV = np.zeros([self.n_vars])
+
+        self.SVnames = (['phi_elyte'])*self.n_points
     
         # Load intial state variables:
         SV[self.SVptr['phi']] = inputs['phi_0']
@@ -120,12 +122,12 @@ class separator():
 
         return dy_elyte_eff, phi_elyte_ed
 
-    def output(self, axs, solution, an, ca, ax_offset):
+    def output(self, axs, solution, an, ca, SV_offset, ax_offset):
         
-        phi_elyte_ptr = np.add(self.SV_offset+(self.SVptr['phi']), 2)
+        phi_elyte_ptr = np.add(self.SV_offset+(self.SVptr['phi']), SV_offset)
         
-        phi_an = (solution[an.SVptr['phi_ed'][0]+2,:] 
-            + solution[an.SVptr['phi_dl'][0]+2,:])
+        phi_an = (solution[an.SVptr['phi_ed'][0]+SV_offset,:] 
+            + solution[an.SVptr['phi_dl'][0]+SV_offset,:])
 
         axs[ax_offset].plot(solution[0,:]/3600, phi_an)
         
@@ -133,10 +135,20 @@ class separator():
             axs[ax_offset].plot(solution[0,:]/3600, 
                 solution[phi_elyte_ptr[j],:])
 
-        phi_ca = (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+2,:] 
-            + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+2],:])
+        phi_ca = \
+            (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+SV_offset,:] 
+            + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]+SV_offset],:])
         
         axs[ax_offset].plot(solution[0,:]/3600, phi_ca)
         axs[ax_offset].set_ylabel('Separator Potential \n(V)')
         
         return axs
+
+    def species_lim(self, SV, val):
+        """
+        Check to see if the minimum species concentration limit has been exceeded. Not valid for this separator model, so this function is just a pass-through:
+        """
+        # Default is that the minimum hasn't been exceeded:
+        species_eval = 1.
+        
+        return species_eval
