@@ -37,6 +37,7 @@ def scale_diff_zhang(C_k, sep):
     #   Zhang T., Marinescu M., O'Neill L., Wild M. and Offer G. 2015
     #   Phys. Chem. Chem. Phys. 17 22581
     D_vec = np.zeros_like(C_k)
+    #TODO #63 
     C_Li = C_k[sep.index_Li] + sep.flag_lithiated*2*np.sum(C_k[4:])
     D_scale = sep.D_scale_coeff*abs(sep.C_Li_0 - C_Li)
     D_vec[sep.index_Li] = D_scale
@@ -44,5 +45,22 @@ def scale_diff_zhang(C_k, sep):
     return D_vec
 
 def scale_diff_ideal(C_k, sep):
+    # For the ideal case, 
     D_vec = np.zeros_like(sep.D_k)
     return D_vec
+
+def radial_flux(X_Li, sdot_Li, ed):
+    # Radial flux of intercalated Li.
+    #   X_Li: array of intercalated Li mole fractions (1 per radial volume)
+    #   sdot_Li: production of intercalated Li at particle surface (kmol/m2/s)
+    #   ed: electrode object
+    N_r_Li = np.zeros([ed.nshells+1])
+    r_int = 0.5 * (ed.r_shell[:-1] + ed.r_shell[1:])
+    N_r_Li[1:-1] = ((ed.r_shell[:-1]*X_Li[:-1] - ed.r_shell[1:]*X_Li[1:])
+        * ed.D_Li_ed / ed.dr / r_int)
+
+    # Flux at the surface (in positive r direction) is equal and opposite to 
+    #   the production rate from the intercalation reaction:
+    N_r_Li[-1] = -sdot_Li
+    
+    return N_r_Li
