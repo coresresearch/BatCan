@@ -45,6 +45,52 @@ class electrode():
         self.dyInv = 1/self.dy
         self.n_points = 1. # No internal discretization
 
+        # Radial discretization:
+        self.n_r = inputs['n_radii']   # Number of discretized radial "shells"
+        # Calculate the percent volume of a single particle that exists in
+        #   each 'shell'. I.e. for shell j, what is the volume of that shell,
+        #   relative to the total particle volume? 
+        #
+        #   Because the volume is 4/3 pi*r^3, the volume of the shell relative 
+        #   to the total volume is (r_shell/r_particle)^3, and the differential 
+        #   volume relative to the total, for shell 'j' is:
+        #       (r_shell(j+1)^3 - r_shell(j)^3)/r_particle^3
+
+        # Both available models have a common proportionality:
+        #   r_j is proportional to total particle radius
+        #   v_frac_j is proportional to n_r^3
+        self.r_shell = np.ones(self.n_r) * inputs['r_particle']
+        self.v_shell_frac = np.ones(self.n_r) * self.n_r**(-3)
+
+        # array of radial indices:
+        ind_r = np.arange(self.n_r)
+
+        if inputs['radial-method'] == 'equal_r':
+            # If the radius is discretized evenly, the radius of shell j, 
+            #   r_j, relative to the total radius r_particle, is:
+            #   r_j = r_particle * j / n_r
+            self.r_shell *= (ind_r + 1)/ self.n_r
+            # Volume fraction is ((j+1)^3 - j^3)/n_r^3, which we expand and 
+            #   complete in-line, here:
+            self.v_shell_frac *= (3 * ind_r * (ind_r + 1) + 1)
+
+        elif inputs['radial-method'] == 'equal_v':
+
+            # Radius r_j**3 = (j/n_r)*r_particle**3
+            self.r_sh *= ((ind_r + 1) / self.n_r)**(1./3.)
+            # If discretization enforces constant volumes, the fraction is 
+            #   1/n_r for all volumes.
+            self.v_shell_frac *= 1. / self.n_r
+
+        elif self.n_r == 1:
+            pass
+
+        else:
+            raise ValueError("Please choose an available radial discretization method: 'radial-method' = equal_r or equal_v.")
+        
+        print(self.n_r)
+        print(self.v_shell_frac)
+
         # For some models, the elyte thickness is different from that of the 
         # electrode, so we specify is separately:
         self.dy_elyte = self.dy
