@@ -49,18 +49,19 @@ def scale_diff_ideal(C_k, sep):
     D_vec = np.zeros_like(sep.D_k)
     return D_vec
 
-def radial_flux(X_Li, sdot_Li, ed):
+def radial_flux(C_k, sdot_k, ed):
     # Radial flux of intercalated Li.
-    #   X_Li: array of intercalated Li mole fractions (1 per radial volume)
-    #   sdot_Li: production of intercalated Li at particle surface (kmol/m2/s)
+    #   C_k: matrix of electrode species concentrations [kmol/m3]. One array 
+    #       per radial volume.
+    #   sdot_k: species production rates at particle surface (kmol/m2/s)
     #   ed: electrode object
-    N_r_Li = np.zeros([ed.nshells+1])
-    r_int = 0.5 * (ed.r_shell[:-1] + ed.r_shell[1:])
-    N_r_Li[1:-1] = ((ed.r_shell[:-1]*X_Li[:-1] - ed.r_shell[1:]*X_Li[1:])
-        * ed.D_Li_ed / ed.dr / r_int)
+
+    # Initialize return vector (flux at particle center = 0)
+    N_r_Li = np.zeros((ed.n_r + 1, ed.bulk_obj.n_species))
+    N_r_Li[1:-1,:] = (C_k[:-1,:] - C_k[1:,:]) * ed.D_k / ed.dr[:-1]
 
     # Flux at the surface (in positive r direction) is equal and opposite to 
-    #   the production rate from the intercalation reaction:
-    N_r_Li[-1] = -sdot_Li
+    #   the production rate from surface reactions:
+    N_r_Li[-1,:] = -sdot_k
     
     return N_r_Li
