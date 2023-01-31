@@ -361,21 +361,20 @@ def plot(an, sep, ca, params, sim):
         # Trim down whitespace:
         summary_fig.tight_layout()
 
+
         # Initialize cycle data figure:
         cycle_fig, cycle_axs = plt.subplots(1, 1, sharex=True,
                 gridspec_kw = {'wspace':0, 'hspace':0})
 
         cycle_fig.set_size_inches((4.0,2.0))
 
-        # iterate over cycles:
-        t_0 = 0
+        # iterate over cycles:        
         for i in range(int(solution[1,-1])):
             cycle = solution_df[solution_df.iloc[:,0] == i+1]
+            # All times are relative to the start of the step:
+            t_0 = cycle.index[0]
             cycle_axs.plot(0.1*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
                 cycle.iloc[:,phi_ptr-1])
-
-            # Update time offset:
-            t_0 = cycle.index[-1]
 
         cycle_axs.set(xlabel='Capacity (mAh/cm$^2$)')
         cycle_axs.set(ylabel='Cell Potential (V)')
