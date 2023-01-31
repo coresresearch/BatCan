@@ -102,7 +102,8 @@ class separator():
         i_io = ed.i_ext_flag*(phi_elyte_sep - phi_elyte_ed)*self.sigma_io/dy_eff
         
         # Convert this to flux of the lithium ion:
-        N_k_elyte[ed.index_Li] = i_io/ct.faraday/ed.elyte_obj.charges[ed.index_Li]
+        N_k_elyte[ed.index_Li_elyte] = (i_io / ct.faraday 
+            / ed.elyte_obj.charges[ed.index_Li_elyte])
 
         return N_k_elyte, i_io
 
