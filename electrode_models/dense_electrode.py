@@ -37,7 +37,7 @@ class electrode():
 
         # Store the species index of the Li ion in the Cantera object for the 
         # electrolyte phase:
-        self.index_Li = self.elyte_obj.species_index(inputs['mobile-ion'])
+        self.index_Li_elyte = self.elyte_obj.species_index(inputs['mobile-ion'])
 
         # Electrode thickness
         self.dy = inputs['thickness']
@@ -201,7 +201,7 @@ class electrode():
 
         # Double layer current removes Li from the electrolyte.  Add this to 
         # sdot_electrolyte:
-        sdot_electrolyte[self.index_Li] -= i_dl / ct.faraday
+        sdot_electrolyte[self.index_Li_elyte] -= i_dl / ct.faraday
         dCk_elyte_dt = \
             (sdot_electrolyte * self.A_surf_ratio 
             + self.i_ext_flag * N_k_sep) / self.dy_elyte 
