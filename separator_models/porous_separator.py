@@ -269,8 +269,8 @@ class separator():
 
         # Axis 5: Li+ concentration:
         Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+SV_offset,:]
-        axs[ax_offset+1].plot(solution[0,:]/3600, Ck_elyte_an[an.index_Li,:],
-            label="an interface")
+        axs[ax_offset+1].plot(solution[0,:]/3600, 
+            Ck_elyte_an[an.index_Li_elyte,:], label="an interface")
 
         Ck_elyte_sep_ptr = \
             np.add(self.SV_offset+self.SVptr['C_k_elyte'],SV_offset)
