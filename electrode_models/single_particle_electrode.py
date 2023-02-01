@@ -85,7 +85,8 @@ class electrode():
              / ((self.r_int[1:])**3 - self.r_int[:-1]**3))
 
         # Radial distance between center of each volume:
-        self.dr = np.diff(self.r_int)
+        self.dr = np.diff(self.r_int).reshape((len(self.r_int)-1,1))
+        # self.dr.shape
         # Radius at center of each volume:
         self.r_center = 0.5*(self.r_int[:-1] + self.r_int[1:])
 
