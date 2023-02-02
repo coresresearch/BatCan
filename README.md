@@ -1,31 +1,36 @@
 # BatCan
 Battery--Cantera: Modeling fundamental physical chemistry in batteries using Cantera. 
 
-This tool allows you to run battery simulations with eaily editable and extensible thermochemistry via [Cantera](cantera.org).
+This tool allows you to run battery simulations with easily editable and extensible thermochemistry via [Cantera](cantera.org).
 
 1. [Repository Contents](#repository-contents)
 2. [Installation](#installation-instructions)
 3. [Running the model](#running-the-model)
 4. [Sample results](#sample-results)
-5. [Current status](#current-status-of-the-software)
+5. [Current capabilities](#current-status-of-the-software)
 
 
 # Repository contents
 - `bat_can.py`: this is the main file that runs the code.  In general, the code is run on the command line via `python bat_can.py` (more on this [below](#Running-the-model))
-- `bat_can_init.py`: reads user inputs and initializes the model.  It is called internally by `bat_can.py`.
-- Simluation packages which define different simulation types/routines:
+- `bat_can_fit.py`: this is a version of `bat_can.py` that lets you fit against reference data. See [capabilities](#current-status-of-the-software) for more info.
+- `bat_can_init.py`: This file reads the user input file and initializes the model.  It is called internally by `bat_can.py`.
+- `Simulations` folder. Simluation packages which define different simulation types/routines:
     1. `CC_cycle`: constant current galvanostatc cycling.
     2. `potential_hold`: a series of potentiostatic holds of variable duration.
-    3. `cyclic_voltammetry`: cyclic voltammetry experiment.
+    3. `galvanostatic_hold`: a series of galvanostatic holds of variable duration.
+    4. `cyclic_voltammetry`: cyclic voltammetry experiment.
 - Electrode model packages:
-    1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode.
+    1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode, including radial discretization and transport.
     2. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
+    3. `conversion_electrode`: Electrode that converts a solid reactant phase into a separate solid product phase. Currently demonstrated for a sulfur cathode.
+    4. `air_electrode`: metal-air electrode model, which interfaces to a gas flow channel. Currently demonstrated for a lithium-oxygen cathode.
 - Electrolyte model packages:
     1. `ionic_resistor`: Simple ionic resistor with no chemical composition dynamics.
-    2. `porous_separator`: porous inert separator filled with electrolyte.
+    2. `porous_separator`: porous inert separator filled with liquid electrolyte.
 - Submodels: functions and routines that are used by multiple parts of the code.
-    1. `transport`: functions to describe transport phenomena.
+    1. `transport`: functions to describe transport phenomena. Currently includes a dilute solution electrolyte transport model and a radial solid diffusion model.
 - `inputs`: folder with all input files.
+- `outputs`: folder where all model outputs are saved.
 - `derivation_verification`: Notes and documents to describe model development, governing equations, etc. (currently under development)
 # Installation Instructions
 
@@ -35,12 +40,13 @@ In order to use the BatCan suite, it is necessary to download and install:
 - [Scikits.odes](https://pypi.org/project/scikits.odes)
 - [Ruamel.yaml](https://pypi.org/project/ruamel.yaml/)
 - [Matplotlib](matplotlib.org)
+- [Pandas](https://pandas.pydata.org/)
 
 These can all be installed an managed via [Anaconda](anaconda.org)
 
 For example, to create a conda environment `bat_can` from which to run this tool, enter the following on a command line, terminal, or Anaconda prompt:
 ```
-conda create --name bat_can --channel conda-forge cantera scikits.odes matplotlib numpy ruamel.yaml 
+conda create --name bat_can --channel conda-forge cantera scikits.odes matplotlib numpy ruamel.yaml pandas
 ```
 You can replace `bat_can` with whatever name you would like to give this environment. After this completes, activate the environment:
 ```
@@ -73,7 +79,7 @@ The model is run from a command line or terminal by invoking python, the `bat_ca
 ```
 python bat_can.py --input=my_input
 ```
-Again including the file extension is optional.  The command:
+Again, including the file extension is optional.  The command:
 ```
 python bat_can.py --input=my_input.yaml
 ```
@@ -84,14 +90,31 @@ Below is an example of the model output, for a Li metal anode, porous separator 
 ![Sample output image](sample_output.png)
 
 # Current status of the software 
-(as of 27 July, 2021)
+(as of 31 January, 2021)
 
-This software is currently in the development phase. Models are configured for either galvanostatic or potentiostatic operation. 
+This software is currently in the development phase. 
+
+## Models
+Models are configured for either galvanostatic or potentiostatic operation. 
 - The `ionic_resistor` and `porous_separator` separator models are complete. The `porous_separator` model currently only allows dilute solution approximation transport calcualtions, via the Poisson-Nernst-Planck equation.
 - The `dense_electrode` model is complete 
-- The `single_particle_model` electrode is functional, but is zero-dimensional (there is no discretization of the representative particle in the radial direction).
+- The `single_particle_model` electrode is complete.
 - Simulation models (`CC_cycle`, `potential_hold`, and `cyclic_voltammetry`) are all complete, but there are always new and more flexible user inputs that can be enabled 🙂.
 
+## Simulation speed.
+We have added two new features to improve the software speed:
+- The software automatically calculates the width of the Jacobian band, and passes this information to the solver, which save significant computational time (roughly an order of magnitude faster).
+- The software now allows multiprocessing. This only helps if your input file runs multiple simulations, though (for example, cycling the same battery over a range of C-rates.) Use the `cores` flag on your model input.  For example, to run the simulations describe in a file `my_input.yaml` in parallel on 3 cores, you would type:
+```
+python bat_can.py --input=my_input.yaml --cores=3
+```
+
+## Data Fitting
+If you want to try and fit your model to experimental data, there are now capabilities to do this by running `bat_can_fit.py` instead of `bat_can.py`.  This is still in early stages, and only available for a few types of fitting parameters.
+
+Fitting parameters and their values are specified in a new `fit-parameters` field in the input file.  See `inputs/LiO2_Fitting_example.yaml` for an example.
+
+# Making changes
 Adding new features is relatively easy, so please click on `Issues` above and create a new issue if there is something you would like to see! 
 
 If you would like to help contribute to the software, please do! If you are uncertain of what to do, or have an idea and want to run it by us, maybe create an issue on the issues page, where we can discuss.  Or else, feel free to fork a copy of this repo, make changes, and make a pull request.

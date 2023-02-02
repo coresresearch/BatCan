@@ -51,7 +51,7 @@ class electrode():
 
         # Store the species index of the Li ion in the Cantera object for the 
         # electrolyte phase:
-        self.index_Li = self.elyte_obj.species_index(inputs['mobile-ion'])
+        self.index_Li_elyte = self.elyte_obj.species_index(inputs['mobile-ion'])
 
         # Phase volume fractions
         self.eps_host = inputs['eps_host']
@@ -301,7 +301,7 @@ class electrode():
 
             # The double layer current acts as an additional chemical source/
             # sink term:
-            sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
+            sdot_elyte_host[self.index_Li_elyte] -= i_dl / ct.faraday 
 
             # Change in electrolyte species concentration, per unit time:
             resid[SVptr['C_k_elyte'][j]] = (SVdot_loc[SVptr['C_k_elyte'][j]] 
@@ -392,7 +392,7 @@ class electrode():
 
         # Double layer current represents an additional chemical source/sink 
         # term, for electrolyte chemical species:
-        sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday 
+        sdot_elyte_host[self.index_Li_elyte] -= i_dl / ct.faraday 
 
         # Molar production rate of electrolyte species at the electrolyte-air 
         # interface (kmol / m2 of interface / s) 

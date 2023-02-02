@@ -54,7 +54,7 @@ class electrode():
 
         # Store the species index of the Li ion in the Cantera object for the 
         # electrolyte phase:
-        self.index_Li = self.elyte_obj.species_index(inputs['mobile-ion'])
+        self.index_Li_elyte = self.elyte_obj.species_index(inputs['mobile-ion'])
 
         # Electrode thickness and inverse thickness:
         self.n_points = inputs['n_points']
@@ -254,14 +254,14 @@ class electrode():
         # reactions at the host surface and for each conversion phase surface:
         sdot_elyte = self.host_surf_obj.get_net_production_rates(self.elyte_obj)
         for j, ph in enumerate(self.conversion_surf_obj):
-            
+            pass
             #TODO: Need a tanh function to scale these reactions when the phase disappears.
 
             # sdot_elyte += ph.get_net_production_rates(self.elyte_obj)
         
         # Double layer current removes Li from the electrolyte.  Subtract this 
         # from sdot_electrolyte:
-        sdot_elyte[self.index_Li] -= i_dl / ct.faraday
+        sdot_elyte[self.index_Li_elyte] -= i_dl / ct.faraday
             
         # Change in electrolyte species concentration per unit time:
         dCk_elyte_dt = \
