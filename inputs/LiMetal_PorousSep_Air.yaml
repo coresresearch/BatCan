@@ -30,7 +30,11 @@ cell-description:
     sigma_io: 0.272 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 2.91 # Initial electric potential, V // Yin, 2017
     eps_electrolyte: 0.65 # Electrolyte volume fraction, -
+
     transport:
+      flag_lithiated: 0
+      D_scale_coeff: 1e-11
+      diffusion-scaling: 'ideal'
       mobile-ion:  'Li+[elyt]'
       model: 'dilute-solution'
       diffusion-coefficients: # Species names must match those in the phase
@@ -42,9 +46,9 @@ cell-description:
         - species: 'ClO4-[elyt]'
           D_k: 8.79e-11 # m2 S-1 // Saito, 2017
         - species: 'O2(e)'
-          D_k: 4.26e-11 # m2 s-1 // Gittleson, 2017
-        - species: 'Li2O2[elyt]'
-          D_k: 2e-13 # can't find (assume low?)
+          D_k: 2.5283e-8 # m2 s-1 // Gittleson, 2017
+        # - species: 'Li2O2[elyt]'
+        #   D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'air_electrode'
     n-points: 5
@@ -59,7 +63,7 @@ cell-description:
     thickness: 3.50e-4 # cathode thickness, m
     r_host: 6e-6 # Carbon Particle radius, m
     d_oxide: 1.0e-6 #Oxide diameter, m
-    th_oxide: 500e-9 #oxide thickness, m
+    th_product: 500e-9 #oxide thickness, m
     phi_0: 2.95 # Initial electric potential, V // Yin, 2017
     sigma_el: 1.0E1 #electrical ondutivity of the host
     eps_host: 0.621138 # Solid phase volume fraction of carbon -
@@ -75,8 +79,8 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 23 # C
-  P: 101325 # Pa
+  T: 23 C
+  P: 101325 Pa
   # Describe simulation type, parameters, etc.
   simulations:
     - type: 'CC_cycle' # Constant current cycling
@@ -94,39 +98,39 @@ parameters:
       outputs:
         show-plots: True # Show the plots and save them (True), or just save
                          # them (False)?
-        savename: 'CPCN04' # Folder label for output files.
-    - type: 'CC_cycle' # Constant current cycling
-      # Specify only one of i_ext or C-rate. The other should be null:
-      i_ext: 0.0005 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: null # input C-rate
-      n_cycles: 1 # Number of cycles.
-      first-step: 'discharge'  # Start with charge or discharge?
-      phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
-      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
-      equilibrate:
-        enable: True # Start with a hold at open circuit? (True or False)
-        time: 5 # If true, how long is the hold, s
-      outputs:
-        show-plots: True # Show the plots and save them (True), or just save
-                         # them (False)?
-        savename: 'CPCN05' # Folder label for output files.
-    - type: 'CC_cycle' # Constant current cycling
-      # Specify only one of i_ext or C-rate. The other should be null:
-      i_ext: 0.0006 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: null # input C-rate
-      n_cycles: 1 # Number of cycles.
-      first-step: 'discharge'  # Start with charge or discharge?
-      phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
-      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
-      equilibrate:
-        enable: True # Start with a hold at open circuit? (True or False)
-        time: 5 # If true, how long is the hold, s
-      outputs:
-        show-plots: True # Show the plots and save them (True), or just save
-                         # them (False)?
-        savename: 'CPCN06' # Folder label for output files.
+        save-name: 'CPCN04' # Folder label for output files.
+    # - type: 'CC_cycle' # Constant current cycling
+    #   # Specify only one of i_ext or C-rate. The other should be null:
+    #   i_ext: 0.0005 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+    #   C-rate: null # input C-rate
+    #   n_cycles: 1 # Number of cycles.
+    #   first-step: 'discharge'  # Start with charge or discharge?
+    #   phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
+    #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+    #   species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+    #   equilibrate:
+    #     enable: True # Start with a hold at open circuit? (True or False)
+    #     time: 5 # If true, how long is the hold, s
+    #   outputs:
+    #     show-plots: True # Show the plots and save them (True), or just save
+    #                      # them (False)?
+    #     save-name: 'CPCN05' # Folder label for output files.
+    # - type: 'CC_cycle' # Constant current cycling
+    #   # Specify only one of i_ext or C-rate. The other should be null:
+    #   i_ext: 0.0006 A/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+    #   C-rate: null # input C-rate
+    #   n_cycles: 1 # Number of cycles.
+    #   first-step: 'discharge'  # Start with charge or discharge?
+    #   phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
+    #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+    #   species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value
+    #   equilibrate:
+    #     enable: True # Start with a hold at open circuit? (True or False)
+    #     time: 5 # If true, how long is the hold, s
+    #   outputs:
+    #     show-plots: True # Show the plots and save them (True), or just save
+    #                      # them (False)?
+    #     save-name: 'CPCN06' # Folder label for output files.
 
 # Cantera inputs:
 description: |-
@@ -193,9 +197,9 @@ phases:
 - name: electrolyte
   thermo: ideal-condensed
   elements: [Li, Cl, C, H, O, E]
-  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'ClO4-[elyt]', 'O2(e)', 'Li2O2[elyt]']
+  species: ['C10H22O5[elyt]', 'Li+[elyt]', 'ClO4-[elyt]', 'O2(e)']
   state:
-    X: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 0.049610, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.39E-4, 'Li2O2[elyt]': 1E-9}
+    X: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 0.049610, 'ClO4-[elyt]': 0.049610, 'O2(e)':  6.39E-5} #, 'Li2O2[elyt]': 1E-9}
   standard-concentration-basis: unity
 
 - name: air-elyte-interface
@@ -417,3 +421,4 @@ air-electrolyte-reactions:
 #Official Soundtrack:
   #Day 6 - as of 2021 all albums/songs
   #      - highlight Finale, Congradulations, 예뻤어
+  #Deathcab for Cutie - Pepper
