@@ -269,7 +269,7 @@ class separator():
 
         # Axis 5: Li+ concentration:
         Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+SV_offset,:]
-        axs[ax_offset+1].plot(solution[0,:]/3600, 
+        axs[ax_offset+1].plot(solution[0,:]/3600,
             Ck_elyte_an[an.index_Li_elyte,:], label="an interface")
 
         Ck_elyte_sep_ptr = \
@@ -283,7 +283,7 @@ class separator():
             Ck_elyte_ca = \
                 solution[ca.SV_offset+ca.SVptr['C_k_elyte'][j]+SV_offset,:]
             axs[ax_offset+1].plot(solution[0,:]/3600,
-                Ck_elyte_ca[ca.index_Li,:])
+                Ck_elyte_ca[ca.index_Li_elyte,:])
 
         axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m$^3$')
 
