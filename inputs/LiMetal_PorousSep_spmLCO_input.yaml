@@ -16,7 +16,7 @@ cell-description:
       charge: 1
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 8e-6 # Initial anode thickness, m
-    minimum-thickness: 1e-9 # minimum anode thickness, m 
+    minimum-thickness: 1e-9 # minimum anode thickness, m
     phi_0: 0. # Initial electric potential, V
     A_surf_ratio: 1.0 # Interface area per unit geometric area
     C_dl: 9e-6 #F/m2
@@ -30,11 +30,11 @@ cell-description:
     transport:
       mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
       model: 'dilute-solution'
-      diffusion-coefficients: # Species names must match those in the phase 
+      diffusion-coefficients: # Species names must match those in the phase
       #definition, below:
         - species: 'C3H4O3[elyt]'
           D_k: 1e-15
-        - species: 'C4H6O3[elyt]' 
+        - species: 'C4H6O3[elyt]'
           D_k: 1e-15
         - species: 'Li+[elyt]'
           D_k: 2e-11
@@ -61,14 +61,14 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 60 # C
-  P: 101325 # Pa
+  T: 60 C
+  P: 101325 Pa
   # Describe what to do with the results:
   outputs:
     show-plots: True # Do you want the plots shown and saved, or just saved?
   # Describe simulation type, parameters, etc.
   simulation:
-    
+
   simulations:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
