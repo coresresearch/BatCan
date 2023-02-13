@@ -75,8 +75,8 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 23 # C
-  P: 101325 # Pa
+  T: 23 C
+  P: 101325 Pa
   # Describe simulation type, parameters, etc.
   initialize: # Calculate a common inititial condition for all steps?
     enable: True
