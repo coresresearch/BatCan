@@ -119,7 +119,6 @@ def bat_can(input, cores, print_flag):
         else:
             raise ValueError("Initialization method currently not implemented.")
 
-
     def run_model(x_guess, final_flag = False):
         print('x = ',x_guess)
     
@@ -136,53 +135,6 @@ def bat_can(input, cores, print_flag):
                     fit_params[i]['reaction-index'])
             elif fit_params[i]['type'] == 'cathode-microstructure':
                 setattr(ca, fit_params[i]['parameter'], x)
-
-        global icolor 
-        icolor = 0
-        #for sim in parameters['simulations']:
-        global run
-        def run(sim, fit_fig=None, fit_axs=None, icolor=0):
-            sim_local = sim
-            try:
-                model = importlib.import_module('.'+sim['type'], 
-                    package='simulations')
-
-                sim['init'] = False
-
-                solution = model.run(SV_0, an, sep, ca, algvars, 
-                    parameters, sim)
-
-                # Read out the results:
-                if final_flag:
-                    sim_local['outputs']['show-plots'] = False
-                    results = model.output(solution, an, sep, ca, parameters, 
-                        sim_local, plot_flag=True, return_flag=True, save_flag=True)
-                else:
-                    results = model.output(solution, an, sep, ca, parameters, 
-                        sim, plot_flag=False, return_flag=True, save_flag=False)
-                phi_sim = results['phi_ed'].to_numpy()[:,-1]
-                    
-                sim_data = np.array((results['capacity'].to_numpy(),
-                    phi_sim))
-
-                # This function calculates the SSR for this simulation:
-                # Scale to convert capacity units in validation data to mAh/cm2:
-                UnitsScale = 46.968
-                ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
-                        units_scale = UnitsScale)
-                print('SSR = ', ssr_calc)
-
-                if final_flag:
-                    fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
-                        sim_data.T, fit_axs, fit_fig, units_scale = UnitsScale, 
-                        color = colors[icolor])
-                    icolor += 1
-            except:
-                # Assign a large penalty for failed parameter sets:
-                ssr_calc = 1e23
-                print('Simulation failed')
-
-            return ssr_calc
 
         if final_flag:
             SSR_net = 0
@@ -256,6 +208,51 @@ def bat_can(input, cores, print_flag):
 
     stop = timeit.default_timer()
     print('Time: ', stop - start)  
+
+def run(sim, fit_fig=None, fit_axs=None, icolor=0):
+    sim_local = sim
+    try:
+        model = importlib.import_module('.'+sim['type'], 
+            package='simulations')
+
+        sim['init'] = False
+
+        solution = model.run(SV_0, an, sep, ca, algvars, 
+            parameters, sim)
+
+        # Read out the results:
+        if final_flag:
+            sim_local['outputs']['show-plots'] = False
+            results = model.output(solution, an, sep, ca, parameters, 
+                sim_local, plot_flag=True, return_flag=True, save_flag=True)
+        else:
+            results = model.output(solution, an, sep, ca, parameters, 
+                sim, plot_flag=False, return_flag=True, save_flag=False)
+        phi_sim = results['phi_ed'].to_numpy()[:,-1]
+            
+        sim_data = np.array((results['capacity'].to_numpy(),
+            phi_sim))
+
+        # This function calculates the SSR for this simulation:
+        # Scale to convert capacity units in validation data to mAh/cm2:
+        UnitsScale = 46.968
+        ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
+                units_scale = UnitsScale)
+        print('SSR = ', ssr_calc)
+
+        if final_flag:
+            fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
+                sim_data.T, fit_axs, fit_fig, units_scale = UnitsScale, 
+                color = colors[icolor])
+            icolor += 1
+    except:
+        # Assign a large penalty for failed parameter sets:
+        ssr_calc = 1e23
+        print('Simulation failed')
+
+    return ssr_calc
+
+
 
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE
