@@ -7,26 +7,31 @@ from fitting import fitting
 import os
 import shutil
 
-input_file = 'Li_PorousSep_Sulfur_Assary_2step'
-input_path = 'inputs/Li_PorousSep_Sulfur_Assary_2step.yaml'
+input_file = 'Li_PorousSep_Sulfur_Assary_2step_fit1'
+input_path = 'inputs/Li_PorousSep_Sulfur_Assary_2step_fit1.yaml'
 write_file = 'Li_PorousSep_Sulfur_Assary_2stepw'
 write_path = 'inputs/Li_PorousSep_Sulfur_Assary_2stepw.yaml'
 
 config, ind, bsi = ruamel.yaml.util.load_yaml_guess_indent(open(input_path))
 data = config
 
-param_opt_dict = {}
+SSR_0 = 0
+bat_can(input_file, 1, None)
+SSR_0 = fitting(input_file)
+print(SSR_0)
+SSR_dict = {}
 
-def run_kinetics(param_section, param_field, param_list, param_opt_dict):
+def run_kinetics(param_section, param_field, param_list, SSR_dict):
     # modify then dump and run a new yaml file for modifications to reaction params
-    source_dir = 'C:/users/korff/research/BatCan2/outputs/Fitting/' + write_file
-    target_dir = 'C:/users/korff/research/BatCan2/outputs/Fitting/finished'
-
+    #source_dir = 'C:/users/korff/research/BatCan2/outputs/Fitting/' + write_file
+    #target_dir = 'C:/users/korff/research/BatCan2/outputs/Fitting/finished'
+    config, ind, bsi = ruamel.yaml.util.load_yaml_guess_indent(open(input_path))
+    data = config
     #param_section = 'carbon-elyte-reactions'
     #param_field = 'S8(e) + 2 electron <=> S8-(e)'
     param_name = 'rate-constant'
     param_coeff = 'A'
-    param_list = [int(param) for param in param_list]
+    param_list = [float(param) for param in param_list]
     bad_params = []
 
     print('========================================================')
@@ -49,114 +54,124 @@ def run_kinetics(param_section, param_field, param_list, param_opt_dict):
             print('Parameter ', str(param_i+1), 'caused an error in the model')
             bad_params.append(param_i)
 
-    SSR_min, SSR_dict = fitting(write_file)
+    SSR = fitting(write_file)
+    SSR_dict[param_field] = SSR
+    #for i, char in enumerate(SSR_min):
+    #    if char.isdigit():
+    #        int_i = i
+    #        break
 
-    for i, char in enumerate(SSR_min):
-        if char.isdigit():
-            int_i = i
-            break
+    #param_opt_i = int(SSR_min[int_i:])
 
-    param_opt_i = int(SSR_min[int_i:])
+    #if bad_params != []:
+    #    for val in bad_params:
+    #        if param_opt_i-1 >= val:
+    #            param_opt_i += 1
 
-    if bad_params != []:
-        for val in bad_params:
-            if param_opt_i-1 >= val:
-                param_opt_i += 1
+    #param_opt = param_list[param_opt_i-1]
 
-    param_opt = param_list[param_opt_i-1]
+    #param_opt_dict[param_field] = 'parameter ' + str(param_opt_i)
+    #print(param_opt_dict[param_field])
 
-    param_opt_dict[param_field] = 'parameter ' + str(param_opt_i)
-    print(param_opt_dict[param_field])
+    #rxn_str = [elem['id'] for elem in data[param_section] if elem['equation'] == param_field]
+    #take_dir = os.listdir(source_dir)
+    #dest = os.path.join(target_dir, param_section, rxn_str[0])
 
-    rxn_str = [elem['id'] for elem in data[param_section] if elem['equation'] == param_field]
-    take_dir = os.listdir(source_dir)
-    dest = os.path.join(target_dir, param_section, rxn_str[0])
+    #if not os.path.exists(dest):
+    #    os.makedirs(dest)
 
-    if not os.path.exists(dest):
-        os.makedirs(dest)
+    #for dir in take_dir:
+    #    source = os.path.join(source_dir, dir)
+    #    shutil.move(source, dest)
 
-    for dir in take_dir:
-        source = os.path.join(source_dir, dir)
-        shutil.move(source, dest)
+    #for elem in data[param_section]:
+    #    if elem['equation'] == param_field:
+    #        elem[param_name][param_coeff] = param_opt
 
-    for elem in data[param_section]:
-        if elem['equation'] == param_field:
-            elem[param_name][param_coeff] = param_opt
+    #yaml = ruamel.yaml.YAML()
+    #yaml.indent(mapping=ind, sequence=ind, offset=bsi)
+    #with open(write_path, 'w') as file:
+    #    yaml.dump(data, file)
 
-    yaml = ruamel.yaml.YAML()
-    yaml.indent(mapping=ind, sequence=ind, offset=bsi)
-    with open(write_path, 'w') as file:
-        yaml.dump(data, file)
+    return SSR_dict
 
-    return param_opt_dict
+#coeff_mult = np.linspace(-5, 5, 11)
 
-coeff_mult = np.linspace(-5, 5, 11)
 "------------------------------------------------------------------------------"
 A = 1e4
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('lithium-electrolyte-reactions', 'Li(b) <=> Li+(e) + electron',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
+#print(SSR_dict)
+#print(stop)
 "------------------------------------------------------------------------------"
-#A = 1.9e-2
-#coeff_list = A*10**coeff_mult
-#run_kinetics('sulfur-elyte-reactions', 'S8(s) <=> S8(e)', coeff_list, param_opt_dict)
+A = 1.9e-2
+coeff_list = [A*1.01] #A*10**coeff_mult
+run_kinetics('sulfur-elyte-reactions', 'S8(s) <=> S8(e)', coeff_list, SSR_dict)
 "------------------------------------------------------------------------------"
 A = 1e13
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('carbon-elyte-reactions', 'S8(e) + 2 electron <=> S8-(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
 A = 1e10
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('carbon-elyte-reactions', 'Li2S8(e) + 2 electron <=> Li2S8-(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
 A = 1e7
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('carbon-elyte-reactions', 'Li2S6(e) + 2 electron <=> Li2S6-(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
 A = 1e7
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('carbon-elyte-reactions', 'Li2S4(e) + 2 electron <=> Li2S4-(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 "------------------------------------------------------------------------------"
 A = 1e13
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('elyte-bulk-reactions', 'S8-(e) + 2 Li+(e) <=> Li2S8(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
 A = 1e6
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('elyte-bulk-reactions', 'Li2S8-(e) + 2 Li+(e) <=> Li2S2(e) + Li2S6(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
 A = 1e5
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('elyte-bulk-reactions', 'Li2S8-(e) + 2 Li+(e) <=> 2 Li2S4(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
 A = 1e5
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('elyte-bulk-reactions', 'Li2S6-(e) + 2 Li+(e) <=> Li2S2(e) + Li2S4(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
 A = 1e2
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('elyte-bulk-reactions', '2 Li2S3(e) => 2 Li2S2(e) + 0.25 S8(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 "------------------------------------------------------------------------------"
 A = 1e-5
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('lithium-sulfide-edge-reactions', 'Li2S4-(e) + 2 Li+(e) <=> Li2S(s) + Li2S3(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 "------------------------------------------------------------------------------"
 A = 1e-5
-coeff_list = A*10**coeff_mult
+coeff_list = [A*1.01] #A*10**coeff_mult
 run_kinetics('lithium-sulfide-elyte-reactions', '2 Li2S2(e) => 2 Li2S(s) + 0.25 S8(e)',
-                coeff_list, param_opt_dict)
+                coeff_list, SSR_dict)
 
-print(param_opt_dict)
+#print(SSR_dict)
+sensitivity_dict = {}
+for key in SSR_dict.keys():
+    sensitivity_dict[key] = 100*(SSR_dict[key]-SSR_0)/SSR_0
+    print(key, SSR_dict[key], sensitivity_dict[key])
+
+
+#print(sensitivity_dict)
 
 "=============================================================================="
 "=============================================================================="

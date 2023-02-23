@@ -381,13 +381,18 @@ def plot(an, sep, ca, params, sim):
         + ca.SVnames)
 
     filename = sim['filename']+'/output_' + sim['outputs']['save-name'] + '.pkl'
+    filename_ref = 'outputs/Fitting/0.1C Data.csv'
+    #filename_ref = 'outputs/Fitting/Li_PorousSep_Sulfur_Assary_2step/output_Test_output1.csv'
     solution_df = pd.read_pickle(filename)
     solution = solution_df.reset_index().to_numpy().T #solution_df.to_numpy().T
-    # solution_df = pd.DataFrame(data = solution.T[:,1:],
-    #                             index = solution.T[:,0],
-    #                             columns = labels)
+    ref_data = pd.read_csv(filename_ref, header=None)
+    #ref_data = pd.read_csv(filename_ref)
 
-    # solution_df.index.name = 'time (s)'
+    Cap_ref = ref_data.iloc[:,0].to_numpy()
+    V_cell_ref = ref_data.iloc[:,1].to_numpy()
+    #Cap_ref = ref_data['capacity'].to_numpy()
+    #V_cell_ref = ref_data['phi_ed.1'].to_numpy()
+    #print(V_cell_ref[::190])
 
     if 1: # plot_flag:
         # Initialize the figure:
@@ -408,6 +413,8 @@ def plot(an, sep, ca, params, sim):
 
         # Axis 2: Charge/discharge potential vs. time (h).
         summary_axs[1].plot(x_vec, solution[phi_ptr,:])
+        summary_axs[1].plot(Cap_ref, V_cell_ref, 'ko', markersize=1)
+        #summary_axs[1].plot(Cap_ref[::190], V_cell_ref[::190], 'ko', markersize=1)
         summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
         summary_axs[1].set_ylim((1.8, 2.5))
 

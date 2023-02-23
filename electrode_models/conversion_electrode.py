@@ -412,7 +412,10 @@ class electrode():
             sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday
 
             # Bulk elyte reactions
-            sdot_elyte_bulk = self.elyte_obj.net_production_rates
+            if self.elyte_obj.reactions() != []:
+                sdot_elyte_bulk = self.elyte_obj.net_production_rates
+            else:
+                sdot_elyte_bulk = np.zeros_like(sdot_elyte_host)
 
             R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail \
                     + sdot_elyte_bulk*eps_elyte
@@ -545,7 +548,10 @@ class electrode():
         sdot_elyte_host[self.index_Li] -= i_dl / ct.faraday
 
         # Bulk elyte reactions
-        sdot_elyte_bulk = self.elyte_obj.net_production_rates
+        if self.elyte_obj.reactions() != []:
+            sdot_elyte_bulk = self.elyte_obj.net_production_rates
+        else:
+            sdot_elyte_bulk = np.zeros_like(sdot_elyte_host)
 
         R_elyte = np.sum(R_elyte_conv, axis=1) + sdot_elyte_host*A_avail \
                 + sdot_elyte_bulk*eps_elyte

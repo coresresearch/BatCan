@@ -32,14 +32,13 @@ class separator():
         self.index_Li = \
             self.elyte_obj.species_index(inputs['transport']['mobile-ion'])
 
-        self.flag_lithiated = inputs['flag_lithiated']
+        #self.flag_lithiated = inputs['flag_lithiated']
 
         self.D_scale_coeff = inputs['D_scale_coeff']
 
         # Process transport inputs:
         if inputs['transport']['model']=='dilute-solution':
             # Import transport function:
-
             self.elyte_transport = transport.dilute_solution
             self.D_k = np.zeros_like(self.elyte_obj.X)
             for item in inputs['transport']['diffusion-coefficients']:
@@ -49,12 +48,24 @@ class separator():
             raise ValueError('Please specify a valid electrolyte transport ',
                 'model.')
 
-        if inputs['transport']['diffusion-scaling'] == 'ideal':
+        try:
+            if inputs['transport']['diffusion-scaling'] == 'ideal':
+                self.scale_diff = transport.scale_diff_ideal
+            elif inputs['transport']['diffusion-scaling'] == 'zhang':
+                self.scale_diff = transport.scale_diff_zhang
+                self.n_Li_atoms = np.zeros(self.elyte_obj.n_species)
+                for i, species in enumerate(self.elyte_obj.species_names):
+                    self.n_Li_atoms[i] = self.elyte_obj.n_atoms(species, 'Li')
+
+                self.C_Li_0 = self.C_k_0[self.index_Li] + \
+                                                np.dot(self.n_Li_atoms, self.C_k_0)
+            else:
+                raise ValueError('Please specify a valid diffusion scaling model')
+        except:
+            print('Warning: No diffusion scaling model input, using ideal')
             self.scale_diff = transport.scale_diff_ideal
-        elif inputs['transport']['diffusion-scaling'] == 'zhang':
-            self.scale_diff = transport.scale_diff_zhang
-        else:
-            raise ValueError('Please specify a valid diffusion scaling model')
+
+
 
         self.SV_offset = offset
 
@@ -73,9 +84,6 @@ class separator():
             self.elyte_obj.TP = params['T'], params['P']
 
         self.elyte_obj.electric_potential = inputs['phi_0']
-
-        self.C_Li_0 = self.C_k_0[self.index_Li] \
-                    + self.flag_lithiated*2*np.sum(self.C_k_0[4:])
 
 
     def initialize(self, inputs):
