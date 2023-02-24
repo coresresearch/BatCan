@@ -27,7 +27,7 @@ class separator():
         # coefficient of -0.5:
         self.elyte_microstructure = self.eps_elyte**1.5
 
-        self.flag_lithiated = inputs['transport']['flag_lithiated']
+        #self.flag_lithiated = inputs['transport']['flag_lithiated']
 
         self.D_scale_coeff = inputs['transport']['D_scale_coeff']
 
@@ -47,12 +47,23 @@ class separator():
             raise ValueError('Please specify a valid electrolyte transport ',
                 'model.')
 
-        if inputs['transport']['diffusion-scaling'] == 'ideal':
+        try:
+            if inputs['transport']['diffusion-scaling'] == 'ideal':
+                self.scale_diff = transport.scale_diff_ideal
+            elif inputs['transport']['diffusion-scaling'] == 'zhang':
+                self.scale_diff = transport.scale_diff_zhang
+                self.n_Li_atoms = np.zeros(self.elyte_obj.n_species)
+                for i, species in enumerate(self.elyte_obj.species_names):
+                    self.n_Li_atoms[i] = self.elyte_obj.n_atoms(species, 'Li')
+
+                self.C_Li_0 = self.C_k_0[self.index_Li] + \
+                                            np.dot(self.n_Li_atoms, self.C_k_0)
+            else:
+                raise ValueError('Please specify a valid diffusion scaling model')
+        except:
+            print('Warning: No diffusion scaling model input, using ideal')
             self.scale_diff = transport.scale_diff_ideal
-        elif inputs['transport']['diffusion-scaling'] == 'zhang':
-            self.scale_diff = transport.scale_diff_zhang
-        else:
-            raise ValueError('Please specify a valid diffusion scaling model')
+            
 
         self.SV_offset = offset
 
@@ -269,8 +280,8 @@ class separator():
 
         # Axis 5: Li+ concentration:
         Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+SV_offset,:]
-        axs[ax_offset+1].plot(solution[0,:]/3600,
-            Ck_elyte_an[an.index_Li_elyte,:], label="an interface")
+        axs[ax_offset+1].plot(solution[0,:]/3600, Ck_elyte_an[an.index_Li,:],
+            label="an interface")
 
         Ck_elyte_sep_ptr = \
             np.add(self.SV_offset+self.SVptr['C_k_elyte'],SV_offset)
@@ -283,7 +294,7 @@ class separator():
             Ck_elyte_ca = \
                 solution[ca.SV_offset+ca.SVptr['C_k_elyte'][j]+SV_offset,:]
             axs[ax_offset+1].plot(solution[0,:]/3600,
-                Ck_elyte_ca[ca.index_Li_elyte,:])
+                Ck_elyte_ca[ca.index_Li,:])
 
         axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m$^3$')
 
