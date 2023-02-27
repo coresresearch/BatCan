@@ -75,8 +75,8 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 23 # C
-  P: 101325 # Pa
+  T: 23 C
+  P: 101325 Pa
   # Describe simulation type, parameters, etc.
   initialize: # Calculate a common inititial condition for all steps?
     enable: True
@@ -92,6 +92,8 @@ parameters:
       phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
       phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
       species-cutoff: 0.000565 #1e-12 # Simulation cuts off if C_k <= this value
+      species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 
+        'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
       equilibrate:
         enable: False # Start with a hold at open circuit? (True or False)
         time: 5 # If true, how long is the hold, s

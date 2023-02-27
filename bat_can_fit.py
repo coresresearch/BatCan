@@ -9,10 +9,11 @@
 """
 # Import modules
 from datetime import datetime   
+from functools import partial
 import importlib # allows us to import from user input string.
 import itertools
 import matplotlib.pyplot as plt
-import multiprocessing as mp
+from multiprocessing.pool import ThreadPool as Pool
 import numpy as np
 import pandas as pd
 from scipy import optimize as spo
@@ -22,8 +23,6 @@ import timeit
 from submodels.fitting import voltage_capacity as fit
 from bat_can_init import initialize
 
-
-# mp.set_start_method('spawn')
 # This is the main function that runs the model.  We define it this way so it 
 # is called by "main," below:
 def bat_can(input, cores, print_flag):
@@ -62,6 +61,7 @@ def bat_can(input, cores, print_flag):
     # module, and then run its 'initialize' routine to create an intial 
     # solution vector and an object that stores needed parameters.
     # import single_particle_electrode as an_module_0
+    
     an_module = importlib.import_module('electrode_models.' 
         + an_inputs['class'])
     an = an_module.electrode(input_file, an_inputs, sep_inputs, ca_inputs, 
@@ -104,7 +104,7 @@ def bat_can(input, cores, print_flag):
         if parameters['initialize']['type'] == 'open-circuit':
             model = importlib.import_module('.'+'CC_cycle', 
                 package='simulations')
-
+            
             sim = {'i_ext': None, 'C-rate': 0.0, 'n_cycles': 0, 
                 'first-step': 'discharge', 'equilibrate': 
                 {'enable': True, 'time':  5}, 'phi-cutoff-lower': 2.0, 
@@ -118,7 +118,6 @@ def bat_can(input, cores, print_flag):
 
         else:
             raise ValueError("Initialization method currently not implemented.")
-
 
     def run_model(x_guess, final_flag = False):
         print('x = ',x_guess)
@@ -137,53 +136,6 @@ def bat_can(input, cores, print_flag):
             elif fit_params[i]['type'] == 'cathode-microstructure':
                 setattr(ca, fit_params[i]['parameter'], x)
 
-        global icolor 
-        icolor = 0
-        #for sim in parameters['simulations']:
-        global run
-        def run(sim, fit_fig=None, fit_axs=None, icolor=0):
-            sim_local = sim
-            try:
-                model = importlib.import_module('.'+sim['type'], 
-                    package='simulations')
-
-                sim['init'] = False
-
-                solution = model.run(SV_0, an, sep, ca, algvars, 
-                    parameters, sim)
-
-                # Read out the results:
-                if final_flag:
-                    sim_local['outputs']['show-plots'] = False
-                    results = model.output(solution, an, sep, ca, parameters, 
-                        sim_local, plot_flag=True, return_flag=True, save_flag=True)
-                else:
-                    results = model.output(solution, an, sep, ca, parameters, 
-                        sim, plot_flag=False, return_flag=True, save_flag=False)
-                phi_sim = results['phi_ed'].to_numpy()[:,-1]
-                    
-                sim_data = np.array((results['capacity'].to_numpy(),
-                    phi_sim))
-
-                # This function calculates the SSR for this simulation:
-                # Scale to convert capacity units in validation data to mAh/cm2:
-                UnitsScale = 46.968
-                ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
-                        units_scale = UnitsScale)
-                print('SSR = ', ssr_calc)
-
-                if final_flag:
-                    fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
-                        sim_data.T, fit_axs, fit_fig, units_scale = UnitsScale, 
-                        color = colors[icolor])
-                    icolor += 1
-            except:
-                # Assign a large penalty for failed parameter sets:
-                ssr_calc = 1e23
-                print('Simulation failed')
-
-            return ssr_calc
-
         if final_flag:
             SSR_net = 0
             icolor = 0
@@ -192,24 +144,18 @@ def bat_can(input, cores, print_flag):
         
             fit_fig.set_size_inches((5.0, 2.25))
 
-            ndata = len(parameters['simulations'])
-            cmap = plt.get_cmap('plasma')
-            ndata = 4
-            
-            color_ind = np.linspace(0,1,ndata)
-            colors = list()
-
-            for i in np.arange(ndata):
-                colors.append(cmap(color_ind[i]))
-
             # pool = mp.Pool(processes = int(cores))
             # SSR_net = pool.map(run, (list(parameters['simulations'])))
+            
             for sim in parameters['simulations']:
-                SSR_net += run(sim, fit_fig, fit_axs, icolor)
+                SSR_net += run(sim, SV_0, algvars, parameters, an, ca, sep, 
+                               final_flag, fit_fig, fit_axs, icolor)
                 icolor += 1
         else:
-            pool = mp.Pool(processes = int(cores))
-            SSR_net = pool.map(run, list(parameters['simulations']))
+            with Pool(processes = int(cores)) as pool:
+                SSR_net = pool.map(partial(run, SV_0=SV_0, algvars=algvars, 
+                            parameters=parameters, an=an, sep=sep, ca=ca), 
+                            list(parameters['simulations']))
 
         print('SSR = ', np.sum(SSR_net))
         
@@ -246,7 +192,7 @@ def bat_can(input, cores, print_flag):
     else:
         # Fit to the reference data:
         result = spo.minimize(run_model, x_start, bounds = x_bounds, 
-            options={'disp': True})
+                options={'disp': True})
     
         print(result)
 
@@ -256,6 +202,60 @@ def bat_can(input, cores, print_flag):
 
     stop = timeit.default_timer()
     print('Time: ', stop - start)  
+
+def run(sim, SV_0, algvars, parameters, an, ca, sep, final_flag=False, 
+            fit_fig=None, fit_axs=None, icolor=0):
+    
+    sim_local = sim
+    try:
+        model = importlib.import_module('.'+sim['type'], 
+            package='simulations')
+
+        sim['init'] = False
+        solution = model.run(SV_0, an, sep, ca, algvars, 
+            parameters, sim)
+        # Read out the results:
+        if final_flag:
+            sim_local['outputs']['show-plots'] = False
+            results = model.output(solution, an, sep, ca, parameters, 
+                sim_local, plot_flag=True, return_flag=True, save_flag=True)
+        else:
+            results = model.output(solution, an, sep, ca, parameters, 
+                sim, plot_flag=False, return_flag=True, save_flag=False)
+        phi_sim = results['phi_ed'].to_numpy()[:,-1]
+            
+        sim_data = np.array((results['capacity'].to_numpy(),
+            phi_sim))
+
+        # This function calculates the SSR for this simulation:
+        # Scale to convert capacity units in validation data to mAh/cm2:
+        UnitsScale = 46.968 #todo #72
+        ssr_calc = fit.SSR(sim['ref_data'].to_numpy(), sim_data.T, 
+                units_scale = UnitsScale)
+        print('SSR = ', ssr_calc)
+        
+        ndata = len(parameters['simulations']) + 1
+        cmap = plt.get_cmap('plasma')
+        
+        color_ind = np.linspace(0,1,ndata)
+        colors = list()
+        
+        for i in np.arange(ndata):
+            colors.append(cmap(color_ind[i]))
+  
+        if final_flag:
+            fit_axs, fit_fig = fit.plot(sim['ref_data'].to_numpy(), 
+                sim_data.T, fit_axs, fit_fig, units_scale = UnitsScale, 
+                color = colors[icolor])
+            
+    except:
+        # Assign a large penalty for failed parameter sets:
+        ssr_calc = 1e23
+        print('Simulation failed')
+
+    return ssr_calc
+
+
 
 #===========================================================================
 #   FUNCTIONALITY TO RUN FROM THE COMMAND LINE

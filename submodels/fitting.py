@@ -67,16 +67,21 @@ class voltage_capacity:
     def plot(ref, sim, ax, fig, units_scale = 1.0, color = 'k'):
         sim_voltage = np.zeros_like(ref[:,1])
         ref_cap = np.zeros_like(ref[:,1])
-
+        
         for i, row in enumerate(ref):
+            # Scale the reference capacity to be normalized by the correct area:
             ref_cap[i] = row[0]*units_scale
 
             # Interpolate to find the simulated voltage for each reported
             # capacity from the reference data:
             sim_voltage[i] = np.interp(ref_cap[i], sim[:,0], sim[:,1])
-
+        
+        # Plot the simulation data:
         ax.plot(sim[:,0], sim[:,1], color=color)
-        ax.plot(ref_cap, ref[:,1], color = color, marker='x', linestyle=None)
-
+        
+        # Plot the reference data:
+        ax.plot(ref_cap, ref[:,1], color = color, marker='s', linestyle='None', 
+                markerfacecolor='None')
+        
         return ax, fig
-        # summary_axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp
+        
