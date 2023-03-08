@@ -47,6 +47,10 @@ These can all be installed an managed via [Anaconda](anaconda.org)
 For example, to create a conda environment `bat_can` from which to run this tool, enter the following on a command line, terminal, or Anaconda prompt:
 ```
 conda create --name bat_can --channel conda-forge cantera scikits.odes matplotlib numpy ruamel.yaml pandas
+
+conda create -n bat_can python=3.10 cantera matplotlib numpy scikits.odes ruamel.yaml pandas -c cantera -c conda-forge
+
+
 ```
 You can replace `bat_can` with whatever name you would like to give this environment. After this completes, activate the environment:
 ```
