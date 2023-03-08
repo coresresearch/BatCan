@@ -114,6 +114,8 @@ If you want to try and fit your model to experimental data, there are now capabi
 
 Fitting parameters and their values are specified in a new `fit-parameters` field in the input file.  See `inputs/LiO2_Fitting_example.yaml` for an example.
 
+If you simply want to compare the input model to the reference data, add the `--print` keyword.  It will not fit the data, but rather run the simulation as is, calculate the goodness-of-fit, and print the simulation result overlaid on the reference data.
+
 # Making changes
 Adding new features is relatively easy, so please click on `Issues` above and create a new issue if there is something you would like to see! 
 
