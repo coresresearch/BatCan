@@ -146,7 +146,6 @@ def bat_can(input, cores, print_flag):
 
             # pool = mp.Pool(processes = int(cores))
             # SSR_net = pool.map(run, (list(parameters['simulations'])))
-            
             for sim in parameters['simulations']:
                 SSR_net += run(sim, SV_0, algvars, parameters, an, ca, sep, 
                                final_flag, fit_fig, fit_axs, icolor)
@@ -219,6 +218,9 @@ def run(sim, SV_0, algvars, parameters, an, ca, sep, final_flag=False,
             sim_local['outputs']['show-plots'] = False
             results = model.output(solution, an, sep, ca, parameters, 
                 sim_local, plot_flag=True, return_flag=True, save_flag=True)
+                #     for sim in parameters['simulations']:
+                # model = importlib.import_module('.'+sim['type'], package='simulations')
+            solution = model.plot(an, sep, ca, parameters, sim_local)
         else:
             results = model.output(solution, an, sep, ca, parameters, 
                 sim, plot_flag=False, return_flag=True, save_flag=False)

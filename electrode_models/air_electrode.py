@@ -54,7 +54,7 @@ class electrode():
         self.index_Li_elyte = self.elyte_obj.species_index(inputs['mobile-ion'])
 
         # Phase volume fractions
-        eps_host = inputs['eps_host']
+        eps_host = np.array([inputs['eps_host']])
         if len(eps_host) == 1:
             self.eps_host = np.repeat(eps_host[0], self.n_points)
         elif len(eps_host) == self.n_points:

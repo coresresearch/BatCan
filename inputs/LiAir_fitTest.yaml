@@ -33,6 +33,9 @@ cell-description:
     transport:
       mobile-ion:  'Li+[elyt]'
       model: 'dilute-solution'
+      diffusion-scaling: 'ideal' # Model to scale diffusion coefficients by concentration
+      D_scale_coeff: 1e-11
+      flag_lithiated: 0
       diffusion-coefficients: # Species names must match those in the phase
       #definition, below: # fix diffusion coefficients later...
         - species: 'C10H22O5[elyt]'
@@ -75,8 +78,8 @@ cell-description:
 
 # Simulation parameters:
 parameters:
-  T: 23 # C
-  P: 101325 # Pa
+  T: 23 C
+  P: 101325 Pa
   # Describe simulation type, parameters, etc.
   initialize: # Calculate a common inititial condition for all steps?
     enable: True
