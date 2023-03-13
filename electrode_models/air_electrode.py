@@ -60,7 +60,8 @@ class electrode():
         elif len(eps_host) == self.n_points:
             self.eps_host = np.asarray(eps_host)
         else:
-            raise ValueError("Porosity must be either a single scalar, or must match the discretization of the air electrode.")
+            raise ValueError("Porosity must be either a single scalar, or"
+                " must match the discretization of the air electrode.")
 
         self.eps_product_init = inputs['eps_product']
         self.eps_elyte_init = 1. - self.eps_host - self.eps_product_init
@@ -107,7 +108,7 @@ class electrode():
             self.product_obj[stored_species['name']].partial_molar_volumes[0]
 
         self.capacity = (stored_species['charge']*ct.faraday
-                * self.eps_elyte_init[0] * inputs['thickness']
+                * (np.average(self.eps_elyte_init))* inputs['thickness']
                 / (3600 * v_molar_prod))
 
         # Minimum volume fraction for the product phase, below which product
@@ -498,3 +499,4 @@ class electrode():
     #Jimmy Eat World - Chase the Light + Invented
     #Lay - Lit
     #George Ezra - Staying at Tamara's
+#
