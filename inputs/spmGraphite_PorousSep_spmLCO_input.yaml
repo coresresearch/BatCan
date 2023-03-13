@@ -38,6 +38,9 @@ cell-description:
     transport:
       mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
       model: 'dilute-solution'
+      diffusion-scaling: 'ideal' # Model to scale diffusion coefficients by concentration
+      D_scale_coeff: 1e-11
+      flag_lithiated: 0
       diffusion-coefficients: # Species names must match those in the phase 
       #definition, below:
         - species: 'C3H4O3[elyt]'
