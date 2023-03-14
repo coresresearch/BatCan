@@ -46,7 +46,7 @@ These can all be installed an managed via [Anaconda](anaconda.org)
 
 For example, to create a conda environment `bat_can` from which to run this tool, enter the following on a command line, terminal, or Anaconda prompt:
 ```
-conda create --name bat_can --channel conda-forge cantera scikits.odes matplotlib numpy ruamel.yaml pandas
+conda create -n bat_can python=3.9 cantera matplotlib numpy scikits.odes ruamel.yaml pandas -c cantera -c conda-forge
 ```
 You can replace `bat_can` with whatever name you would like to give this environment. After this completes, activate the environment:
 ```
@@ -113,6 +113,8 @@ python bat_can.py --input=my_input.yaml --cores=3
 If you want to try and fit your model to experimental data, there are now capabilities to do this by running `bat_can_fit.py` instead of `bat_can.py`.  This is still in early stages, and only available for a few types of fitting parameters.
 
 Fitting parameters and their values are specified in a new `fit-parameters` field in the input file.  See `inputs/LiO2_Fitting_example.yaml` for an example.
+
+If you simply want to compare the input model to the reference data, add the `--print` keyword.  It will not fit the data, but rather run the simulation as is, calculate the goodness-of-fit, and print the simulation result overlaid on the reference data.
 
 # Making changes
 Adding new features is relatively easy, so please click on `Issues` above and create a new issue if there is something you would like to see! 
