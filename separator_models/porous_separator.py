@@ -4,6 +4,7 @@
     Class file for porous separator methods
 """
 
+#why won't you come to the top for commits?
 import cantera as ct
 import numpy as np
 
@@ -210,7 +211,7 @@ class separator():
         state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':self.dy,
             'microstructure':self.elyte_microstructure}
         state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':ed.dy_elyte,
-            'microstructure':ed.elyte_microstructure}
+            'microstructure':ed.elyte_microstructure[j_ed]}
 
         # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
         N_k_elyte, i_io = tuple(x*ed.i_ext_flag
