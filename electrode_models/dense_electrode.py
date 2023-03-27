@@ -56,7 +56,7 @@ class electrode():
         self.dy_elyte = inputs['dy_elyte']
 
         # Electrolyte volume fraction in the separator:
-        self.eps_elyte = np.array([sep_inputs['eps_electrolyte']])
+        self.eps_elyte = sep_inputs['eps_electrolyte']
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:

@@ -93,7 +93,7 @@ class electrode():
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
-        self.elyte_microstructure = self.eps_elyte_init**1.5 #This is used by the
+        self.elyte_microstructure = self.eps_elyte_init**1.5 #This is used by the electrode_boundary_flux
 
         # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
@@ -212,13 +212,14 @@ class electrode():
 
         # Start at the separator boundary:
         j = self.nodes[0]
-
+        print(self.eps_host)
         # Read out properties:
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
         eps_product = SV_loc[SVptr['eps_product'][j]]
         eps_elyte = 1. - eps_product - self.eps_host[j]
+        self.elyte_microstructure = eps_elyte**1.5
 
         # Read electrolyte fluxes at the separator boundary.  No matter the
         # electrode, the function returns a value where flux to the electrode
