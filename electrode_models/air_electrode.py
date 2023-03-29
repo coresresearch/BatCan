@@ -55,6 +55,8 @@ class electrode():
 
         # Phase volume fractions
         eps_host = np.array([inputs['eps_host']])
+        eps_host = eps_host[0]
+
         if len(eps_host) == 1:
             self.eps_host = np.repeat(eps_host[0], self.n_points)
         elif len(eps_host) == self.n_points:
@@ -93,8 +95,7 @@ class electrode():
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
-        self.elyte_microstructure = self.eps_elyte_init**1.5 #This is used by the electrode_boundary_flux
-
+        self.elyte_microstructure = self.eps_elyte_init[0]**1.5 #This is used by the electrode_boundary_flux
         # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
         self.SV_offset = offset
@@ -212,7 +213,7 @@ class electrode():
 
         # Start at the separator boundary:
         j = self.nodes[0]
-        print(self.eps_host)
+
         # Read out properties:
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
@@ -220,7 +221,6 @@ class electrode():
         eps_product = SV_loc[SVptr['eps_product'][j]]
         eps_elyte = 1. - eps_product - self.eps_host[j]
         self.elyte_microstructure = eps_elyte**1.5
-
         # Read electrolyte fluxes at the separator boundary.  No matter the
         # electrode, the function returns a value where flux to the electrode
         # is considered positive. We multiply by `i_ext_flag` to get the
@@ -413,6 +413,9 @@ class electrode():
             - (N_k_in - N_k_out + sdot_elyte_air
             + sdot_elyte_host * A_surf_ratio)
             * self.dyInv)/eps_elyte
+
+        eps_elyte = 1. - eps_product - self.eps_host[0]
+        self.elyte_microstructure = eps_elyte**1.5
 
         return resid
 

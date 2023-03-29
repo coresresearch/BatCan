@@ -25,7 +25,7 @@ cell-description:
   separator:
     class: 'porous_separator'
     thickness: 6.5e-4  # separator thickness, m
-    n_points: 5      # Number of finite volumes to discretize
+    n_points: 20      # Number of finite volumes to discretize
     electrolyte-phase: 'electrolyte' # Cantera phase name
     sigma_io: 0.74 # S/m for 1M LiTFSI in TEGDME at 25 deg C // Chen, 2019
     phi_0: 3.117 # Initial electric potential, V // Yin, 2017
@@ -50,7 +50,7 @@ cell-description:
         #   D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'air_electrode'
-    n-points: 5
+    n-points: 35
     gas-phase: 'air'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -67,7 +67,7 @@ cell-description:
     th_product: 245.e-9 #185e-9 #oxide thickness, m
     phi_0: 3.15 # Initial electric potential, V // Yin, 2017
     sigma_el: 100 #electrical ondutivity of the host
-    eps_host: 0.2 # Solid phase volume fraction of carbon -
+    eps_host: [0.2] # Solid phase volume fraction of carbon -0.2, 0.4, 0.6, 0.7, 0.8
     eps_product: 0.00 # solid phase volume fraction of Li2O2 -
     C_dl: 6e-2 #F/m2
     stored-species: # Details on the stored species. Used for capacity calc.
@@ -106,82 +106,82 @@ parameters:
                          # them (False)?
         save-name: '0p1_liu' # Folder label for output files.
       validation: 'Liu_O2/0.1mAhcm2.xlsx' #Location of validation data
-    # - type: 'CC_cycle' # Constant current cycling
-    #   Specify only one of i_ext or C-rate. The other should be null:
-    #   i_ext: 0.2 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    #   C-rate: null # input C-rate
-    #   n_cycles: 0.5 # Number of cycles.
-    #   first-step: 'discharge'  # Start with charge or discharge?
-    #   phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
-    #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-    #   # species-cutoff: 1.e-14  # Simulation cuts off if C_k <= this value
-    #   species-default: {'C2H6O[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'TFSI-[elyt]': 0.049610, 'O2(e)': 1.E-18} # Replacement mole fractions if elyte composition goes to NaN.
-    #   equilibrate:
-    #     enable: False # Start with a hold at open circuit? (True or False)
-    #     time: 10 # If true, how long is the hold, s
-    #   outputs:
-    #     show-plots: True # Show the plots and save them (True), or just save
-    #                      # them (False)?
-    #     save-name: '0p2_liu' # Folder label for output files.
-    #   validation: 'Liu_O2/0.2mAhcm2.xlsx' #Location of validation data
-    # - type: 'CC_cycle' # Constant current cycling
-    #   # Specify only one of i_ext or C-rate. The other should be null:
-    #   i_ext: 0.5 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    #   C-rate: null # input C-rate
-    #   n_cycles: 0.5 # Number of cycles.
-    #   first-step: 'discharge'  # Start with charge or discharge?
-    #   phi-cutoff-lower: 1.75 # Simulation cuts off if E_Cell <= this value
-    #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-    #   # species-cutoff: 0.000565 # Simulation cuts off if C_k <= this value
-    #   species-default: {'C2H6O[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'TFSI-[elyt]': 0.049610, 'O2(e)': 1.E-18} # Replacement mole fractions if elyte composition goes to NaN.
-    #   equilibrate:
-    #     enable: False # Start with a hold at open circuit? (True or False)
-    #     time: 5 # If true, how long is the hold, s
-    #   outputs:
-    #     show-plots: True # Show the plots and save them (True), or just save
-    #                      # them (False)?
-    #     save-name: '0p5_liu' # Folder label for output files.
-    #   validation: 'Liu_O2/0.5mAhcm2.xlsx' #Location of validation data
-    # - type: 'CC_cycle' # Constant current cycling
-    #   # Specify only one of i_ext or C-rate. The other should be null:
-    #   i_ext: 1.0 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    #   C-rate: null # input C-rate
-    #   n_cycles: 0.5 # Number of cycles.
-    #   first-step: 'discharge'  # Start with charge or discharge?
-    #   phi-cutoff-lower: 1.75 # Simulation cuts off if E_Cell <= this value
-    #   phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
-    #   # species-cutoff: 0.000565 # Simulation cuts off if C_k <= this value
-    #   species-default: {'C2H6O[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'TFSI-[elyt]': 0.049610, 'O2(e)': 1.E-18} # Replacement mole fractions if elyte composition goes to NaN.
-    #   equilibrate:
-    #     enable: False # Start with a hold at open circuit? (True or False)
-    #     time: 5 # If true, how long is the hold, s
-    #   outputs:
-    #     show-plots: True # Show the plots and save them (True), or just save
-    #                      # them (False)?
-    #     save-name: '1_liu' # Folder label for output files.
-    #   validation: 'Liu_O2/1mAhcm2.xlsx' #Location of validation data
+    - type: 'CC_cycle' # Constant current cycling
+      Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: 0.2 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: null # input C-rate
+      n_cycles: 0.5 # Number of cycles.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 2.0 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+      # species-cutoff: 1.e-14  # Simulation cuts off if C_k <= this value
+      species-default: {'C2H6O[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'TFSI-[elyt]': 0.049610, 'O2(e)': 1.E-18} # Replacement mole fractions if elyte composition goes to NaN.
+      equilibrate:
+        enable: False # Start with a hold at open circuit? (True or False)
+        time: 10 # If true, how long is the hold, s
+      outputs:
+        show-plots: True # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: '0p2_liu' # Folder label for output files.
+      validation: 'Liu_O2/0.2mAhcm2.xlsx' #Location of validation data
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: 0.5 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: null # input C-rate
+      n_cycles: 0.5 # Number of cycles.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 1.75 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+      # species-cutoff: 0.000565 # Simulation cuts off if C_k <= this value
+      species-default: {'C2H6O[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'TFSI-[elyt]': 0.049610, 'O2(e)': 1.E-18} # Replacement mole fractions if elyte composition goes to NaN.
+      equilibrate:
+        enable: False # Start with a hold at open circuit? (True or False)
+        time: 5 # If true, how long is the hold, s
+      outputs:
+        show-plots: True # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: '0p5_liu' # Folder label for output files.
+      validation: 'Liu_O2/0.5mAhcm2.xlsx' #Location of validation data
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: 1.0 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: null # input C-rate
+      n_cycles: 0.5 # Number of cycles.
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 1.75 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 4.8 # Simulation cuts off if E_Cell >= this value
+      # species-cutoff: 0.000565 # Simulation cuts off if C_k <= this value
+      species-default: {'C2H6O[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'TFSI-[elyt]': 0.049610, 'O2(e)': 1.E-18} # Replacement mole fractions if elyte composition goes to NaN.
+      equilibrate:
+        enable: False # Start with a hold at open circuit? (True or False)
+        time: 5 # If true, how long is the hold, s
+      outputs:
+        show-plots: True # Show the plots and save them (True), or just save
+                         # them (False)?
+        save-name: '1_liu' # Folder label for output files.
+      validation: 'Liu_O2/1mAhcm2.xlsx' #Location of validation data
 
 fit-parameters:
   - type: 'elyte-transport'
     species: 'O2(e)'
-    guess-value:  7.30E-10
-    min: 6.30e-10
+    guess-value:  6.30E-10
+    min: 5.00e-10
     max: 10.30e-10
   - type: 'elyte-transport'
     species: 'Li+[elyt]'
     guess-value: 5.42e-10
-    min: 1.42e-10
+    min: 3.32e-10
     max: 1.4e-9
   # - type: 'cathode-kinetics'
   #   reaction-index: 0
   #   guess-value: 0.46210493 # This is a multiplier to scale the value in the mech.
   #   min: 0.1
   #   max: 10
-  # - type: 'cathode-microstructure'
-  #   parameter: 'th_product'
-  #   guess-value: 245.e-9
-  #   min: 300.e-9
-  #   max: 145.e-9
+  - type: 'cathode-microstructure'
+    parameter: 'th_product'
+    guess-value: 245.e-9
+    min: 250.e-9
+    max: 105.e-9
 
 
 

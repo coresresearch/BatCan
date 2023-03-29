@@ -210,8 +210,6 @@ class separator():
         # Create dictionaries to pass to the transport function:
         state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':self.dy,
             'microstructure':self.elyte_microstructure}
-        print(j_ed)
-        print(ed.elyte_microstructure)
         state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':ed.dy_elyte,
             'microstructure':ed.elyte_microstructure}
 
