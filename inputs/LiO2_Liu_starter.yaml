@@ -41,16 +41,16 @@ cell-description:
         - species: 'C2H6O[elyt]'
           D_k: 1.43e-10 # m2 S-1 // Saito, 2017
         - species: 'Li+[elyt]'
-          D_k: 1.42e-9 # m2 S-1 // Saito, 2017
+          D_k: 6.42e-11 # m2 S-1 // Saito, 2017
         - species: 'TFSI-[elyt]'
-          D_k: 8.79e-11 # m2 S-1 // Saito, 2017
+          D_k: 6.79e-10 # m2 S-1 // Saito, 2017
         - species: 'O2(e)'
-          D_k: 7.30E-10 #11 # m2 s-1 // Gittleson, 2017 for DMSO
+          D_k: 24.30E-10 #11 # m2 s-1 // Gittleson, 2017 for DMSO
         # - species: 'Li2O2[elyt]'
         #   D_k: 2e-13 # can't find (assume low?)
   cathode:
     class: 'air_electrode'
-    n-points: 35
+    n-points: 50
     gas-phase: 'air'
     elyte-iphase: 'air-elyte-interface'
     electrolyte-phase: 'electrolyte' # Cantera phase name
@@ -60,13 +60,13 @@ cell-description:
     product-phase-min: 1e-6 # Minimum volume fraction for product phase
     mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
     thickness: 2.350e-4 # cathode thickness, m
-    r_host: 1.e-6 # Carbon Particle radius, m
+    r_host: 0.75e-6 # Carbon Particle radius, m
     host_form: 'cylinder' # host morphology. Options are 'cylinder' and 'sphere'
-    host_surf_frac: 0.95 # Fraction of host surface area that is accessible.
+    host_surf_frac: 0.98 # Fraction of host surface area that is accessible.
     d_oxide: 1.0e-8 #Oxide diameter, m
-    th_product: 245.e-9 #185e-9 #oxide thickness, m
+    th_product: 87.e-9 #185e-9 #oxide thickness, m
     phi_0: 3.15 # Initial electric potential, V // Yin, 2017
-    sigma_el: 100 #electrical ondutivity of the host
+    sigma_el: 100 #electrical condutivity of the host
     eps_host: [0.2] # Solid phase volume fraction of carbon -0.2, 0.4, 0.6, 0.7, 0.8
     eps_product: 0.00 # solid phase volume fraction of Li2O2 -
     C_dl: 6e-2 #F/m2
@@ -106,8 +106,9 @@ parameters:
                          # them (False)?
         save-name: '0p1_liu' # Folder label for output files.
       validation: 'Liu_O2/0.1mAhcm2.xlsx' #Location of validation data
+      thickness: 180.e-9
     - type: 'CC_cycle' # Constant current cycling
-      Specify only one of i_ext or C-rate. The other should be null:
+      # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: 0.2 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: null # input C-rate
       n_cycles: 0.5 # Number of cycles.
@@ -124,6 +125,7 @@ parameters:
                          # them (False)?
         save-name: '0p2_liu' # Folder label for output files.
       validation: 'Liu_O2/0.2mAhcm2.xlsx' #Location of validation data
+      thickness: 108.E-9
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: 0.5 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
@@ -142,6 +144,7 @@ parameters:
                          # them (False)?
         save-name: '0p5_liu' # Folder label for output files.
       validation: 'Liu_O2/0.5mAhcm2.xlsx' #Location of validation data
+      thickness: 70.e-9
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: 1.0 mA/cm2 #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
@@ -160,16 +163,17 @@ parameters:
                          # them (False)?
         save-name: '1_liu' # Folder label for output files.
       validation: 'Liu_O2/1mAhcm2.xlsx' #Location of validation data
+      thickness: 109.e-9
 
 fit-parameters:
   - type: 'elyte-transport'
     species: 'O2(e)'
-    guess-value:  6.30E-10
+    guess-value:  24.30E-10
     min: 5.00e-10
-    max: 10.30e-10
+    max: 20.30e-10
   - type: 'elyte-transport'
     species: 'Li+[elyt]'
-    guess-value: 5.42e-10
+    guess-value: 6.42e-11
     min: 3.32e-10
     max: 1.4e-9
   # - type: 'cathode-kinetics'
@@ -177,11 +181,11 @@ fit-parameters:
   #   guess-value: 0.46210493 # This is a multiplier to scale the value in the mech.
   #   min: 0.1
   #   max: 10
-  - type: 'cathode-microstructure'
-    parameter: 'th_product'
-    guess-value: 245.e-9
-    min: 250.e-9
-    max: 105.e-9
+  # - type: 'cathode-microstructure'
+  #   parameter: 'th_product'
+  #   guess-value: 100.e-9
+  #   min: 60.e-9
+  #   max: 105.e-9
 
 
 

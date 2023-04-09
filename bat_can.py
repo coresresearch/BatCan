@@ -162,7 +162,6 @@ def bat_can(input, cores):
 
     for sim in parameters['simulations']:
         model = importlib.import_module('.'+sim['type'], package='simulations')
-
         solution = model.plot(an, sep, ca, parameters, sim)
 
 #===========================================================================

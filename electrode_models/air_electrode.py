@@ -57,6 +57,12 @@ class electrode():
         eps_host = np.array([inputs['eps_host']])
         eps_host = eps_host[0]
 
+        # current = params['i_ext']
+        # # Split the current from the units:
+        # i_ext, units = current.split()
+        self.surf_to_volume = 1.23224E-11
+
+
         if len(eps_host) == 1:
             self.eps_host = np.repeat(eps_host[0], self.n_points)
         elif len(eps_host) == self.n_points:
@@ -73,6 +79,8 @@ class electrode():
         # radius, with no overlap.
         self.r_host = inputs['r_host']
         self.th_product = inputs['th_product']
+
+
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
         self.A_host = 4. * np.pi * (self.r_host)**2 # Surface area of a single carbon / host particle [m2]
         # m2 of host-electrolyte interface / m3 of total volume [m^-1]
@@ -271,7 +279,7 @@ class electrode():
             resid[SVptr['phi_ed'][j]] = i_io_in - i_io_out + i_el_in - i_el_out
 
             # Calculate available surface area (m2 interface per m3 electrode):
-            A_avail = self.A_init[j] - eps_product/self.th_product
+            A_avail = self.A_init[j] - eps_product/self.thickness_temp#self.th_product
             # Convert to m2 interface per m2 geometric area:
             A_surf_ratio = A_avail*self.dy
             # Multiplier to scale phase destruction rates.  As eps_product
@@ -364,7 +372,7 @@ class electrode():
                     - params['potential'])
 
         # Calculate available surface area (m2 interface per m3 electrode):
-        A_avail = self.A_init[j] - eps_product/self.th_product
+        A_avail = self.A_init[j] - eps_product/self.thickness_temp#self.th_product
         # Convert to m2 interface per m2 geometric area:
         A_surf_ratio = A_avail*self.dy
 

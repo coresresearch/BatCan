@@ -37,6 +37,8 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     if 'species-default' in sim:
         params['species-default'] = sim['species-default']
 
+    ca.thickness_temp=sim['thickness']
+
     # Figure out which steps and at what currents to run the model. This
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a
     # current for each step. 'equil' is a flag to indicate whether there is an
@@ -368,7 +370,7 @@ def plot(an, sep, ca, params, sim):
 
         cycle_fig.set_size_inches((4.0,2.0))
 
-        # iterate over cycles:        
+        # iterate over cycles:
         for i in range(int(solution[1,-1])):
             cycle = solution_df[solution_df.iloc[:,0] == i+1]
             # All times are relative to the start of the step:
