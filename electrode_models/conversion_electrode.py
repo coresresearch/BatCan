@@ -1,7 +1,7 @@
 """
-    sulfur_electrode.py
+    conversion_electrode.py
 
-    Class file for air electrode methods
+    Class file for conversion electrode methods
 """
 
 import cantera as ct
@@ -11,7 +11,7 @@ import matplotlib
 
 class electrode():
     """
-    Create an electrode object representing the air electrode.
+    Create an electrode object representing the conversion electrode.
     """
 
     def __init__(self, input_file, inputs, sep_inputs, an_inputs,
@@ -48,14 +48,10 @@ class electrode():
             self.conv_ph_min.append(ph["min-vol-frac"])
             self.n_conversion_phases += 1
 
-        E0_ca = self.host_surf_obj.delta_standard_gibbs/ct.faraday
-        print('E_eq_ca =', -E0_ca)
-
         self.sw_conv = np.ones((self.n_conversion_phases))
 
         # Electrode thickness and inverse thickness:
         self.n_points = inputs['n-points']
-        print('Cathode points =', self.n_points)
         self.dy = inputs['thickness']/self.n_points
         self.dyInv = 1/self.dy
         self.dyinv_n = self.n_points/self.dy*np.ones((self.n_points, 1))
@@ -93,7 +89,7 @@ class electrode():
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
         self.A_host = 4. * np.pi * (self.r_host / 2)**2 # Surface area of a single carbon / host particle [m2]
         self.A_init = 2e4 #self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
-        print('Eps_C =', self.eps_host)
+
         # For some models, the elyte thickness is different from that of the
         # electrode, so we specify it separately:
         self.dy_elyte = self.dy
@@ -113,9 +109,10 @@ class electrode():
         Conc = (self.conversion_obj[inputs["stored-ion"]["n_phase"]].
                 concentrations[0])
 
-        #self.capacity = (Conc*inputs['stored-ion']['charge']*ct.faraday
-        #        * (1. - inputs['eps_host']))*inputs['thickness']/3600
+        stored_ion = self.eps_conversion_init[inputs['stored-ion']['n_phase']]
 
+        self.capacity = (Conc*inputs['stored-ion']['charge']*ct.faraday*
+                        (stored_ion)) * inputs['thickness']/3600
 
         # Constant nucleation density of conversion phases
         self.conversion_phase_np = np.zeros([self.n_conversion_phases])
@@ -128,17 +125,13 @@ class electrode():
         self.A_conversion_0 = 2*pi*self.conversion_phase_np*(3*self.eps_conversion_init/2/self.conversion_phase_np/pi)**(2/3)
         self.r_conversion_0 = 3*self.eps_conversion_init/self.A_conversion_0
         self.A_C_0 = self.A_init - sum(pi*self.conversion_phase_np*self.r_conversion_0**2)
-        print('A_S_0 =', self.A_conversion_0[0])
-        print('A_L_0 =', self.A_conversion_0[1])
-        print('A_C_0 =', self.A_C_0)
+
         eps_el_0 = 1 - self.eps_host - sum(self.eps_conversion_init)
-        print('porosity =', eps_el_0)
+
         V_elyte_0 = (inputs['thickness']*eps_el_0
                     +sep_inputs['thickness']*sep_inputs['eps_electrolyte'])
         self.m_S_tot_0 = 0.01952351 #self.eps_conversion_init[0]*self.conversion_obj[0].density_mass*inputs['thickness']
         E_to_S = 1e3*V_elyte_0/self.m_S_tot_0
-        print('Elyte/sulfur ratio =', E_to_S)
-        print('Solid sulfur =', self.m_S_tot_0)
 
         n_S_atoms = np.zeros([len(self.elyte_obj.species_names)])
         for i, species in enumerate(self.elyte_obj.species_names):
@@ -251,7 +244,7 @@ class electrode():
 
     def residual(self, t, SV, SVdot, sep, counter, params):
         """
-        Define the residual for the state of the metal air electrode.
+        Define the residual for the state of the conversion electrode.
 
         This is an array of differential and algebraic governing equations, one
         for each state variable in the anode (anode plus a thin layer of electrolyte + separator).
