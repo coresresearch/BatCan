@@ -93,6 +93,15 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         i_data = currents[i]*np.ones_like(solution.values.t)
         cycle_number = int(i+1-equil)*np.ones_like(solution.values.t)
         cycle_capacity = 0.1*solution.values.t*abs(i_data)/3600
+        voltage = solution.values.y.T[-7]
+        power_density = voltage*i_data
+        energy_density = [0]
+        for item, value in enumerate(cycle_capacity):
+            if item == 0:
+                continue
+            else:
+                delta_capacity = value - cycle_capacity[item-1]
+                energy_density.append(voltage[item]*delta_capacity +energy_density[item-1])
 
         # Append the current data array to any preexisting data, for output.
         # If this is the first step, create the output data array.
@@ -100,7 +109,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t+data_out[0,-1], cycle_number,
-                i_data, cycle_capacity, solution.values.y.T))
+                i_data, cycle_capacity, power_density, energy_density, solution.values.y.T))
             data_out = np.hstack((data_out, SV))
 
             # Use SV at the end of the simualtion as the new initial condition:
@@ -109,7 +118,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t, cycle_number, i_data,
-                cycle_capacity, solution.values.y.T))
+                cycle_capacity, power_density, energy_density, solution.values.y.T))
             data_out = SV
 
             # Use SV at the end of the simualtion as the new initial condition:
@@ -249,14 +258,14 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
     n_plots = 2 + an.n_plots + ca.n_plots + sep.n_plots
 
     # There are 4 variables stored before the state variables: (1) time (s),
-    # (2) cycle number, (3) current density(A/cm2) , and (4) Capacity (mAh/cm2)
-    SV_offset = 4
+    # (2) cycle number, (3) current density(A/cm2) ,  (4) Capacity (mAh/cm2) and (5) power density and (6) energy density
+    SV_offset = 6
 
     # Pointer for cell potential:
     phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
 
     # Save the solution as a Pandas dataframe:
-    labels = (['cycle', 'current', 'capacity'] + an.SVnames + sep.SVnames
+    labels = (['cycle', 'current', 'capacity','power density','energy density'] + an.SVnames + sep.SVnames
         + ca.SVnames)
     solution_df = pd.DataFrame(data = solution.T[:,1:],
                                 index = solution.T[:,0],
@@ -310,7 +319,7 @@ def plot(an, sep, ca, params, sim):
 
     # There are 4 variables stored before the state variables: (1) time (s),
     # (2) cycle number, (3) current density(A/cm2) , and (4) Capacity (mAh/cm2)
-    SV_offset = 4
+    SV_offset = 6
 
     # Pointer for cell potential:
     phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
