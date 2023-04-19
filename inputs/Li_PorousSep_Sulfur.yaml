@@ -31,6 +31,7 @@ cell-description:
       mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
       model: 'dilute-solution'
       diffusion-scaling: 'zhang'
+      D_scale_coeff: 1e-11
       diffusion-coefficients: # Species names must match those in the phase
       #definition, below:
         - species: 'TEGDME(e)'
@@ -62,8 +63,6 @@ cell-description:
           C_k: 8.456e-13 # kmol_k/m^3
     phi_0: 1.014 # Initial electric potential, V
     eps_electrolyte: 0.5 # Electrolyte volume fraction, -
-    flag_lithiated: 0
-    D_scale_coeff: 1e-11
     C_k_atol: 1e-26
   cathode:
     class: 'conversion_electrode'
