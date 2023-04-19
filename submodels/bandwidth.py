@@ -31,7 +31,9 @@ def calc_bandwidth(SV_0, an, sep, ca, params):
             if abs(dF[i]) > 0:
                 if j > i and abs(i - j) > uband:
                     uband = abs(i - j)
+                    # print('j > i', i, j, uband, lband)
                 elif i > j and abs(i - j) > lband:
                     lband = abs(i - j)
-
+                    # print('i > j', i, j, uband, lband)
+    # print(an.SVptr, sep.SVptr, ca.SVptr)
     return lband, uband

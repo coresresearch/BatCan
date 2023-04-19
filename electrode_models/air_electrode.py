@@ -55,6 +55,8 @@ class electrode():
 
         # Phase volume fractions
         eps_host = np.array([inputs['eps_host']])
+        eps_host = eps_host[0]
+
         if len(eps_host) == 1:
             self.eps_host = np.repeat(eps_host[0], self.n_points)
         elif len(eps_host) == self.n_points:
@@ -71,6 +73,8 @@ class electrode():
         # radius, with no overlap.
         self.r_host = inputs['r_host']
         self.th_product = inputs['th_product']
+
+
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
         self.A_host = 4. * np.pi * (self.r_host)**2 # Surface area of a single carbon / host particle [m2]
         # m2 of host-electrolyte interface / m3 of total volume [m^-1]
@@ -93,8 +97,7 @@ class electrode():
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
-        self.elyte_microstructure = self.eps_elyte_init[0]**1.5 #This is used by the
-
+        self.elyte_microstructure = self.eps_elyte_init[0]**1.5 #This is used by the electrode_boundary_flux
         # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
         self.SV_offset = offset
@@ -219,7 +222,7 @@ class electrode():
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
         eps_product = SV_loc[SVptr['eps_product'][j]]
         eps_elyte = 1. - eps_product - self.eps_host[j]
-
+        self.elyte_microstructure = eps_elyte**1.5
         # Read electrolyte fluxes at the separator boundary.  No matter the
         # electrode, the function returns a value where flux to the electrode
         # is considered positive. We multiply by `i_ext_flag` to get the
@@ -270,7 +273,7 @@ class electrode():
             resid[SVptr['phi_ed'][j]] = i_io_in - i_io_out + i_el_in - i_el_out
 
             # Calculate available surface area (m2 interface per m3 electrode):
-            A_avail = self.A_init[j] - eps_product/self.th_product
+            A_avail = self.A_init[j] - eps_product/self.thickness_temp#self.th_product
             # Convert to m2 interface per m2 geometric area:
             A_surf_ratio = A_avail*self.dy
             # Multiplier to scale phase destruction rates.  As eps_product
@@ -363,7 +366,7 @@ class electrode():
                     - params['potential'])
 
         # Calculate available surface area (m2 interface per m3 electrode):
-        A_avail = self.A_init[j] - eps_product/self.th_product
+        A_avail = self.A_init[j] - eps_product/self.thickness_temp#self.th_product
         # Convert to m2 interface per m2 geometric area:
         A_surf_ratio = A_avail*self.dy
 
@@ -412,6 +415,9 @@ class electrode():
             - (N_k_in - N_k_out + sdot_elyte_air
             + sdot_elyte_host * A_surf_ratio)
             * self.dyInv)/eps_elyte
+
+        eps_elyte = 1. - eps_product - self.eps_host[0]
+        self.elyte_microstructure = eps_elyte**1.5
 
         return resid
 
