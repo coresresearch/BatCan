@@ -93,17 +93,16 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         i_data = currents[i]*np.ones_like(solution.values.t)
         cycle_number = int(i+1-equil)*np.ones_like(solution.values.t)
         cycle_capacity = 0.1*solution.values.t*abs(i_data)/3600 #mAh/cm2
-
-        phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
+        phi_ptr = ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
         voltage = solution.values.y.T[phi_ptr]
         delta_t = solution.values.t[1:] - solution.values.t[:-1] #s
         for item, voltage_value in enumerate(voltage):
             if item == 0:
                 energy_density = [0]
-                power_density = currents[i]*voltage_value
+                power_density = [currents[i]*voltage_value]
             else:
-                energy_density.append(delta_t[item-1]*currents[i]*voltage_value+energy_density[item-1])/3600 #Wh/cm2
-                power_density.append = 3600*energy_density[item]/sum(delta_t[:item]) #W/cm2
+                energy_density.append((delta_t[item-1]*currents[i]*voltage_value/3600+energy_density[item-1])) #Wh/m2
+                power_density.append(3600*energy_density[item]/sum(delta_t[:item]))  #W/m2
 
         # Append the current data array to any preexisting data, for output.
         # If this is the first step, create the output data array.

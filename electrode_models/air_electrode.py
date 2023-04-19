@@ -57,12 +57,6 @@ class electrode():
         eps_host = np.array([inputs['eps_host']])
         eps_host = eps_host[0]
 
-        # current = params['i_ext']
-        # # Split the current from the units:
-        # i_ext, units = current.split()
-        self.surf_to_volume = 1.23224E-11
-
-
         if len(eps_host) == 1:
             self.eps_host = np.repeat(eps_host[0], self.n_points)
         elif len(eps_host) == self.n_points:
