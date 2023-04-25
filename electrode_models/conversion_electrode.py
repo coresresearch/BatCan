@@ -1,7 +1,13 @@
 """
     conversion_electrode.py
 
-    Class file for conversion electrode methods
+    Class file for conversion electrode methods. An example is lithium-sulfur,
+    where solid S8 phase is converted to Li2S during discharge.
+
+    The model assumes some inert, electrically conductive host phase
+    (e.g. carbon), plus an arbitrary number of "conversion" phases. Each
+    conversion phase can possibly participate in reactions at the
+    host/electrolyte interface, plus at their own electrolyte interface.
 """
 
 import cantera as ct
@@ -11,10 +17,10 @@ import matplotlib
 
 class electrode():
     """
-    Create an electrode object representing the conversion electrode.
+    Create an electrode object representing the air electrode.
     """
 
-    def __init__(self, input_file, inputs, sep_inputs, an_inputs,
+    def __init__(self, input_file, inputs, sep_inputs, counter_ed_inputs,
         electrode_name, params, offset):
         """
         Initialize the model.
@@ -47,6 +53,8 @@ class electrode():
                     self.conversion_obj[self.n_conversion_phases]]))
             self.conv_ph_min.append(ph["min-vol-frac"])
             self.n_conversion_phases += 1
+
+        E0_ca = self.host_surf_obj.delta_standard_gibbs/ct.faraday
 
         self.sw_conv = np.ones((self.n_conversion_phases))
 
@@ -99,20 +107,12 @@ class electrode():
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
-        self.elyte_microstructure = (self.eps_elyte_init - sum(self.eps_conversion_init))**1.5 # where would we use this?
+        self.elyte_microstructure = (self.eps_elyte_init -
+                sum(self.eps_conversion_init))**1.5 # where would we use this?
 
         # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
         self.SV_offset = offset
-
-        # Determine the electrode capacity (Ah/m2)
-        Conc = (self.conversion_obj[inputs["stored-ion"]["n_phase"]].
-                concentrations[0])
-
-        stored_ion = self.eps_conversion_init[inputs['stored-ion']['n_phase']]
-
-        self.capacity = (Conc*inputs['stored-ion']['charge']*ct.faraday*
-                        (stored_ion)) * inputs['thickness']/3600
 
         # Constant nucleation density of conversion phases
         self.conversion_phase_np = np.zeros([self.n_conversion_phases])
@@ -122,36 +122,116 @@ class electrode():
 
         self.conversion_phase_np[1] = 5e13*exp(2.4221*params['simulations'][0]['C-rate'])
 
-        self.A_conversion_0 = 2*pi*self.conversion_phase_np*(3*self.eps_conversion_init/2/self.conversion_phase_np/pi)**(2/3)
+        self.A_conversion_0 = 2*pi*self.conversion_phase_np \
+            * (3*self.eps_conversion_init/2/self.conversion_phase_np/pi)**(2/3)
         self.r_conversion_0 = 3*self.eps_conversion_init/self.A_conversion_0
-        self.A_C_0 = self.A_init - sum(pi*self.conversion_phase_np*self.r_conversion_0**2)
+        self.A_C_0 = self.A_init \
+                   - sum(pi*self.conversion_phase_np*self.r_conversion_0**2)
 
         eps_el_0 = 1 - self.eps_host - sum(self.eps_conversion_init)
+        eps_el_p = 1 - self.eps_host
 
         V_elyte_0 = (inputs['thickness']*eps_el_0
                     +sep_inputs['thickness']*sep_inputs['eps_electrolyte'])
-        self.m_S_tot_0 = 0.01952351 #self.eps_conversion_init[0]*self.conversion_obj[0].density_mass*inputs['thickness']
-        E_to_S = 1e3*V_elyte_0/self.m_S_tot_0
 
-        n_S_atoms = np.zeros([len(self.elyte_obj.species_names)])
-        for i, species in enumerate(self.elyte_obj.species_names):
-            n_S_atoms[i] = np.float(self.elyte_obj.n_atoms(species, 'S'))
+        # Index of the conversion phase the capacity is based on
+        init_spec_i = inputs['stored-ion']['n_phase']
+        init_n_ch = inputs['stored-ion']['charge']
+        init_spec_name = inputs['stored-ion']['name']
 
-        n_S_atoms[self.elyte_obj.species_index('TFSI-(e)')] = 0
+        # Determine the electrode capacity (Ah/m2)
+        Conc = (self.conversion_obj[init_spec_i].concentrations[0])
 
-        n_S_0 = (eps_el_0*inputs['thickness']*np.dot(n_S_atoms, self.C_k_0)
-              + 8*self.conversion_obj[0].density_mole*self.eps_conversion_init[0]*inputs['thickness']
-              + self.conversion_obj[1].density_mole*self.eps_conversion_init[1]*inputs['thickness'])
+        prod_stoich = \
+            self.conversion_surf_obj[init_spec_i].product_stoich_coeffs()[-1,:]
+        prod_stoich_tpb = \
+            self.conversion_tpb_obj[init_spec_i].product_stoich_coeffs()[-1,:]
+        reac_stoich = \
+            self.conversion_surf_obj[init_spec_i].reactant_stoich_coeffs()[-1,:]
+        reac_stoich_tpb = \
+            self.conversion_tpb_obj[init_spec_i].reactant_stoich_coeffs()[-1,:]
 
-        W_S = (self.conversion_obj[0].molecular_weights/
-                self.conversion_obj[0].n_atoms(
-                self.conversion_obj[0].species_names[0], 'S'))
+        prod_stoich = np.concatenate((prod_stoich, prod_stoich_tpb))
+        reac_stoich = np.concatenate((reac_stoich, reac_stoich_tpb))
+        net_conv_stoich = prod_stoich - reac_stoich
 
-        m_S_el = eps_el_0*inputs['thickness']*W_S*np.dot(n_S_atoms, self.C_k_0)
+        if net_conv_stoich > 0:
+            print("Capacity based on electrode porosity")
+            self.capacity = (Conc*init_n_ch*ct.faraday*eps_el_p
+                                                    * inputs['thickness']/3600)
+        elif net_conv_stoich <= 0:
+            print("Capacity based on initial active material")
 
-        self.capacity = 1675*0.01952351
+            # Get string of conversion element from conversion obj species
+            conv_elem_str = list(self.conversion_obj[init_spec_i].species(
+                                init_spec_name).composition.keys())[0]
 
-        #self.capacity = 1675*self.eps_conversion_init[0]*inputs['thickness']*self.conversion_obj[0].density_mass
+            # To account for any of the conversion element in the electrolyte
+            #   find the number of conversion elements in elyte_obj
+            n_conv_elem_el = np.zeros([len(self.elyte_obj.species_names)])
+            for i, species in enumerate(self.elyte_obj.species_names):
+                n_conv_elem_el[i] = np.float(self.elyte_obj.n_atoms(species,
+                                                                conv_elem_str))
+
+            # Make 0 any electrolyte species that are non-reactive
+            for species in self.elyte_obj.species_names:
+                if self.elyte_obj.species(species).thermo.coeffs[1] == 0:
+                    n_conv_elem_el[self.elyte_obj.species_index(species)] = 0
+
+            # Number of conversion elements in conversion_obj
+            n_conv_elem_init = self.conversion_obj[init_spec_i].species(
+                                    init_spec_name).composition[conv_elem_str]
+
+            # Ratio of kmol_conv_elem in electrolyte to kmol_conv_elem in solid
+            n_conv_ratio = n_conv_elem_el/n_conv_elem_init
+
+            # Calculate m3_elyte/m2_batt across all components
+            #   ASSUMES DENSE COUNTER ELECTRODE CURRENTLY
+            eps_t_el_0 = eps_el_0*inputs['thickness']
+            eps_t_sep_0 = sep_inputs['eps_electrolyte']*sep_inputs['thickness']
+            eps_t_0 = eps_t_el_0 + eps_t_sep_0
+            v_conv_el_0 = eps_t_0*np.dot(n_conv_ratio, self.C_k_0) \
+                                / self.conversion_obj[init_spec_i].density_mole
+
+            eps_solid = self.eps_conversion_init[init_spec_i]
+
+            eps_t_conv_spec = eps_solid*inputs['thickness'] \
+                            + v_conv_el_0
+
+            # Calculate total mass of conversion element
+            MW_conv = self.conversion_obj[init_spec_i].molecular_weights
+            m_conv_0 = eps_t_conv_spec*Conc*MW_conv
+
+            # Calculate capacity based on initial kmol of conversion element
+            cap_conv_elem = (Conc*init_n_ch*ct.faraday*eps_t_conv_spec
+                                                    / 3600)
+
+            # Check if full conversion of initial conversion species will hit
+            #   porosity limitations in the electrode
+            if len(self.conversion_obj) <= 2:
+                end_spec_i = 1 - init_spec_i
+            else:
+                raise ValueError("More than 2 conversion phases detected. "
+                    "Please provide additional information to input file"
+                    " in order for end product capacity check")
+
+            Conc_end = self.conversion_obj[end_spec_i].concentrations[0]
+            n_conv_elem_end = self.conversion_obj[end_spec_i].species(0
+                                                    ).composition[conv_elem_str]
+            ratio_conv_elem = n_conv_elem_init/n_conv_elem_end
+            eps_end = eps_solid*Conc*ratio_conv_elem/Conc_end
+            n_charge_ratio = init_n_ch/ratio_conv_elem
+
+            cap_end_elem = Conc_end*n_charge_ratio*ct.faraday*eps_el_p \
+                         * inputs['thickness']/3600
+
+            # The capacity of the electrode is the limiting capacity between
+            #   the initial solid and the final product volume fraction
+            self.capacity = min(cap_conv_elem, cap_end_elem)
+
+        self.m_conv_0 = m_conv_0
+
+        E_to_conv = 1e3*V_elyte_0/self.m_conv_0
 
         # Number of state variables: electrode potential, double layer
         #   potential, electrolyte composition, oxide volume fraction
@@ -244,7 +324,7 @@ class electrode():
 
     def residual(self, t, SV, SVdot, sep, counter, params):
         """
-        Define the residual for the state of the conversion electrode.
+        Define the residual for the state of the metal air electrode.
 
         This is an array of differential and algebraic governing equations, one
         for each state variable in the anode (anode plus a thin layer of electrolyte + separator).
@@ -632,7 +712,7 @@ class electrode():
 
     def output(self, axs, solution, SV_offset, x_vec, ax_offset):
         """Plot the intercalation fraction vs. time"""
-        cap_plot = np.copy(solution[0,:]/3600/self.m_S_tot_0)
+        cap_plot = np.copy(solution[0,:]/3600/self.m_conv_0)
         for ph in np.arange(self.n_conversion_phases):
             for j in np.arange(self.n_points):
                 eps_product_ptr = (SV_offset + self.SV_offset
