@@ -31,7 +31,6 @@ cell-description:
       mobile-ion:  'Li+(e)' # Species name for Li+ in elyte.
       model: 'dilute-solution'
       diffusion-scaling: 'zhang'
-      D_scale_coeff: 1e-11
       diffusion-coefficients: # Species names must match those in the phase
       #definition, below:
         - species: 'TEGDME(e)'
@@ -63,6 +62,8 @@ cell-description:
           C_k: 8.456e-13 # kmol_k/m^3
     phi_0: 1.014 # Initial electric potential, V
     eps_electrolyte: 0.5 # Electrolyte volume fraction, -
+    flag_lithiated: 0
+    D_scale_coeff: 1e-11
     C_k_atol: 1e-26
   cathode:
     class: 'conversion_electrode'
@@ -94,10 +95,11 @@ cell-description:
       - phase: lithium_sulfide
         value: 563475021696499.4
     stored-ion: # Details on the stored species. Used for capacity calc.
-      phase: "lithium_sulfide"
-      name: Li2S(s)
-      charge: 2 # How many moles of charge per mole of species?
-      n_phase: 1 # What is the index of this phase in the 'conversion-phases' list above (starting with zero)?
+      phase: "sulfur"
+      name: S8(s)
+      element: 'S'
+      charge: 16 # How many moles of charge per mole of species?
+      n_phase: 0 # What is the index of this phase in the 'conversion-phases' list above (starting with zero)?
     mobile-ion:  "Li+(e)" # Species name for Li+ in elyte.
     thickness: 100e-6 # anode thickness, m
     r_host: 6e-6 # Particle radius, m
