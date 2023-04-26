@@ -15,6 +15,8 @@ class separator():
 
         self.elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
 
+        self.C_k_0 = [species['C_k'] for species in inputs['transport']['diffusion-coefficients']]
+
         # State variables: electrolyte potential, electrolyte composition (nsp)
         self.n_vars = 1 + self.elyte_obj.n_species
 
@@ -53,8 +55,7 @@ class separator():
             for i, species in enumerate(self.elyte_obj.species_names):
                 self.n_Li_atoms[i] = self.elyte_obj.n_atoms(species, 'Li')
 
-            self.C_Li_0 = self.C_k_0[self.index_Li] + \
-                                        np.dot(self.n_Li_atoms, self.C_k_0)
+            self.C_Li_0 = np.dot(self.n_Li_atoms, self.C_k_0)
         else:
             print('Warning: No valid diffusion scaling input, using ideal')
             self.scale_diff = transport.scale_diff_ideal
