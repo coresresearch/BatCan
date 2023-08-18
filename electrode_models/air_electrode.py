@@ -52,18 +52,20 @@ class electrode():
         # Store the species index of the Li ion in the Cantera object for the
         # electrolyte phase:
         self.index_Li_elyte = self.elyte_obj.species_index(inputs['mobile-ion'])
+        eps_host = inputs['eps_host']
 
-        # Phase volume fractions
-        eps_host = np.array([inputs['eps_host']])
-        eps_host = eps_host[0]
-
-        if len(eps_host) == 1:
-            self.eps_host = np.repeat(eps_host[0], self.n_points)
-        elif len(eps_host) == self.n_points:
-            self.eps_host = np.asarray(eps_host)
-        else:
-            raise ValueError("Porosity must be either a single scalar, or"
-                " must match the discretization of the air electrode.")
+        try:
+            count = len(eps_host)
+            if count == self.n_points:
+                self.eps_host = np.asarray(eps_host)
+            elif count == 1:
+                self.eps_host = np.repeat(eps_host, self.n_points)
+            else:
+               raise ValueError("Porosity must be either a single scalar, or"
+                " must match the discretization of the air electrode.") 
+        except:
+            float(eps_host)
+            self.eps_host = np.repeat(eps_host, self.n_points)
 
         self.eps_product_init = inputs['eps_product']
         self.eps_elyte_init = 1. - self.eps_host - self.eps_product_init
