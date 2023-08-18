@@ -52,16 +52,20 @@ class electrode():
         # Store the species index of the Li ion in the Cantera object for the
         # electrolyte phase:
         self.index_Li_elyte = self.elyte_obj.species_index(inputs['mobile-ion'])
+        eps_host = inputs['eps_host']
 
-        # Phase volume fractions
-        eps_host = np.array([inputs['eps_host']])
-        if len(eps_host) == 1:
-            self.eps_host = np.repeat(eps_host[0], self.n_points)
-        elif len(eps_host) == self.n_points:
-            self.eps_host = np.asarray(eps_host)
-        else:
-            raise ValueError("Porosity must be either a single scalar, or"
-                " must match the discretization of the air electrode.")
+        try:
+            count = len(eps_host)
+            if count == self.n_points:
+                self.eps_host = np.asarray(eps_host)
+            elif count == 1:
+                self.eps_host = np.repeat(eps_host, self.n_points)
+            else:
+               raise ValueError("Porosity must be either a single scalar, or"
+                " must match the discretization of the air electrode.") 
+        except:
+            float(eps_host)
+            self.eps_host = np.repeat(eps_host, self.n_points)
 
         self.eps_product_init = inputs['eps_product']
         self.eps_elyte_init = 1. - self.eps_host - self.eps_product_init
@@ -93,8 +97,8 @@ class electrode():
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
-        self.elyte_microstructure = self.eps_elyte_init[0]**1.5 #This is used by the
-
+        self.elyte_microstructure = self.eps_elyte_init[0]**1.5 
+        #This is used by the electrode_boundary_flux
         # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
         self.SV_offset = offset
@@ -219,7 +223,7 @@ class electrode():
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j]]
         eps_product = SV_loc[SVptr['eps_product'][j]]
         eps_elyte = 1. - eps_product - self.eps_host[j]
-
+        self.elyte_microstructure = eps_elyte**1.5
         # Read electrolyte fluxes at the separator boundary.  No matter the
         # electrode, the function returns a value where flux to the electrode
         # is considered positive. We multiply by `i_ext_flag` to get the
@@ -412,6 +416,9 @@ class electrode():
             - (N_k_in - N_k_out + sdot_elyte_air
             + sdot_elyte_host * A_surf_ratio)
             * self.dyInv)/eps_elyte
+
+        eps_elyte = 1. - eps_product - self.eps_host[0]
+        self.elyte_microstructure = eps_elyte**1.5
 
         return resid
 

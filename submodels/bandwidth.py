@@ -33,5 +33,4 @@ def calc_bandwidth(SV_0, an, sep, ca, params):
                     uband = abs(i - j)
                 elif i > j and abs(i - j) > lband:
                     lband = abs(i - j)
-
     return lband, uband
