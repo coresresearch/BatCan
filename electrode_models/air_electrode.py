@@ -97,7 +97,8 @@ class electrode():
 
         # Microstructure-based transport scaling factor, based on Bruggeman
         # coefficient of -0.5:
-        self.elyte_microstructure = self.eps_elyte_init[0]**1.5 #This is used by the electrode_boundary_flux
+        self.elyte_microstructure = self.eps_elyte_init[0]**1.5 
+        #This is used by the electrode_boundary_flux
         # SV_offset specifies the index of the first SV variable for the
         # electode (zero for anode, n_vars_anode + n_vars_sep for the cathode)
         self.SV_offset = offset
