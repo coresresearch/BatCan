@@ -166,7 +166,7 @@ class electrode():
         SV[self.SVptr['phi_ed']] = inputs['phi_0'] # V
         SV[self.SVptr['phi_dl']] = sep_inputs['phi_0'] - inputs['phi_0'] #V
         SV[self.SVptr['eps_product']] = self.eps_product_init #Volume Fraction
-        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations # kmol/m3
+        SV[self.SVptr['C_k_elyte']] = self.elyte_obj.concentrations # kmol/m3 elyte
 
         return SV
 
