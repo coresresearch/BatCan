@@ -8,6 +8,7 @@
 import cantera as ct
 import numpy as np
 from submodels.transport import radial_flux
+import warnings
 
 class electrode(): 
     """
@@ -33,8 +34,10 @@ class electrode():
         self.name = electrode_name
         if self.name=='anode':
             self.i_ext_flag = -1
+            self.nodes = list(range(self.n_points-1,-1,-1))
         elif self.name=='cathode':
             self.i_ext_flag = 1
+            self.nodes = list(range(self.n_points))
         else:
             raise ValueError("Electrode must be an anode or a cathode.")
 
@@ -66,11 +69,12 @@ class electrode():
         # array of radial indices:
         ind_r = np.arange(self.n_r+1)
 
-        # If radial method not specified, assume 'equal_r':
-        if not inputs['radial-method']:
-            inputs['radial-method'] = 'equal_r'
-
-        if inputs['radial-method'] == 'equal_r':
+        # Determine the radial discretization method:
+        #   If only one shell, no method needed:
+        if self.n_r == 1:
+            pass
+        
+        elif inputs['radial-method'] == 'equal_r':
             # If the radius is discretized evenly, the radius of shell j, 
             #   r_j, relative to the total radius r_particle, is:
             #   r_j = r_particle * j / n_r
@@ -80,12 +84,16 @@ class electrode():
             # Radius r_j**3 = (j/n_r)*r_particle**3
             self.r_int *= (ind_r / self.n_r)**(1./3.)
 
-        elif self.n_r == 1:
-            pass
-
+        # If n_r > 1 and no method specified, throw an error.
+        #  Note: Should just assume 'equal
         else:
-            raise ValueError("Please choose an available radial discretization method: 'radial-method' = equal_r or equal_v.")
-
+            warnings.warn("Warning: no radial discreticzation method was ", 
+                          "specified, or a non-existent method was specified. Assuming 'equal_r method by default.")
+            inputs['radial-method'] = 'equal_r'
+            # If the radius is discretized evenly, the radius of shell j, 
+            #   r_j, relative to the total radius r_particle, is:
+            #   r_j = r_particle * j / n_r
+            self.r_int *= ind_r/ self.n_r
 
         # Diffusion fluxes are scaled by 3/(r_i^3 - r_(i-1)^3):
         self.diff_vol_mult = (3 * np.ones(self.n_r)
@@ -264,6 +272,8 @@ class electrode():
         SVdot_loc = SVdot[SVptr['electrode']]
 
         # Read the electrode and electrolyte electric potential:
+        #   - Subscript '0' is current node
+        #   - Subscript '1' is next node 
         phi_ed = SV_loc[SVptr['phi_ed']]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
 
