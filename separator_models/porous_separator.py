@@ -29,7 +29,7 @@ class separator():
 
         self.D_scale_coeff = inputs['transport']['D_scale_coeff']
 
-        self.index_Li = \
+        self.index_Li_elyte = \
             self.elyte_obj.species_index(inputs['transport']['mobile-ion'])
 
         # Process transport inputs:
@@ -53,7 +53,7 @@ class separator():
             for i, species in enumerate(self.elyte_obj.species_names):
                 self.n_Li_atoms[i] = self.elyte_obj.n_atoms(species, 'Li')
 
-            self.C_Li_0 = self.C_k_0[self.index_Li] + \
+            self.C_Li_0 = self.C_k_0[self.index_Li_elyte] + \
                                         np.dot(self.n_Li_atoms, self.C_k_0)
         else:
             print('Warning: No valid diffusion scaling input, using ideal')
@@ -223,7 +223,7 @@ class separator():
 
         return N_k_elyte, i_io
 
-    def elyte_flux(self, SV, j, T):
+    def elyte_flux(self, SV, j, T, ed):
         """
         Calculate the species fluxes and ionic current between two adjacent nodes in the separator.
 
@@ -247,9 +247,9 @@ class separator():
         C_k_2 = SV[self.SVptr['C_k_elyte'][j+1]]
 
         # Create dictionaries to pass to the transport function:
-        state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':self.dy,
+        state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':ed.dy,
             'microstructure':self.elyte_microstructure}
-        state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':self.dy,
+        state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':ed.dy,
             'microstructure':self.elyte_microstructure}
 
         N_k_elyte, i_io = self.elyte_transport(state_1, state_2, self)
@@ -281,7 +281,7 @@ class separator():
             np.add(self.SV_offset+self.SVptr['C_k_elyte'],SV_offset)
         for j in np.arange(self.n_points):
             axs[ax_offset+1].plot(solution[0,:]/3600,
-                solution[Ck_elyte_sep_ptr[j, self.index_Li],:],
+                solution[Ck_elyte_sep_ptr[j, self.index_Li_elyte],:],
                 label="separator "+str(j+1))
 
         for j in range(int(ca.n_points)):

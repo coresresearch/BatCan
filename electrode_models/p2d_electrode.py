@@ -29,18 +29,6 @@ class electrode():
         self.surf_obj = ct.Interface(input_file, inputs['surf-phase'], 
             [self.bulk_obj, self.elyte_obj, self.conductor_obj])
 
-        # Anode or cathode? Positive external current delivers positive charge 
-        # to the anode, and removes positive charge from the cathode.
-        self.name = electrode_name
-        if self.name=='anode':
-            self.i_ext_flag = -1
-            self.nodes = list(range(self.n_points-1,-1,-1))
-        elif self.name=='cathode':
-            self.i_ext_flag = 1
-            self.nodes = list(range(self.n_points))
-        else:
-            raise ValueError("Electrode must be an anode or a cathode.")
-
         # Store the species index of intercalated Li in the Cantera object 
         # for the bulk electrode phase:
         self.index_Li_ed = \
@@ -55,6 +43,9 @@ class electrode():
         self.n_points = inputs['n_points']
         self.dy = self.dy_ed / self.n_points
         self.dyInv = 1/self.dy
+
+        # Electronid conductivity of electrode (S/m)
+        self.sigma_el =inputs['sigma_el']
 
         # Radial discretization:
         self.n_r = inputs['n_radii']   # Number of discretized radial "shells"
@@ -154,6 +145,18 @@ class electrode():
 
         # Return Cantera object composition to original value:
         self.bulk_obj.X = X_o
+
+        # Anode or cathode? Positive external current delivers positive charge 
+        # to the anode, and removes positive charge from the cathode.
+        self.name = electrode_name
+        if self.name=='anode':
+            self.i_ext_flag = -1
+            self.nodes = list(range(self.n_points-1,-1,-1))
+        elif self.name=='cathode':
+            self.i_ext_flag = 1
+            self.nodes = list(range(self.n_points))
+        else:
+            raise ValueError("Electrode must be an anode or a cathode.")
         
         # Number of state variables: 
         #   1 - electrode potential, 
@@ -206,15 +209,15 @@ class electrode():
 
         self.SVnames = (['phi_ed', 'phi_dl'] 
             + self.n_r*self.bulk_obj.species_names[:] 
-            + self.elyte_obj.species_names[:])
+            + self.elyte_obj.species_names[:]) * self.n_points
+        
 
         # A pointer to where the SV variables for this electrode are, within 
         # the overall solution vector for the entire problem:
         self.SVptr['electrode'] = np.arange(offset, offset+self.n_vars)
-
+        
         # Save the indices of any algebraic variables:
         self.algvars = offset + self.SVptr['phi_ed'][:]
-        print(self.SVptr)
 
     def initialize(self, inputs, sep_inputs):
 
@@ -271,90 +274,195 @@ class electrode():
         SV_loc = SV[SVptr['electrode']]
         SVdot_loc = SVdot[SVptr['electrode']]
 
+        # Start at the separator boundary:
+        j = self.nodes[0]
+
         # Read the electrode and electrolyte electric potential:
-        #   - Subscript '0' is current node
-        #   - Subscript '1' is next node 
-        phi_ed = SV_loc[SVptr['phi_ed']]
-        phi_elyte = phi_ed + SV_loc[SVptr['phi_dl']]
+        phi_ed = SV_loc[SVptr['phi_ed'][j]]
+        phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
 
         # Read out electrode bulk composition; set the Cantra object:
-        C_k_ed = SV_loc[SVptr['C_k_ed']] # Molar density (kmol/m3 of phase)
-        # Mole fraction at particle/elyte interface:
-        X_k_ed_int = C_k_ed[-1,:]/sum(C_k_ed[-1, :]) 
-        self.bulk_obj.X = X_k_ed_int
+        c_k_ed = SV_loc[SVptr['C_k_ed'][j,:,:]] # (kmol/m3 of phase)
 
-        # Set electric potentials for Cantera objects:
-        self.bulk_obj.electric_potential = phi_ed
-        self.conductor_obj.electric_potential = phi_ed
-        self.elyte_obj.electric_potential = phi_elyte
-
-        #TODO #38
+        c_k_elyte = SV_loc[SVptr['C_k_elyte'][j,:]] # (kmol/m3 of phase)
         
+        # Read electrolyte fluxes at the separator boundary.  No matter the
+        # electrode, the function returns a value where flux to the electrode
+        # is considered positive. We multiply by `i_ext_flag` to get the
+        # correct sign.
+        N_k_in, i_io_in = (self.i_ext_flag*X for X in
+            sep.electrode_boundary_flux(SV, self, params['T']))
+        
+        # No electronic current at the separator boundary:
+        i_el_in = 0
+
+        # Loop through  the finite volumes:
+        for j_next in self.nodes[1:]:
+            # Set Cantera object properties
+            self.bulk_obj.electric_potential = phi_ed
+            self.conductor_obj.electric_potential = phi_ed
+            self.bulk_obj.X = c_k_ed[-1,:]/sum(c_k_ed[-1, :]) 
+            self.elyte_obj.electric_potential = phi_elyte
+            try:
+                self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+            except:
+                X_elyte = params['species-default']
+                self.elyte_obj.X = X_elyte
+            
+            # Read out state variables for 'next' node toward current collector:
+            phi_ed_next = SV_loc[SVptr['phi_ed'][j_next]]
+            phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j_next]]
+            c_k_elyte_next = SV_loc[SVptr['C_k_elyte'][j_next]]
+
+            # Load the node properties into dict structures
+            # (1 = local, 2 = next node)
+            state_1 = {'C_k': c_k_elyte, 'phi':phi_elyte,
+                'T': params['T'], 'dy':self.dy, 
+                'microstructure':self.elyte_microstructure}
+            state_2 = {'C_k': c_k_elyte_next, 'phi':phi_elyte_next,
+                'T': params['T'], 'dy':self.dy,
+                'microstructure':self.elyte_microstructure}
+
+            # Calculate fluxes and currents out of this node, into the next
+            # node toward the current collector:
+            N_k_out, i_io_out = sep.elyte_transport(state_1, state_2, self)
+            i_el_out = (self.sigma_el*(phi_ed - phi_ed_next)*self.dyInv)
+
+            # Total current (ionic plus electronic) must be spatially invariant.
+            resid[SVptr['phi_ed'][j]] = i_io_in - i_io_out + i_el_in - i_el_out
+
+            # Faradaic current density is positive when electrons are consumed 
+            # (Li transferred to the electrode)
+            i_Far = -(ct.faraday 
+                * self.surf_obj.get_net_production_rates(self.conductor_obj))
+
+            # Double layer current has the same sign as i_Far, and is based on 
+            # charge balance in the electrolyte phase:
+            i_dl = (self.i_ext_flag*(i_io_in - i_io_out)/self.A_surf_ratio 
+                    - i_Far)
+            resid[SVptr['phi_dl'][j]] = (SVdot_loc[SVptr['phi_dl'][j]] -
+                    i_dl*self.C_dl_Inv)
+            
+            # species production in electrode active material:
+            sdot_k_ed = self.surf_obj.get_net_production_rates(self.bulk_obj)
+
+            # Calculate radial fluxes (found in submodules/transport.py)
+            N_r = radial_flux(c_k_ed, sdot_k_ed, self)
+
+            """Calculate the change in X_Li in the particle interior"""
+            # Flux in minus flux out, weighted by interfacial surface area (r^2)
+            flux_diff = (N_r[:-1].T*self.r_int[:-1]**2 
+                         - N_r[1:].T*self.r_int[1:]**2)
+            
+            # Divide by the differential volume of the "shell" 
+            #   i.e. multiply by 3/(r_i^3 - r_(i-1)^3):
+            dCk_ed_dt = flux_diff * self.diff_vol_mult
+
+            # Calculate residuals:
+            for r in np.arange(self.n_r):
+                resid[SVptr['C_k_ed'][j,r,:]] = \
+                    SVdot_loc[SVptr['C_k_ed'][j,r,:]] - dCk_ed_dt.T[r,:]
+
+            # Molar production rate of electrode species (kmol/m2/s).
+            sdot_elyte = self.surf_obj.get_net_production_rates(self.elyte_obj)
+            
+            # Double layer current removes Li from the electrolyte.  Subtract 
+            # this from sdot_electrolyte:
+            sdot_elyte[self.index_Li_elyte] -= i_dl / ct.faraday
+
+            # Change in electrolyte species concentration per unit time:
+            resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] 
+                        - (N_k_in - N_k_out + sdot_elyte * self.A_surf_ratio)
+                        * self.dyInv)/self.eps_elyte
+
+            # Re-set "next" node state variables to be the new "current" node
+            # state variables:
+            phi_ed = phi_ed_next
+            phi_elyte = phi_elyte_next
+            c_k_elyte = c_k_elyte_next
+            c_k_ed = SV_loc[SVptr['C_k_ed'][j_next,:,:]]
+
+            # Similarly, all fluxes out become fluxes in, when we move to the
+            # next node:
+            N_k_in = N_k_out
+            i_io_in = i_io_out
+            i_el_in = i_el_out
+            j = j_next
+        
+        """ The final node is at the current collector boundary: """
+        # No ionic current or electrolyte flux to the air:
+        i_io_out = 0
+        N_k_out = np.zeros_like(N_k_in)
+
+        # Set Cantera object properties:
+        self.bulk_obj.electric_potential = phi_ed
+        self.elyte_obj.electric_potential = phi_elyte
+        try:
+            self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+        except:
+            if 'species-default' in params:
+                self.elyte_obj.X = params['species-default']
+            else:
+                pass
+
+                
+        # Electric potential boundary condition:
+        if self.name=='anode':
+            # The electric potential of the anode = 0 V.
+            resid[[SVptr['phi_ed'][j]]] = phi_ed
+
+        elif self.name=='cathode':
+            if params['boundary'] == 'current':
+                # Total current (i_io + i_el) into the node equals i_ext:
+                i_el_out = params['i_ext']
+                resid[SVptr['phi_ed'][j]] =  i_io_in + i_el_in - i_el_out
+            elif params['boundary'] == 'potential':
+                # Electrode potential = cell potential:
+                resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']]
+                    - params['potential'])
+
         # Faradaic current density is positive when electrons are consumed 
         # (Li transferred to the electrode)
         i_Far = -(ct.faraday 
-            * self.surf_obj.get_net_production_rates(self.conductor_obj))
-        
-        # Calculate the electrolyte species fluxes and associated ionic current 
-        # at the boundary with the separator:
-        N_k_sep, i_io = sep.electrode_boundary_flux(SV, self, params['T'])
-
-        if self.name=='anode':
-            # The electric potential of the anode = 0 V.
-            resid[[SVptr['phi_ed'][0]]] = SV_loc[SVptr['phi_ed'][0]]
-            
-        elif self.name=='cathode':
-            # For the cathode, the potential of the cathode must be such that 
-            # the electrolyte electric potential (calculated as phi_ca + 
-            # dphi_dl) produces the correct ionic current between the separator # and cathode:
-            if params['boundary'] == 'current':
-                resid[SVptr['phi_ed']] = i_io - params['i_ext']
-            elif params['boundary'] == 'potential':   
-                # Potential at time t:
-                phi = np.interp(t, params['times'], params['potentials'])
-                   
-                # Cell potential must equal phi:
-                resid[SVptr['phi_ed']] = SV_loc[SVptr['phi_ed']] - phi
+                  * self.surf_obj.get_net_production_rates(self.conductor_obj))
 
         # Double layer current has the same sign as i_Far, and is based on 
         # charge balance in the electrolyte phase:
-        i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
-
-        # Differential equation for the double layer potential:
-        resid[SVptr['phi_dl']] = \
-            SVdot_loc[SVptr['phi_dl']] - i_dl*self.C_dl_Inv
-
+        i_dl = (self.i_ext_flag*(i_io_in - i_io_out)/self.A_surf_ratio - i_Far)
+        resid[SVptr['phi_dl'][j]] = (SVdot_loc[SVptr['phi_dl'][j]] 
+                                     - i_dl*self.C_dl_Inv)
+        
         # species production in electrode active material:
         sdot_k_ed = self.surf_obj.get_net_production_rates(self.bulk_obj)
 
         # Calculate radial fluxes (found in submodules/transport.py)
-        N_r = radial_flux(C_k_ed, sdot_k_ed, self)
+        N_r = radial_flux(c_k_ed, sdot_k_ed, self)
 
         """Calculate the change in X_Li in the particle interior"""
         # Flux in minus flux out, weighted by interfacial surface area (r^2)
-        flux_diff = N_r[:-1].T*self.r_int[:-1]**2 - N_r[1:].T*self.r_int[1:]**2
+        flux_diff = (N_r[:-1].T*self.r_int[:-1]**2 
+                     - N_r[1:].T*self.r_int[1:]**2)
         
         # Divide by the differential volume of the "shell" 
         #   i.e. multiply by 3/(r_i^3 - r_(i-1)^3):
         dCk_ed_dt = flux_diff * self.diff_vol_mult
 
         # Calculate residuals:
-        for j in np.arange(self.n_r):
-            resid[SVptr['C_k_ed'][j,:]] = (SVdot_loc[SVptr['C_k_ed'][j,:]] 
-                - dCk_ed_dt.T[j,:])
+        for r in np.arange(self.n_r):
+            resid[SVptr['C_k_ed'][j,r,:]] = (SVdot_loc[SVptr['C_k_ed'][j,r,:]] 
+                                             - dCk_ed_dt.T[r,:])
 
         # Molar production rate of electrode species (kmol/m2/s).
         sdot_elyte = self.surf_obj.get_net_production_rates(self.elyte_obj)
         
-        # Double layer current removes Li from the electrolyte.  Subtract this 
-        # from sdot_electrolyte:
+        # Double layer current removes Li from the electrolyte.  Subtract 
+        # this from sdot_electrolyte:
         sdot_elyte[self.index_Li_elyte] -= i_dl / ct.faraday
-            
+
         # Change in electrolyte species concentration per unit time:
-        dCk_elyte_dt = \
-            ((sdot_elyte * self.A_surf_ratio + self.i_ext_flag * N_k_sep)
-            * self.dyInv / self.eps_elyte)
-        resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
+        resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] 
+                    - (N_k_in - N_k_out + sdot_elyte * self.A_surf_ratio)
+                    * self.dyInv)/self.eps_elyte
 
         return resid
         
@@ -368,7 +476,7 @@ class electrode():
         
         # Calculate the current voltage, relative to the limit.  The simulation 
         # looks for instances where this value changes sign (i.e. crosses zero)    
-        voltage_eval = SV_loc[SVptr['phi_ed']] - val
+        voltage_eval = SV_loc[SVptr['phi_ed'][0]] - val
         
         return voltage_eval
 
@@ -409,11 +517,12 @@ class electrode():
     def output(self, axs, solution, SV_offset, ax_offset):
         
         """Plot the intercalation fraction vs. time"""
-        for j in np.arange(self.n_r):
-            C_k_ed = \
-                solution[SV_offset+self.SV_offset + self.SVptr['C_k_ed'][j,:],:]
-            X_k_ed = C_k_ed[self.index_Li_ed]/np.sum(C_k_ed,axis=0)
-            axs[ax_offset].plot(solution[0,:]/3600, X_k_ed)
+        for i in np.arange(self.n_points):
+            for j in np.arange(self.n_r):
+                C_k_ptr = SV_offset+self.SV_offset + self.SVptr['C_k_ed'][i,j,:]
+                C_k_ed = solution[C_k_ptr, :]
+                X_k_ed = C_k_ed[self.index_Li_ed]/np.sum(C_k_ed,axis=0)
+                axs[ax_offset].plot(solution[0,:]/3600, X_k_ed)
 
         axs[ax_offset].set_ylabel(self.name+' Li \n(kmol/m$^3$)')
         axs[ax_offset].set(xlabel='Time (h)')

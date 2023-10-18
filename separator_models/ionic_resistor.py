@@ -122,6 +122,31 @@ class separator():
                 + ed.dy/ed.elyte_microstructure)
 
         return dy_elyte_eff, phi_elyte_ed
+    
+    def elyte_transport(self, s1, s2, ed):
+        """
+        Calculate the species fluxes and ionic current between two adjacent nodes in the separator.
+
+        This will eventually serve mainly as a pass-thru to an aliased transport function.
+
+        Inputs:
+        - SV: separator-relevant portion of the solution vector
+        - sep: separator object
+        - j: index for relevant location of the separator
+        - T: local temperature
+        """
+        N_k_elyte = np.zeros_like(s1['C_k'])
+
+        dy_eff = 0.5*(s1['dy']/s1['microstructure']
+                + s2['dy']/s2['microstructure'])
+        
+        i_io = (s1['phi'] -s2['phi'])*self.sigma_io/dy_eff
+
+        N_k_elyte[ed.index_Li_elyte] = i_io/ct.faraday
+
+        # N_k_elyte, i_io = self.elyte_transport(state_1, state_2, self)
+
+        return N_k_elyte, i_io
 
     def output(self, axs, solution, an, ca, SV_offset, ax_offset):
         

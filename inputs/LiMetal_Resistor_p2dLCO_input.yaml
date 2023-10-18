@@ -40,7 +40,7 @@ cell-description:
       charge: 1
     mobile-ion:  'Li+[elyt]' # Li+ elyte species name in Cantera inputs below.
     thickness: 50e-6 # anode thickness, m
-    n_points: 3
+    n_points: 4
     r_p: 6e-6 # Particle radius, m
     n_radii: 3
     radial-method: 'equal_r'
@@ -50,9 +50,10 @@ cell-description:
           D_k:  7.5e-15
         - species: 'V[cathode]' 
           D_k:  7.5e-15
-    phi_0: 4.125 # Initial electric potential, V
+    sigma_el: 1.0 #S/m
+    phi_0: 4.25 # Initial electric potential, V
     eps_solid: 0.65 # Solid phase volume fraction, -
-    X_0: 'Li[cathode]:0.001, V[cathode]:0.999' # Initial active material mole fractions string.
+    X_0: 'Li[cathode]:0.01, V[cathode]:0.99' # Initial active material mole fractions string.
     C_dl: 6e-3 #F/m2
 
 # Simulation parameters:
@@ -67,14 +68,14 @@ parameters:
     - type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.00001 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-      C-rate: 0.1 # input C-rate
-      n_cycles: 2 # Number of cycles. Currently must be 0.5 or an int.
+      C-rate: 0.000000001 # input C-rate
+      n_cycles: 0.25 # Number of cycles. Currently must be 0.5 or an int.
       equilibrate: 
         enable: True # Begin with a hold at i_ext = 0? This is a boolean.
-        time: 100 # If true, how long is the hold, s
+        time: 3600 # If true, how long is the hold, s
       first-step: 'discharge'  # Start with charge or discharge?
       phi-cutoff-lower: 3.75 # Simulation cuts off if E_Cell <= this value
-      phi-cutoff-upper: 4.25 # Simulation cuts off if E_Cell >= this value
+      phi-cutoff-upper: 5.5 # Simulation cuts off if E_Cell >= this value
       species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m^3
       species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
       outputs:
