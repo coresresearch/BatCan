@@ -67,7 +67,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # Set up the differential algebraic equation (dae) solver:
     options =  {'user_data':(an, sep, ca, params), 'rtol':1e-4, 'atol':1e-6,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-12,
-            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0', 'max_steps':10000, 'compute_initcond_t0':1.e-6,
+            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0', 'max_steps':10000, 
             'linsolver':'band', 'lband':lband, 'uband':uband}
 
     solver = dae('ida', residual, **options)
@@ -81,7 +81,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         print('    Current = ', round(currents[i],3),'A/m^2 \n')
 
         t_out = np.linspace(0, times[i], 10000)
-
+        
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
         solver.init_step(0.0, SV_0, SVdot_0)

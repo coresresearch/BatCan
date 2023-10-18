@@ -55,7 +55,7 @@ cell-description:
     #   equal_r: equal differential radius for each discretized volume
     #   equal_v: equal differential volume for each discretized volume
     radial-method: 'equal_r' 
-    n_radii: 3  # Number of discretized radial volumes
+    n_radii: 1  # Number of discretized radial volumes
     diffusion-coefficients: # Species names must match those in the phase 
       #definition, below:
         - species: 'Li[cathode]'
@@ -77,10 +77,10 @@ parameters:
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.00001 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: 1.2 # input C-rate
-      n_cycles: 3.1 # Number of cycles. Currently must be 0.5 or an int.
+      n_cycles: 1.0 # Number of cycles. Currently must be 0.5 or an int.
       equilibrate: 
         enable: True # Start with a hold at open circuit?
-        time: 3600 # If above is 'True,' length of hold, s
+        time: 1 # If above is 'True,' length of hold, s
       outputs:
         show-plots: True # Show the plots and save them (True), or just save
                          # them (False)?
