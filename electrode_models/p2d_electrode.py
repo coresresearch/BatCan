@@ -13,6 +13,9 @@ import warnings
 class electrode(): 
     """
     Create an electrode object representing the single particle electrode.
+    Read in an load relevant parameters to the object.
+    Create relevant Cantera objects to represent all phases of matter for the
+        electrode and electrolyte, and all interfaces between them.
     """
 
     def __init__(self, input_file, inputs, sep_inputs, counter_inputs,    
