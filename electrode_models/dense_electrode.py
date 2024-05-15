@@ -291,6 +291,6 @@ class electrode():
 
         axs[ax_offset].plot(solution[0,:]/3600, 
             1e6*solution[SV_offset+int(self.SVptr['thickness'])])
-        axs[ax_offset].set_ylabel(self.name+' Thickness \n($\mu$m)')
+        axs[ax_offset].set_ylabel(self.name+' thickness \n($\mu$m)')
 
         return axs

@@ -1,0 +1,304 @@
+#===============================================================================
+#  input_template.yaml
+#
+#  User inputs for bat-can model creation and running.
+#===============================================================================
+
+cell-description:
+  anode:
+    class: 'dense_electrode'
+    bulk-phase: 'lithium_metal' # Cantera phase name
+    surf-phase: 'lithium_electrolyte' # Cantera phase name
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    conductor-phase: 'electron' # Cantera phase name
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li[metal]
+      charge: 1
+    mobile-ion:  'Li+[elyt]' # Species name for Li+ in elyte.
+    thickness: 15e-6 # anode thickness, m
+    minimum-thickness: 1e-9 # minimum anode thickness.
+    phi_0: 0. # Initial electric potential, V
+    A_surf_ratio: 1.0 # Interface area per unit geometric area
+    C_dl: 6e-3 #F/m2
+    dy_elyte: 2e-6
+  separator:
+    class: 'ionic_resistor'
+    thickness: 20e-6 # separator thickness, m
+    electrolyte-phase: 'electrolyte' # Cantera phase name
+    sigma_io: 1.3 # S/m DOI:10.1149/2.0571912jes for 1M LiPF6 in EC:EMC (3:7 w:w) at 50 deg C
+    phi_0: 2.5 # Initial electric potential, V
+    eps_electrolyte: 0.65 # Electrolyte volume fraction, -
+  cathode:
+    class: 'p2d_electrode'
+    # Specify the phase names in the Cantera inputs, below:
+    bulk-phase: 'cathode' # Cantera phase name for active material
+    surf-phase: 'cathode_electrolyte' # Cantera phase name for interface between active material and electrolyte.
+    electrolyte-phase: 'electrolyte' # Cantera phase name for electrolyte phase.
+    conductor-phase: 'electron' # Cantera phase name for conductor phase.
+    stored-ion: # Details on the stored species. Used for capacity calc.
+      name: Li[cathode] # Species name in Cantera inputs, below.
+      charge: 1
+    mobile-ion:  'Li+[elyt]' # Li+ elyte species name in Cantera inputs below.
+    thickness: 100e-6 # anode thickness, m
+    n_points: 10
+    r_p: 0.4e-6 # Particle radius, m
+    n_radii: 4
+    radial-method: 'equal_r'
+    diffusion-coefficients: # Species names must match those in the phase 
+      #definition, below:
+        - species: 'Li[cathode]'
+          D_k:  4.23e-17
+        - species: 'V[cathode]' 
+          D_k:  4.23e-17
+    sigma_el: 2.2e-5 #S/m
+    phi_0: 3.4 # Initial electric potential, V
+    eps_solid: 0.65 # Solid phase volume fraction, -
+    X_0: 'Li[cathode]:0.01, V[cathode]:0.99' # Initial active material mole fractions string.
+    C_dl: 9e-3 #F/m2
+
+# Simulation parameters:
+parameters:
+  T: 60 C
+  P: 101325 Pa
+  # Describe what to do with the results:
+  outputs:
+    show-plots: True # Do you want the plots shown and saved, or just saved?
+  # Describe simulation type, parameters, etc.
+  simulations:
+    - type: 'CC_cycle' # Constant current cycling
+      # Specify only one of i_ext or C-rate. The other should be null:
+      i_ext: null #0.00001 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+      C-rate: 0.001 # input C-rate
+      n_cycles: 2 # Number of cycles. Currently must be 0.5 or an int.
+      equilibrate: 
+        enable: True # Begin with a hold at i_ext = 0? This is a boolean.
+        time: 3600 # If true, how long is the hold, s
+      first-step: 'discharge'  # Start with charge or discharge?
+      phi-cutoff-lower: 2.75 # Simulation cuts off if E_Cell <= this value
+      phi-cutoff-upper: 4.5 # Simulation cuts off if E_Cell >= this value
+      species-cutoff: 1e-12 # Simulation cuts off if C_k <= this value, kmol/m^3
+      species-default: {'C10H22O5[elyt]': 0.9007, 'Li+[elyt]': 1.E-12, 'ClO4-[elyt]': 0.049610, 'O2(e)': 1.E-12} # Replacement mole fractions if elyte composition goes to NaN.
+      outputs:
+        show-plots: True # Show the plots and save them (True), or just save
+                          # them (False)?
+        save-name: 'BatCan_default' # Folder label for output files.
+
+# Cantera inputs:
+description: |-
+  Cantera input file for an LCO/graphite lithium-ion battery
+
+  This file includes a full set of thermodynamic and kinetic parameters of a
+  lithium-ion battery, in particular:
+  - Active materials: LiCoO2 (LCO) and Li (li metal)
+  - Organic electrolyte: EC/PC with 1M LiPF6
+  - Interfaces: LCO/electrolyte and Li/electrolyte
+  - Charge-transfer reactions at the two interfaces
+
+  Reference:
+  M. Mayur, S. C. DeCaluwe, B. L. Kee, W. G. Bessler, “Modeling and simulation
+  of the thermodynamics of lithium-ion battery intercalation materials in the
+  open-source software Cantera,” Electrochim. Acta 323, 134797 (2019),
+  https://doi.org/10.1016/j.electacta.2019.134797
+
+  Bulk phases
+  ===========
+
+  Lithium (anode)
+
+  Lithium cobalt oxide (cathode)
+  Thermodynamic data based on half-cell measurements by K. Kumaresan et al.,
+  J. Electrochem. Soc. 155, A164-A171 (2008)
+
+  Carbonate based electrolyte (electrolyte)
+  Solvent: Ethylene carbonate:Propylene carbonate (1:1 v/v)
+  Salt: 1M LiPF6
+
+  Interface phases
+  ================
+
+  lithium/electrolyte interface (lithium_electrolyte)
+  Species and site density are dummy entries (as we do not consider surface-
+  adsorbed species)
+
+  LCO/electrolyte interface (cathode_electrolyte)
+  Species and site density are dummy entries (as we do not consider surface-
+  adsorbed species)
+
+generator: cti2yaml
+cantera-version: 2.5.0
+date: Wed, 11 Dec 2019 16:59:07 -0500
+input-files: [lithium_ion_battery.cti]
+
+phases:
+
+- name: lithium_metal
+  thermo: ideal-condensed
+  species: ['Li[metal]']
+  density: 0.534 g/cm^3
+  state:
+    T: 300.0
+    P: 1 atm
+- name: cathode
+  thermo: ideal-condensed
+  elements: [Li, Fe, P, O]
+  species: ['Li[cathode]', 'V[cathode]']
+  standard-concentration-basis: unity
+  state:
+    T: 300.0 K
+    P: 1 atm
+    X: {'Li[cathode]': 0.5, 'V[cathode]': 0.5}
+- name: electrolyte
+  thermo: ideal-condensed
+  elements: [Li, P, F, C, H, O, E]
+  species: ['C3H4O3[elyt]', 'C4H6O3[elyt]', 'Li+[elyt]', 'PF6-[elyt]']
+  state:
+    X: {'C3H4O3[elyt]': 0.47901, 'C4H6O3[elyt]': 0.37563, 'Li+[elyt]': 0.07268,
+      'PF6-[elyt]': 0.07268}
+  standard-concentration-basis: unity
+- name: electron
+  thermo: electron-cloud
+  elements: [E]
+  species: [electron]
+  state:
+    X: {electron: 1.0}
+  density: 1.0 kg/m^3
+- name: lithium_electrolyte
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [lithium_electrolyte-reactions]
+  site-density: 0.01 mol/cm^2
+- name: cathode_electrolyte
+  thermo: ideal-surface
+  species: [(dummy)]
+  kinetics: surface
+  reactions: [cathode_electrolyte-reactions]
+  site-density: 0.01 mol/cm^2
+
+species:
+- name: Li[metal]
+  composition: {Li: 1}
+  thermo:
+    model: constant-cp
+    h0: 19.50 kJ/mol
+    s0: 29.1 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 12.998 cm^3/mol
+- name: Li[cathode]
+  composition: {Li: 1, Fe: 1, P: 1, O: 4}
+  thermo:
+    model: constant-cp
+    h0: -326.65 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 45.33 cm^3/mol
+  note: |-
+    Lithium Iron oxide, MW: 157.757 g/mol.
+    Note this species includes the iron phosphate host matrix.
+    Density of LFP: 3.48 g/cm3 https://cdn.intechopen.com/pdfs/18671/InTech-Lifepo4_cathode_material.pdf (used to calculate species molar volume as molecular weight/density).
+- name: V[cathode]
+  composition: {Fe: 1, P: 1, O: 4}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 45.33 cm^3/mol
+  note: |-
+    Vacancy in the LFP, MW: 90.9320 g/mol.
+    Molar enthalpy and entropy are set to 0 because this is the reference species for this phase.
+    Molar volume assumed constant: no expansion or contraction, upon lithiation/delithiation.
+
+- name: C3H4O3[elyt]
+  composition: {C: 3, H: 4, O: 3}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 69.89126984126985 cm^3/mol
+  note: |-
+    Ethylene carbonate, MW: 88.0630 g/mol
+    Density of electrolyte: 1260 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+- name: C4H6O3[elyt]
+  composition: {C: 4, H: 6, O: 3}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 81.02365079365079 cm^3/mol
+  note: |-
+    Propylene carbonate, MW: 102.0898 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+- name: Li+[elyt]
+  composition: {Li: 1, E: -1}
+  thermo:
+    model: constant-cp
+    h0: -278.49 kJ/mol
+    s0: 13.4 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 5.508297619047619 cm^3/mol
+  note: |-
+    Lithium ion, MW: 6.940455 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy taken from Li+(aq) from P. Atkins "Physical
+    Chemistry", Wiley-VCH (2006)
+- name: PF6-[elyt]
+  composition: {P: 1, F: 6, E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 J/mol
+    s0: 0.0 J/mol/K
+  equation-of-state:
+    model: constant-volume
+    molar-volume: 115.05138492063492 cm^3/mol
+  note: |-
+    Hexafluorophosphate ion, MW: 144.964745 g/mol
+    Density of electrolyte: 1260.0 kg/m3 (used to calculate species molar volume
+    as molecular weight (MW)/density)
+    Molar enthalpy and entropy set to zero (dummy entries as this species does
+    not participate in chemical reactions)
+- name: electron
+  composition: {E: 1}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: |-
+    Electron, MW: 0.000545 g/mol
+    Molar enthalpy and entropy set to zero (dummy entries because chemical
+    potential is set to zero for a "metal" phase)
+- name: (dummy)
+  composition: {}
+  thermo:
+    model: constant-cp
+    h0: 0.0 kJ/mol
+    s0: 0.0 J/mol/K
+  note: Dummy species (needed for defining the interfaces)
+
+lithium_electrolyte-reactions:
+- equation: Li[metal] <=> Li+[elyt] + electron
+  id: lithium_faradaic_reaction
+  rate-constant: {A: 6.0e+12, b: 0.0, Ea: 0.0}
+  beta: 0.5
+
+cathode_electrolyte-reactions:
+- equation: Li+[elyt] + V[cathode] + electron <=> Li[cathode]  # Reaction 2
+  id: cathode_reaction
+  rate-constant: {A: 0.405e-04, b: 0.0, Ea: 0.0 kJ/mol}
+  exchange-current-density-formulation: true
+  beta: 0.5
