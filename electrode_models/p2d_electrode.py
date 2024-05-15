@@ -6,6 +6,7 @@
 """
 
 import cantera as ct
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 from submodels.transport import radial_flux
 import warnings
@@ -174,8 +175,10 @@ class electrode():
         # This is the total for the entire electrode:
         self.n_vars = self.n_vars_pt * self.n_points
 
-        # This model produces one plot, for the intercalation concentration.
-        self.n_plots = 1
+        # This model produces two plots:
+        #   1. For the intercalation concentration.
+        #   2. For the electrolyte composition
+        self.n_plots = 2
 
         # Set Cantera object state:
         self.bulk_obj.electric_potential = inputs['phi_0']
@@ -284,11 +287,10 @@ class electrode():
         phi_ed = SV_loc[SVptr['phi_ed'][j]]
         phi_elyte = phi_ed + SV_loc[SVptr['phi_dl'][j]]
 
-        # Read out electrode bulk composition; set the Cantra object:
+        # Read out electrode bulk composition:
         c_k_ed = SV_loc[SVptr['C_k_ed'][j,:,:]] # (kmol/m3 of phase)
-
         c_k_elyte = SV_loc[SVptr['C_k_elyte'][j,:]] # (kmol/m3 of phase)
-        
+
         # Read electrolyte fluxes at the separator boundary.  No matter the
         # electrode, the function returns a value where flux to the electrode
         # is considered positive. We multiply by `i_ext_flag` to get the
@@ -374,7 +376,8 @@ class electrode():
             sdot_elyte[self.index_Li_elyte] -= i_dl / ct.faraday
 
             # Change in electrolyte species concentration per unit time:
-            resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] 
+            resid[SVptr['C_k_elyte'][j,:]] = \
+                        (SVdot_loc[SVptr['C_k_elyte'][j,:]] 
                         - (N_k_in - N_k_out + sdot_elyte * self.A_surf_ratio)
                         * self.dyInv)/self.eps_elyte
 
@@ -411,7 +414,8 @@ class electrode():
                 
         # Electric potential boundary condition:
         if self.name=='anode':
-            # The electric potential of the anode = 0 V.
+            # The electric potential of the anode = 0 V. This is an algebraic 
+            #   equation:
             resid[[SVptr['phi_ed'][j]]] = phi_ed
 
         elif self.name=='cathode':
@@ -420,12 +424,12 @@ class electrode():
                 i_el_out = params['i_ext']
                 resid[SVptr['phi_ed'][j]] =  i_io_in + i_el_in - i_el_out
             elif params['boundary'] == 'potential':
-                # Electrode potential = cell potential:
+                # Electrode potential = cell potential. Algebraic equation:
                 resid[SVptr['phi_ed'][j]] = (SV_loc[SVptr['phi_ed']]
                     - params['potential'])
 
         # Faradaic current density is positive when electrons are consumed 
-        # (Li transferred to the electrode)
+        #   (Li transferred to the electrode)
         i_Far = -(ct.faraday 
                   * self.surf_obj.get_net_production_rates(self.conductor_obj))
 
@@ -463,7 +467,7 @@ class electrode():
         sdot_elyte[self.index_Li_elyte] -= i_dl / ct.faraday
 
         # Change in electrolyte species concentration per unit time:
-        resid[SVptr['C_k_elyte']] = (SVdot_loc[SVptr['C_k_elyte']] 
+        resid[SVptr['C_k_elyte'][j,:]] = (SVdot_loc[SVptr['C_k_elyte'][j,:]] 
                     - (N_k_in - N_k_out + sdot_elyte * self.A_surf_ratio)
                     * self.dyInv)/self.eps_elyte
 
@@ -528,6 +532,17 @@ class electrode():
                 axs[ax_offset].plot(solution[0,:]/3600, X_k_ed)
 
         axs[ax_offset].set_ylabel(self.name+' Li \n(kmol/m$^3$)')
+
+        ax_offset += 1
+        for i in np.arange(self.n_points):
+            C_k_elyte_ptr = (SV_offset+self.SV_offset 
+                             + self.SVptr['C_k_elyte'][i,self.index_Li_elyte ])
+            C_k_elyte = solution[C_k_elyte_ptr, :]
+            axs[ax_offset].plot(solution[0,:]/3600, C_k_elyte)
+
+        axs[ax_offset].set_ylabel(self.name+' Li_elyte \n(kmol/m$^3$)')
         axs[ax_offset].set(xlabel='Time (h)')
+
+        axs[ax_offset].yaxis.set_major_formatter(FormatStrFormatter('%.4f'))
 
         return axs

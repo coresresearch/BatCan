@@ -13,6 +13,7 @@
     The methods 'run' and 'ouput' are called by bat_can.py.  All other functions are called internally.
 
 """
+from matplotlib.ticker import ScalarFormatter 
 import numpy as np
 from scikits.odes.dae import dae
 from math import floor
@@ -65,7 +66,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-4, 'atol':1e-6,
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-5, 'atol':1e-7,
             'algebraic_vars_idx':algvars, 'first_step_size':1e-12,
             'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0', 'max_steps':10000, 
             'linsolver':'band', 'lband':lband, 'uband':uband}
@@ -74,7 +75,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
     # Go through the current steps and integrate for each current:
     for i, step in enumerate(steps):
-        print('Step ',int(i+1),'(out of', n_steps, '): ',step,'...\n')
+        print('Step ',int(i+1),'(out of', str(n_steps)+'): ',step,'...\n')
 
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
@@ -355,7 +356,8 @@ def plot(an, sep, ca, params, sim):
         for i in range(n_plots):
             summary_axs[i].tick_params(axis="x",direction="in")
             summary_axs[i].tick_params(axis="y",direction="in")
-            summary_axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
+            # summary_axs[i].get_yaxis().set_major_formatter(
+            #     ScalarFormatter(useOffset=False))
             summary_axs[i].yaxis.set_label_coords(-0.2, 0.5)
 
         # Trim down whitespace:
@@ -381,7 +383,8 @@ def plot(an, sep, ca, params, sim):
 
         cycle_axs.tick_params(axis="x",direction="in")
         cycle_axs.tick_params(axis="y",direction="in")
-        cycle_axs.get_yaxis().get_major_formatter().set_useOffset(False)
+        # cycle_axs.get_yaxis().set_major_formatter(
+        #     ScalarFormatter(useOffset=False))
         cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
         cycle_fig.tight_layout()
 
