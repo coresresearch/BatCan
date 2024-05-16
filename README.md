@@ -21,7 +21,8 @@ This tool allows you to run battery simulations with easily editable and extensi
     4. `cyclic_voltammetry`: cyclic voltammetry experiment.
 - Electrode model packages:
     1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode, including radial discretization and transport.
-    2. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
+    2. `p2d_electrode`: Pseudo-2D porous electrode model (aka 'DFN [Doyle-Fuller-Newman]`). Discretized in both the through-plane direction and the radial direction within each representative particle.
+    3. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
     3. `conversion_electrode`: Electrode that converts a solid reactant phase into a separate solid product phase. Currently demonstrated for a sulfur cathode.
     4. `air_electrode`: metal-air electrode model, which interfaces to a gas flow channel. Currently demonstrated for a lithium-oxygen cathode.
 - Electrolyte model packages:
@@ -29,12 +30,14 @@ This tool allows you to run battery simulations with easily editable and extensi
     2. `porous_separator`: porous inert separator filled with liquid electrolyte.
 - Submodels: functions and routines that are used by multiple parts of the code.
     1. `transport`: functions to describe transport phenomena. Currently includes a dilute solution electrolyte transport model and a radial solid diffusion model.
+    2. `bandwidth`: Calculates the jacobian pattern via finite differencing of the model residual function (this speeds up the simulation significantly).
+    3. `fitting`: Fitting capabilities. Calculates the sum of squared residuals between a simulation and the specified reference data.  Also includes a function to plot fit vs. data, after fitting is complete. Currently only implemented for Voltage vs. Capacity plots.
 - `inputs`: folder with all input files.
 - `outputs`: folder where all model outputs are saved.
 - `derivation_verification`: Notes and documents to describe model development, governing equations, etc. (currently under development)
 # Installation Instructions
 
-In order to use the BatCan suite, it is necessary to download and install:
+In order to use BatCan, it is necessary to download and install:
 - [Cantera](cantera.org)
 - [Numpy](numpy.org)
 - [Scikits.odes](https://pypi.org/project/scikits.odes)
@@ -42,7 +45,7 @@ In order to use the BatCan suite, it is necessary to download and install:
 - [Matplotlib](matplotlib.org)
 - [Pandas](https://pandas.pydata.org/)
 
-These can all be installed an managed via [Anaconda](anaconda.org)
+These can all be installed an managed via [Anaconda](anaconda.org). We recommend you download `miniconda`, rather than the full Anaconda package.
 
 For example, to create a conda environment `bat_can` from which to run this tool, enter the following on a command line, terminal, or Anaconda prompt:
 ```
@@ -89,17 +92,20 @@ Below is an example of the model output, for a Li metal anode, porous separator 
 
 ![Sample output image](sample_output.png)
 
+# Operating principles: How BatCan works
+BatCan is meant to operate in much the same way you would test a batter in the lab:
+1. The battery model is built (model parameters and governing equations are specified and loaded into model objects).
+2. An experiment/simulation is defined and then run on the battery.
+3. As in the lab, you can run multiple experiments on the same battery, all within the same input file.
+4. In general, the software is meant to be modular and flexible, so that you can mix and match different electrode and separator models, and change the chemistry in any way you choose. The model equations and plotting tools will automatically adjust to your inputs.
+5. The input file is meant to be exhaustive.  That means yes, it is quite verbose, but it contains everything needed to recreate your simulation, all in a single file.
+
+A more detailed description of is depicted in the software map:
+
+![BatCan Software Map](BatCan_map.png)
+
 # Current status of the software 
-(as of 31 January, 2021)
-
-This software is currently in the development phase. 
-
-## Models
-Models are configured for either galvanostatic or potentiostatic operation. 
-- The `ionic_resistor` and `porous_separator` separator models are complete. The `porous_separator` model currently only allows dilute solution approximation transport calcualtions, via the Poisson-Nernst-Planck equation.
-- The `dense_electrode` model is complete 
-- The `single_particle_model` electrode is complete.
-- Simulation models (`CC_cycle`, `potential_hold`, and `cyclic_voltammetry`) are all complete, but there are always new and more flexible user inputs that can be enabled 🙂.
+(as of 15 May, 2024)
 
 ## Simulation speed.
 We have added two new features to improve the software speed:
