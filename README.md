@@ -21,7 +21,7 @@ This tool allows you to run battery simulations with easily editable and extensi
     4. `cyclic_voltammetry`: cyclic voltammetry experiment.
 - Electrode model packages:
     1. `single_particle_electrode`: the standard "single particle model" approach to a porous electrode, including radial discretization and transport.
-    2. `p2d_electrode`: Pseudo-2D porous electrode model (aka 'DFN [Doyle-Fuller-Newman]`). Discretized in both the through-plane direction and the radial direction within each representative particle.
+    2. `p2d_electrode`: Pseudo-2D porous electrode model (aka `DFN [Doyle-Fuller-Newman]`). Discretized in both the through-plane direction and the radial direction within each representative particle.
     3. `dense_electrode`: Model for a dense, thin-film electrode.  Currently demonstrated for a lithium metal anode, but could be used for other purposes.
     3. `conversion_electrode`: Electrode that converts a solid reactant phase into a separate solid product phase. Currently demonstrated for a sulfur cathode.
     4. `air_electrode`: metal-air electrode model, which interfaces to a gas flow channel. Currently demonstrated for a lithium-oxygen cathode.
