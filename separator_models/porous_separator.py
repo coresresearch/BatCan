@@ -223,7 +223,7 @@ class separator():
 
         return N_k_elyte, i_io
 
-    def elyte_flux(self, SV, j, T, ed):
+    def elyte_flux(self, SV, j, T):
         """
         Calculate the species fluxes and ionic current between two adjacent nodes in the separator.
 
@@ -247,9 +247,9 @@ class separator():
         C_k_2 = SV[self.SVptr['C_k_elyte'][j+1]]
 
         # Create dictionaries to pass to the transport function:
-        state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':ed.dy,
+        state_1 = {'C_k': C_k_1, 'phi':phi_1, 'T':T, 'dy':self.dy,
             'microstructure':self.elyte_microstructure}
-        state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':ed.dy,
+        state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':self.dy,
             'microstructure':self.elyte_microstructure}
 
         N_k_elyte, i_io = self.elyte_transport(state_1, state_2, self)
