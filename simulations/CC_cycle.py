@@ -13,8 +13,8 @@
     The methods 'run' and 'ouput' are called by bat_can.py.  All other functions are called internally.
 
 """
-from matplotlib.ticker import ScalarFormatter 
 import numpy as np
+import time
 from scikits.odes.dae import dae
 from math import floor
 from submodels import bandwidth
@@ -23,6 +23,7 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     """
     Run the simulation
     """
+    #t_count = time.time()
     # Determine the current to run at, and the time to fully charge/discharge.
     # 'calc_current' is defined below.
     current, t_final = calc_current(sim, an, ca)
@@ -30,13 +31,15 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # Store the location of all algebraic variables.
     params['algvars'] = algvars
 
+    # Concatenate atol arrays from each component
+    atol_vec = np.hstack([an.atol, sep.atol, ca.atol])
+
+    # Concatenate constr_type into an array
+    constr_type = np.hstack([an.constraints_type, sep.constraints_type,
+                                  ca.constraints_type])
+
     # Specify the boundary condition as galvanostatic:
     params['boundary'] = 'current'
-
-    # If specified, save the default mole fractions to replace an
-    # errant concentration during simulation:
-    if 'species-default' in sim:
-        params['species-default'] = sim['species-default']
 
     # Figure out which steps and at what currents to run the model. This
     # returns a tuple of 'charge' and 'discharge' steps, and a tuple with a
@@ -48,10 +51,10 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
     # Calculate the bandwidth used for the band linsolver
     lband, uband = bandwidth.calc_bandwidth(SV_0, an, sep, ca, params)
     print('lband =', lband, 'uband =', uband)
+    #print(stop_sim)
 
     # This function checks to see if certain limits are exceeded which will
     # terminate the simulation:
-    # Default number of root functions:
     n_roots = 2
     if 'species-cutoff' in sim:
         n_roots += 3
@@ -66,32 +69,32 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             return_val[4] = ca.species_lim(SV, sim['species-cutoff'])
 
     # Set up the differential algebraic equation (dae) solver:
-    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-5, 'atol':1e-7,
-            'algebraic_vars_idx':algvars, 'first_step_size':1e-12,
-            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0', 'max_steps':10000, 
-            'linsolver':'band', 'lband':lband, 'uband':uband}
+    options =  {'user_data':(an, sep, ca, params), 'rtol':1e-3, 'atol':atol_vec,
+            'algebraic_vars_idx':algvars, 'first_step_size':1e-18, 'max_step_size':1,
+            'rootfn':terminate_check, 'nr_rootfns':n_roots, 'compute_initcond':'yp0',
+            'constraints_type':constr_type, 'linsolver':'band', 'lband':lband, 'uband':uband,
+            'max_steps':500, 'compute_initcond_t0':1e-6}
 
     solver = dae('ida', residual, **options)
 
     # Go through the current steps and integrate for each current:
     for i, step in enumerate(steps):
-        print('Step ',int(i+1),'(out of', str(n_steps)+'): ',step,'...\n')
+        print('Step ',int(i+1),'(out of', n_steps, '): ',step,'...\n')
 
         # Set the external current density (A/m2)
         params['i_ext'] = currents[i]
         print('    Current = ', round(currents[i],3),'A/m^2 \n')
 
         t_out = np.linspace(0, times[i], 10000)
-        
+
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
-        solver.init_step(0.0, SV_0, SVdot_0)
         solution = solver.solve(t_out, SV_0, SVdot_0)
 
         # Create an array of currents, one for each time step:
         i_data = currents[i]*np.ones_like(solution.values.t)
         cycle_number = int(i+1-equil)*np.ones_like(solution.values.t)
-        cycle_capacity = 0.1*solution.values.t*abs(i_data)/3600
+        cycle_capacity = solution.values.t*abs(i_data)/3600/ca.m_conv_0 #1000*solution.values.t*abs(i_data)/3600
 
         # Append the current data array to any preexisting data, for output.
         # If this is the first step, create the output data array.
@@ -104,15 +107,20 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
+
         else: # First step. 'data_out' does not yet exist:
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
             SV = np.vstack((solution.values.t, cycle_number, i_data,
                 cycle_capacity, solution.values.y.T))
+
             data_out = SV
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
+
+    #t_elapsed = time.time() - t_count
+    #print('t_cpu =', t_elapsed, '\n')
 
     return data_out
 
@@ -230,14 +238,58 @@ def residual(t, SV, SVdot, resid, inputs):
 
     resid[ca.SVptr['electrode']] = ca.residual(t, SV, SVdot, sep, an, params)
 
+def conservation_test(solution, an, sep, ca, params, sim):
+
+    print('Running test suite')
+    SV_offset = 4
+    ca_Ck_ptr = SV_offset + ca.SV_offset + ca.SVptr['C_k_elyte']
+    sep_Ck_ptr = SV_offset + sep.SV_offset + sep.SVptr['C_k_elyte']
+    an_Ck_ptr = SV_offset + an.SV_offset + an.SVptr['C_k_elyte']
+
+    ca_eps_ptr = SV_offset + ca.SV_offset + ca.SVptr['eps_conversion']
+    ca_eps_elyte = np.zeros((ca.n_points, len(solution[0])))
+    for j in np.arange(0, ca.n_points):
+        eps_conversion = solution[ca_eps_ptr[j,:]]
+        ca_eps_elyte[j,:] = 1 - ca.eps_host - np.sum(eps_conversion, axis=0)
+
+    n_S_atoms = np.zeros((ca.elyte_obj.n_species, 1))
+    for i, species in enumerate(ca.elyte_obj.species_names):
+        n_S_atoms[i] = ca.elyte_obj.n_atoms(species, 'S')
+
+    # Calculate kmol_S/m2 planar cell area
+    n_S_sep = np.zeros((sep.n_points, len(solution[0])))
+    n_S_ca = np.zeros((ca.n_points, len(solution[0])))
+
+    n_S_an = an.eps_elyte*an.dy_elyte*np.sum(n_S_atoms*solution[an_Ck_ptr[0,:]], axis=0)
+    for j in np.arange(0, sep.n_points):
+        n_S_sep[j,:] = sep.eps_elyte*sep.dy*np.sum(n_S_atoms*solution[sep_Ck_ptr[j,:]], axis=0)
+    for j in np.arange(0, ca.n_points):
+        n_S_ca[j,:] = ca_eps_elyte[j,:]*ca.dy*np.sum(n_S_atoms*solution[ca_Ck_ptr[j,:]], axis=0)
+
+    # Calculate amount of sulfur in cathode conversion phases
+    n_S_ca_solid = np.zeros((ca.n_conversion_phases, len(solution[0])))
+    n_S_atoms_solid = np.zeros((ca.n_conversion_phases))
+    for j, species in enumerate(ca.conversion_obj):
+        for i in np.arange(0, len(species.species_names)):
+            n_S_atoms_solid[j] += species.n_atoms(species.species_names[i], 'S')
+
+    for j in np.arange(0, ca.n_conversion_phases):
+        eps_conversion = solution[ca_eps_ptr[:,j]]
+        n_S_ca_solid[j,:] = np.sum(n_S_atoms_solid[j]*ca.conversion_obj[j].density_mole*eps_conversion*ca.dy, axis=0)
+
+    n_S_tot = np.sum(n_S_an,axis=0) + np.sum(n_S_sep,axis=0) + np.sum(n_S_ca,axis=0) + np.sum(n_S_ca_solid,axis=0)
+    pct_err_S = 100*(n_S_tot - n_S_tot[0])/n_S_tot[0]
+    print('Max percent error in sulfur conservation =', max(pct_err_S))
+
 def output(solution, an, sep, ca, params, sim, plot_flag=True,
-    return_flag=False, save_flag=True):
+            return_flag=False, save_flag=True):
     """
     Prepare and save any output data to the correct location. Prepare,
     create, and save any figures relevant to constant-current cycling.
     """
     #TODO #17
-    # import matplotlib.pyplot as plt
+    #from datetime import datetime
+    import matplotlib.pyplot as plt
     import os
     import pandas as pd
 
@@ -251,10 +303,11 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
     # (2) cycle number, (3) current density(A/cm2) , and (4) Capacity (mAh/cm2)
     SV_offset = 4
 
-    # Pointer for cell potential:
+
+    # Calculate cell potential:
     phi_ptr = SV_offset + ca.SV_offset+int(ca.SVptr['phi_ed'][-1])
 
-    # Save the solution as a Pandas dataframe:
+    # Save the solution as a Pandas dataframe
     labels = (['cycle', 'current', 'capacity'] + an.SVnames + sep.SVnames
         + ca.SVnames)
     solution_df = pd.DataFrame(data = solution.T[:,1:],
@@ -264,37 +317,46 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
     solution_df.index.name = 'time (s)'
 
     # If no specification is given on whether to show plots, assume 'True'
-    if save_flag:
+    if save_flag == True:
         if 'outputs' not in sim:
             pass
-            # summary_fig.savefig('output.pdf')
-            # cycle_fig.savefig('cycles.pdf')
-            # plt.show()
+            #summary_fig.savefig('output.pdf')
+            #cycle_fig.savefig('cycles.pdf')
+            #plt.show()
         else:
             if 'save-name' in sim['outputs']:
-                if len(params['simulations']) == 1:
+                if len(params['simulations']) == 1 and not params['cell-test']['enable']:
                     sim['filename'] = (params['output'] +'_'
-                        + sim['outputs']['save-name'] )
+                                        + sim['outputs']['save-name'])
+                elif params['cell-test']['enable']:
+                    if params['cell-test']['type'] == 'grid-analysis':
+                        sim['filename'] = (params['output'] +'/'
+                                            + sim['outputs']['save-name'] +'_'+
+                                            str(ca.n_points)+'nodes')
+                    elif params['cell-test']['type'] == 'fitting':
+                        dataset_num = 1
+                        for root, dirs, files in os.walk(params['output']):
+                            if root == params['output']:
+                                dataset_num = len(dirs) + 1
+                        sim['filename'] = (params['output']) #+ '/'
+                                        #+ 'dataset' + str(dataset_num))
                 else:
                     sim['filename'] = (params['output'] +'/'
-                        + sim['outputs']['save-name'] )
+                                        + sim['outputs']['save-name'])
 
                 if not os.path.exists(sim['filename']):
                     os.makedirs( sim['filename'])
 
+
                 solution_df.to_pickle(sim['filename']+'/output_'
-                    + sim['outputs']['save-name'] + '.pkl')
+                                        + sim['outputs']['save-name'] + '.pkl')
                 solution_df.to_csv(sim['filename']+'/output_'
                     + sim['outputs']['save-name'] + '.csv', sep=',')
 
-    if return_flag:
+    if return_flag == True:
         return solution_df
 
 def plot(an, sep, ca, params, sim):
-    """
-    Prepare and save any output data to the correct location. Prepare,
-    create, and save any figures relevant to constant-current cycling.
-    """
     #TODO #17
     import matplotlib.pyplot as plt
     import os
@@ -319,35 +381,58 @@ def plot(an, sep, ca, params, sim):
         + ca.SVnames)
 
     filename = sim['filename']+'/output_' + sim['outputs']['save-name'] + '.pkl'
+    filename_ref1 = 'outputs/Fitting/0.1C Data.csv'
+    filename_ref2 = 'outputs/Fitting/0.5C Data.csv'
+    filename_ref3 = 'outputs/Fitting/1C Data.csv'
+    #filename_ref = 'outputs/Fitting/Li_PorousSep_Sulfur_Assary_2step/output_Test_output1.csv'
     solution_df = pd.read_pickle(filename)
     solution = solution_df.reset_index().to_numpy().T #solution_df.to_numpy().T
-    # solution_df = pd.DataFrame(data = solution.T[:,1:],
-    #                             index = solution.T[:,0],
-    #                             columns = labels)
+    ref_data1 = pd.read_csv(filename_ref1, header=None)
+    ref_data2 = pd.read_csv(filename_ref2, header=None)
+    ref_data3 = pd.read_csv(filename_ref3, header=None)
+    #ref_data = pd.read_csv(filename_ref)
 
-    # solution_df.index.name = 'time (s)'
+    Cap_ref1 = ref_data1.iloc[:,0].to_numpy()
+    V_cell_ref1 = ref_data1.iloc[:,1].to_numpy()
+    Cap_ref2 = ref_data2.iloc[:,0].to_numpy()
+    V_cell_ref2 = ref_data2.iloc[:,1].to_numpy()
+    Cap_ref3 = ref_data3.iloc[:,0].to_numpy()
+    V_cell_ref3 = ref_data3.iloc[:,1].to_numpy()
+    #Cap_ref = ref_data['capacity'].to_numpy()
+    #V_cell_ref = ref_data['phi_ed.1'].to_numpy()
+    #print(V_cell_ref[::190])
 
-    # If requested, create output figures:
-    if 1: #plot_flag:
+    if 1: # plot_flag:
         # Initialize the figure:
         summary_fig, summary_axs = plt.subplots(n_plots, 1, sharex=True,
                 gridspec_kw = {'wspace':0, 'hspace':0})
 
         summary_fig.set_size_inches((4.0,1.8*n_plots))
-
+        #print(solution[0,::len(solution[0])-1])
         # Axis 1: Current vs. time (h):
-        summary_axs[0].plot(solution[0,:]/3600, 1000*solution[2,:]/10000)
-        summary_axs[0].set_ylabel('Current Density \n (mA/cm$^2$)',labelpad=lp)
+        x_vec = np.zeros_like(solution[0,:])
+        #x_vec = params['i_ext']*np.copy(solution[0,:])/3600/ca.m_S_tot_0
+        x_vec = solution[3,:]
+        #print(x_vec[::len(x_vec)])
+        summary_axs[0].plot(x_vec, 1000*solution[2,:]/10000)
+        summary_axs[0].set_ylabel('Current Density \n (mA/cm^2)',labelpad=lp)
+        #summary_axs[0].set_xlim((0, 1700))
+        #summary_axs[0].set_xticks([200, 400, 600, 800, 1000, 1200, 1400, 1600])
 
         # Axis 2: Charge/discharge potential vs. time (h).
-        summary_axs[1].plot(solution[0,:]/3600, solution[phi_ptr,:])
+        summary_axs[1].plot(x_vec, solution[phi_ptr,:])
+        summary_axs[1].plot(Cap_ref1, V_cell_ref1, 'o', markersize=1)
+        summary_axs[1].plot(Cap_ref2, V_cell_ref2, 'o', markersize=1)
+        summary_axs[1].plot(Cap_ref3, V_cell_ref3, 'o', markersize=1)
+        #summary_axs[1].plot(Cap_ref[::190], V_cell_ref[::190], 'ko', markersize=1)
         summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
+        summary_axs[1].set_ylim((1.8, 2.5))
 
         # Add any relevant anode, cathode, and separator plots:
-        summary_axs = an.output(summary_axs, solution, SV_offset, ax_offset=2)
-        summary_axs = ca.output(summary_axs, solution, SV_offset,
+        summary_axs = an.output(summary_axs, solution, SV_offset, x_vec, ax_offset=2)
+        summary_axs = ca.output(summary_axs, solution, SV_offset, x_vec,
             ax_offset=2+an.n_plots)
-        summary_axs = sep.output(summary_axs, solution, an, ca, SV_offset,
+        summary_axs = sep.output(summary_axs, solution, an, ca, SV_offset, x_vec,
             ax_offset=2+an.n_plots+ca.n_plots)
 
         summary_axs[n_plots-1].set(xlabel='Time (h)')
@@ -356,13 +441,11 @@ def plot(an, sep, ca, params, sim):
         for i in range(n_plots):
             summary_axs[i].tick_params(axis="x",direction="in")
             summary_axs[i].tick_params(axis="y",direction="in")
-            # summary_axs[i].get_yaxis().set_major_formatter(
-            #     ScalarFormatter(useOffset=False))
+            summary_axs[i].get_yaxis().get_major_formatter().set_useOffset(False)
             summary_axs[i].yaxis.set_label_coords(-0.2, 0.5)
 
         # Trim down whitespace:
         summary_fig.tight_layout()
-
 
         # Initialize cycle data figure:
         cycle_fig, cycle_axs = plt.subplots(1, 1, sharex=True,
@@ -370,60 +453,75 @@ def plot(an, sep, ca, params, sim):
 
         cycle_fig.set_size_inches((4.0,2.0))
 
-        # iterate over cycles:        
+        # Save the solution as a Pandas dataframe:
+        labels = (['cycle', 'current', 'capacity'] + an.SVnames + sep.SVnames
+            + ca.SVnames)
+        solution_df = pd.DataFrame(data = solution.T[:,1:],
+                                    index = solution.T[:,0],
+                                    columns = labels)
+
+        solution_df.index.name = 'time (s)'
+
+        t_0 = 0
         for i in range(int(solution[1,-1])):
             cycle = solution_df[solution_df.iloc[:,0] == i+1]
-            # All times are relative to the start of the step:
-            t_0 = cycle.index[0]
-            cycle_axs.plot(0.1*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
+            cycle_axs.plot(1000*(cycle.index-t_0)*abs(cycle.iloc[:,1])/3600,
                 cycle.iloc[:,phi_ptr-1])
 
-        cycle_axs.set(xlabel='Capacity (mAh/cm$^2$)')
+            # Update time offset:
+            t_0 = cycle.index[-1]
+
+        cycle_axs.set(xlabel='Capacity (mAh/cm^2)')
         cycle_axs.set(ylabel='Cell Potential (V)')
 
         cycle_axs.tick_params(axis="x",direction="in")
         cycle_axs.tick_params(axis="y",direction="in")
-        # cycle_axs.get_yaxis().set_major_formatter(
-        #     ScalarFormatter(useOffset=False))
+        cycle_axs.get_yaxis().get_major_formatter().set_useOffset(False)
         cycle_axs.yaxis.set_label_coords(-0.2, 0.5)
         cycle_fig.tight_layout()
 
-    # If no specification is given on whether to show plots, assume 'True'
+        # If no specification is given on whether to show plots, assume 'True'
     if 1:
-        if 'outputs' not in sim:
-            summary_fig.savefig('output.pdf')
-            cycle_fig.savefig('cycles.pdf')
-            plt.show()
-        else:
-            if 'save-name' in sim['outputs']:
-                if len(params['simulations']) == 1:
-                    sim['filename'] = (params['output'] +'_'
-                        + sim['outputs']['save-name'] )
-                else:
+        if 'save-name' in sim['outputs']:
+            if len(params['simulations']) == 1 and not params['cell-test']['enable']:
+                sim['filename'] = (params['output'] +'_'
+                                    + sim['outputs']['save-name'])
+            elif params['cell-test']['enable']:
+                if params['cell-test']['type'] == 'grid-analysis':
                     sim['filename'] = (params['output'] +'/'
-                        + sim['outputs']['save-name'] )
+                                        + sim['outputs']['save-name'] +'_'+
+                                        str(ca.n_points)+'nodes')
+                elif params['cell-test']['type'] == 'fitting':
+                    dataset_num = 1
+                    for root, dirs, files in os.walk(params['output']):
+                        if root == params['output']:
+                            dataset_num = len(dirs)
+                    sim['filename'] = (params['output']) #+ '/'
+                                    #+ 'dataset' + str(dataset_num))
+            else:
+                sim['filename'] = (params['output'] +'/'
+                                    + sim['outputs']['save-name'])
 
-                if not os.path.exists(sim['filename']):
-                    os.makedirs( sim['filename'])
+            if not os.path.exists(sim['filename']):
+                os.makedirs( sim['filename'])
 
-                solution_df.to_pickle(sim['filename']+'/output_'
-                    + sim['outputs']['save-name'] + '.pkl')
-                solution_df.to_csv(sim['filename']+'/output_'
-                    + sim['outputs']['save-name'] + '.csv', sep=',')
-                summary_fig.savefig(sim['filename']+'/summary_'
-                    + sim['outputs']['save-name'] + '.pdf')
-                cycle_fig.savefig(sim['filename']+'/cycles_'
-                    + sim['outputs']['save-name'] + '.pdf')
+            #solution_df.to_pickle(sim['filename']+'/output_'
+            #    + sim['outputs']['save-name'] + '.pkl')
+            #solution_df.to_csv(sim['filename']+'/output_'
+            #    + sim['outputs']['save-name'] + '.csv', sep=',')
+            summary_fig.savefig(sim['filename']+'/summary_'
+                + sim['outputs']['save-name'] + '.pdf')
+            cycle_fig.savefig(sim['filename']+'/cycles_'
+                + sim['outputs']['save-name'] + '.pdf')
 
-            if ('show-plots' not in sim['outputs'] or
-                sim['outputs']['show-plots']):
-                plt.show()
-
+            #if ('show-plots' not in sim['outputs'] or
+            #    sim['outputs']['show-plots']):
+            #    plt.show()
 
 def final_state(solution):
     # Return the state vector at the final simulation time:
     return solution[4:, -1]
 
 def initial_state(solution):
-    # Return the state vector at the final simulation time:
+
     return solution[4:, 0]

@@ -15,11 +15,13 @@ class separator():
 
         self.elyte_obj = ct.Solution(input_file, inputs['electrolyte-phase'])
 
+        self.C_k_0 = [species['C_k'] for species in inputs['transport']['diffusion-coefficients']]
+
         # State variables: electrolyte potential, electrolyte composition (nsp)
         self.n_vars = 1 + self.elyte_obj.n_species
-
+        self.H = inputs['thickness']
         self.n_points = inputs['n_points']
-        self.dy = inputs['thickness']/self.n_points
+        self.dy = self.H/self.n_points
         self.dyInv = 1 / self.dy
         self.eps_elyte = inputs['eps_electrolyte']
 
@@ -27,15 +29,16 @@ class separator():
         # coefficient of -0.5:
         self.elyte_microstructure = self.eps_elyte**1.5
 
-        self.D_scale_coeff = inputs['transport']['D_scale_coeff']
-
-        self.index_Li_elyte = \
+        self.index_Li = \
             self.elyte_obj.species_index(inputs['transport']['mobile-ion'])
+
+        #self.flag_lithiated = inputs['flag_lithiated']
+
+        self.D_scale_coeff = inputs['D_scale_coeff']
 
         # Process transport inputs:
         if inputs['transport']['model']=='dilute-solution':
             # Import transport function:
-
             self.elyte_transport = transport.dilute_solution
             self.D_k = np.zeros_like(self.elyte_obj.X)
             for item in inputs['transport']['diffusion-coefficients']:
@@ -45,18 +48,20 @@ class separator():
             raise ValueError('Please specify a valid electrolyte transport ',
                 'model.')
 
-        if inputs['transport'].get('diffusion-scaling') == 'ideal':
-            self.scale_diff = transport.scale_diff_ideal
-        elif inputs['transport'].get('diffusion-scaling') == 'zhang':
-            self.scale_diff = transport.scale_diff_zhang
-            self.n_Li_atoms = np.zeros(self.elyte_obj.n_species)
-            for i, species in enumerate(self.elyte_obj.species_names):
-                self.n_Li_atoms[i] = self.elyte_obj.n_atoms(species, 'Li')
+        try:
+            if inputs['transport']['diffusion-scaling'] == 'ideal':
+                self.scale_diff = transport.scale_diff_ideal
+            elif inputs['transport']['diffusion-scaling'] == 'zhang':
+                self.scale_diff = transport.scale_diff_zhang
+                self.n_Li_atoms = np.zeros(self.elyte_obj.n_species)
+                for i, species in enumerate(self.elyte_obj.species_names):
+                    self.n_Li_atoms[i] = self.elyte_obj.n_atoms(species, 'Li')
 
-            self.C_Li_0 = self.C_k_0[self.index_Li_elyte] + \
-                                        np.dot(self.n_Li_atoms, self.C_k_0)
-        else:
-            print('Warning: No valid diffusion scaling input, using ideal')
+                self.C_Li_0 = np.dot(self.n_Li_atoms, self.C_k_0)
+            else:
+                raise ValueError('Please specify a valid diffusion scaling model')
+        except:
+            print('Warning: No diffusion scaling model input, using ideal')
             self.scale_diff = transport.scale_diff_ideal
 
         self.SV_offset = offset
@@ -76,6 +81,7 @@ class separator():
             self.elyte_obj.TP = params['T'], params['P']
 
         self.elyte_obj.electric_potential = inputs['phi_0']
+
 
     def initialize(self, inputs):
         SV = np.zeros([self.n_points*self.n_vars])
@@ -101,10 +107,21 @@ class separator():
         # Save indices for any algebraic variables.
         self.algvars = self.SV_offset + self.SVptr['phi']
 
+        # Save indices for constrained variables
+        self.constraints_idx = self.SVptr['sep']
+        self.constraints_idx = self.constraints_idx.flatten()
+        #self.constraints_type = np.ones_like(self.constraints_idx)
+        self.constraints_type = np.zeros_like(SV)
+        self.constraints_type[self.SVptr['C_k_elyte']] = 1.0
+
+        # Set array of atol to pass to solver
+        self.atol = np.ones_like(SV)*1e-3
+        self.atol[self.SVptr['C_k_elyte']] = inputs['C_k_atol']
+
         # Load intial state variables:
         SV[self.SVptr['phi']] = inputs['phi_0']
         for i in range(self.n_points):
-            SV[self.SVptr['C_k_elyte'][i,:]] = self.elyte_obj.concentrations
+            SV[self.SVptr['C_k_elyte'][i,:]] = self.C_k_0
 
         return SV
 
@@ -162,9 +179,11 @@ class separator():
                 (SVdot_loc[self.SVptr['C_k_elyte'][j]]
                 - (N_k_elyte_in - N_k_elyte_out) * self.dyInv / self.eps_elyte)
 
-            N_k_elyte_in, i_io_in = N_k_elyte_out, i_io_out
+            N_k_elyte_in = N_k_elyte_out
+            i_io_in = i_io_out
 
         j = self.n_points-1
+
         N_k_elyte_out, i_io_out = self.electrode_boundary_flux(SV, ca,
             params['T'])
 
@@ -217,6 +236,8 @@ class separator():
         state_2 = {'C_k': C_k_2, 'phi':phi_2, 'T':T, 'dy':ed.dy_elyte,
             'microstructure':ed.elyte_microstructure}
 
+        #if ed.name == 'cathode':
+        #    print(state_1, '\n', state_2, '\n\n')
         # Multiply by ed.i_ext_flag: fluxes are out of the anode, into the cathode.
         N_k_elyte, i_io = tuple(x*ed.i_ext_flag
             for x in self.elyte_transport(state_1, state_2, self))
@@ -256,60 +277,67 @@ class separator():
 
         return N_k_elyte, i_io
 
-    def output(self, axs, solution, an, ca, SV_offset, ax_offset):
+    def output(self, axs, solution, an, ca, SV_offset, x_vec, ax_offset):
 
         phi_elyte_ptr = np.add(self.SV_offset+(self.SVptr['phi']), SV_offset)
 
         phi_an = (solution[an.SVptr['phi_ed'][0]+SV_offset,:]
             + solution[an.SVptr['phi_dl'][0]+SV_offset,:])
-        axs[ax_offset].plot(solution[0,:]/3600, phi_an)
+        axs[ax_offset].plot(x_vec, phi_an)
         for j in np.arange(self.n_points):
-            axs[ax_offset].plot(solution[0,:]/3600,
+            axs[ax_offset].plot(x_vec,
                 solution[phi_elyte_ptr[j],:])
 
         phi_ca = \
             (solution[ca.SVptr['electrode'][ca.SVptr['phi_ed'][0]]+SV_offset,:] + solution[ca.SVptr['electrode'][ca.SVptr['phi_dl'][0]]+SV_offset,:])
-        axs[ax_offset].plot(solution[0,:]/3600, phi_ca)
+        axs[ax_offset].plot(x_vec, phi_ca)
         axs[ax_offset].set_ylabel('Separator Potential \n(V)')
 
         # Axis 5: Li+ concentration:
         Ck_elyte_an = solution[an.SVptr['C_k_elyte'][0]+SV_offset,:]
-        axs[ax_offset+1].plot(solution[0,:]/3600,
-            Ck_elyte_an[an.index_Li_elyte,:], label="an interface")
+        axs[ax_offset+1].plot(x_vec, Ck_elyte_an[an.index_Li,:],
+            label="an interface")
 
         Ck_elyte_sep_ptr = \
             np.add(self.SV_offset+self.SVptr['C_k_elyte'],SV_offset)
         for j in np.arange(self.n_points):
-            axs[ax_offset+1].plot(solution[0,:]/3600,
-                solution[Ck_elyte_sep_ptr[j, self.index_Li_elyte],:],
+            axs[ax_offset+1].plot(x_vec,
+                solution[Ck_elyte_sep_ptr[j, self.index_Li],:],
                 label="separator "+str(j+1))
 
-        for j in range(int(ca.n_points)):
+        for j in np.arange(ca.n_points):
             Ck_elyte_ca = \
                 solution[ca.SV_offset+ca.SVptr['C_k_elyte'][j]+SV_offset,:]
-            axs[ax_offset+1].plot(solution[0,:]/3600,
-                Ck_elyte_ca[ca.index_Li_elyte,:])
+            axs[ax_offset+1].plot(x_vec,
+                Ck_elyte_ca[ca.index_Li,:])
 
-        axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m$^3$')
+        axs[ax_offset+1].set_ylabel('Li+ concentration \n(kmol/m^3')
 
         return axs
 
     def species_lim(self, SV, val):
         """
-        Check to see if the minimum species concentration limit has been exceeded.
+        Check to see if the minimum species concentration limit has been exceeded
         """
-        # Save local copies of the solution vector and pointers for this electrode:
+        # Save local copies of the solution vector and pointers for this electrode
         SVptr = self.SVptr
         SV_loc = SV[SVptr['sep']]
 
         # Default is that the minimum hasn't been exceeded:
         species_eval = 1.
 
-        # For each electrode point, find the minimum species concentration, and # compare to the user-provided minimum.  Save only the minimum value:
+        # For each electrode point, find the minimum species concentration, and
+        #   compare to the user provided minimum. Save only the minimum value
         for j in range(self.n_points):
             local_eval = min(SV_loc[SVptr['C_k_elyte'][j,:]]) - val
             species_eval = min(species_eval, local_eval)
 
-        # The simulation  looks for instances where this value changes sign
-        # (i.e. where it crosses zero)
+        # The simulation looks for instances where this value changes sign
+        #   (i.e. where it crosses zero)
         return species_eval
+
+    def adjust_scale_nd(self, SV, elyte_scale):
+        # Update the scaling factor after equilibration
+        self.scale_nd = np.copy(elyte_scale)
+        self.scale_nd[self.scale_nd == 0] = 1e-12
+        self.scale_nd_vec = np.tile(self.scale_nd, self.n_points)
