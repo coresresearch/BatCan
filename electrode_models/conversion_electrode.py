@@ -174,13 +174,8 @@ class electrode():
         prod_stoich = np.concatenate((prod_stoich, prod_stoich_tpb))
         reac_stoich = np.concatenate((reac_stoich, reac_stoich_tpb))
         net_conv_stoich = prod_stoich - reac_stoich
-
+        '''
         if net_conv_stoich > 0:
-            print("Capacity based on electrode porosity")
-            self.capacity = (Conc*init_n_ch*ct.faraday*eps_el_p
-                                                    * inputs['thickness']/3600)
-        elif net_conv_stoich <= 0:
-            print("Capacity based on initial active material")
 
             # Get string of conversion element from conversion obj species
             conv_elem_str = list(self.conversion_obj[init_spec_i].species(
@@ -222,33 +217,89 @@ class electrode():
             MW_conv = self.conversion_obj[init_spec_i].molecular_weights
             m_conv_0 = eps_t_conv_spec*Conc*MW_conv
 
-            # Calculate capacity based on initial kmol of conversion element
-            cap_conv_elem = (Conc*init_n_ch*ct.faraday*eps_t_conv_spec
-                                                    / 3600)
+            print("Capacity based on electrode porosity")
+            self.capacity = (Conc*init_n_ch*ct.faraday*eps_el_p
+                                                    * inputs['thickness']/3600)
+        elif net_conv_stoich <= 0:
+        '''
+        print("Capacity based on initial active material")
 
-            # Check if full conversion of initial conversion species will hit
-            #   porosity limitations in the electrode
-            if len(self.conversion_obj) <= 2:
-                end_spec_i = 1 - init_spec_i
-            else:
-                raise ValueError("More than 2 conversion phases detected. "
-                    "Please provide additional information to input file"
-                    " in order for end product capacity check")
+        # Get string of conversion element from conversion obj species
+        conv_elem_str = list(self.conversion_obj[init_spec_i].species(
+                            init_spec_name).composition.keys())[0]
 
-            Conc_end = self.conversion_obj[end_spec_i].concentrations[0]
-            n_conv_elem_end = self.conversion_obj[end_spec_i].species(0
-                                                    ).composition[conv_elem_str]
-            ratio_conv_elem = n_conv_elem_init/n_conv_elem_end
-            eps_end = eps_solid*Conc*ratio_conv_elem/Conc_end
-            n_charge_ratio = init_n_ch/ratio_conv_elem
+        # To account for any of the conversion element in the electrolyte
+        #   find the number of conversion elements in elyte_obj
+        n_conv_elem_el = np.zeros([len(self.elyte_obj.species_names)])
+        for i, species in enumerate(self.elyte_obj.species_names):
+            n_conv_elem_el[i] = float(self.elyte_obj.n_atoms(species,
+                                                            conv_elem_str))
 
-            cap_end_elem = Conc_end*n_charge_ratio*ct.faraday*eps_el_p \
-                         * inputs['thickness']/3600
+        # Make 0 any electrolyte species that are non-reactive
+        for species in self.elyte_obj.species_names:
+            if self.elyte_obj.species(species).thermo.coeffs[1] == 0:
+                n_conv_elem_el[self.elyte_obj.species_index(species)] = 0
 
-            # The capacity of the electrode is the limiting capacity between
-            #   the initial solid and the final product volume fraction
-            self.capacity = min(cap_conv_elem, cap_end_elem)
+        # Number of conversion elements in conversion_obj
+        n_conv_elem_init = self.conversion_obj[init_spec_i].species(
+                                init_spec_name).composition[conv_elem_str]
 
+        # Ratio of kmol_conv_elem in electrolyte to kmol_conv_elem in solid
+        n_conv_ratio = n_conv_elem_el/n_conv_elem_init
+
+        # Calculate m3_elyte/m2_batt across all components
+        #   ASSUMES DENSE COUNTER ELECTRODE CURRENTLY
+        eps_t_el_0 = eps_el_0*inputs['thickness']
+        eps_t_sep_0 = sep_inputs['eps_electrolyte']*sep_inputs['thickness']
+        eps_t_0 = eps_t_el_0 + eps_t_sep_0
+        v_conv_el_0 = eps_t_0*np.dot(n_conv_ratio, self.C_k_0) \
+                            / self.conversion_obj[init_spec_i].density_mole
+
+        eps_solid = self.eps_conversion_init[init_spec_i]
+
+        eps_t_conv_spec = eps_solid*inputs['thickness'] \
+                        + v_conv_el_0
+
+        # Calculate total mass of conversion element
+        MW_conv = self.conversion_obj[init_spec_i].molecular_weights
+        m_conv_0 = eps_t_conv_spec*Conc*MW_conv
+
+        # Calculate capacity based on initial kmol of conversion element
+        cap_conv_elem = (Conc*init_n_ch*ct.faraday*eps_t_conv_spec
+                                                / 3600)
+
+        # Check if full conversion of initial conversion species will hit
+        #   porosity limitations in the electrode
+        if len(self.conversion_obj) <= 2:
+            end_spec_i = 1 - init_spec_i
+        else:
+            raise ValueError("More than 2 conversion phases detected. "
+                "Please provide additional information to input file"
+                " in order for end product capacity check")
+
+        Conc_end = self.conversion_obj[end_spec_i].concentrations[0]
+
+        # the issue with the stored ion being Li2S is that Li is the the conversion species
+        # and it is not in S8(s) so the ratio cannot be set because it would be infinate so I make it a large number
+        # this just means the other capacity value is used. I think this fix doesn't hurt anything
+        try:
+            n_conv_elem_end = (self.conversion_obj[end_spec_i].species(0
+                                                ).composition[conv_elem_str])
+        except KeyError:
+            n_conv_elem_end = 50
+
+        ratio_conv_elem = n_conv_elem_init/n_conv_elem_end
+        eps_end = eps_solid*Conc*ratio_conv_elem/Conc_end
+        n_charge_ratio = init_n_ch/ratio_conv_elem
+
+        cap_end_elem = Conc_end*n_charge_ratio*ct.faraday*eps_el_p \
+                        * inputs['thickness']/3600
+
+        # The capacity of the electrode is the limiting capacity between
+        #   the initial solid and the final product volume fraction
+        self.capacity = min(cap_conv_elem, cap_end_elem)
+
+        ############################################### end of if
         self.m_conv_0 = m_conv_0
 
         E_to_conv = 1e3*V_elyte_0/self.m_conv_0
