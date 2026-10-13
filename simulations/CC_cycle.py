@@ -426,7 +426,7 @@ def plot(an, sep, ca, params, sim):
         summary_axs[1].plot(Cap_ref3, V_cell_ref3, 'o', markersize=1)
         #summary_axs[1].plot(Cap_ref[::190], V_cell_ref[::190], 'ko', markersize=1)
         summary_axs[1].set_ylabel('Cell Potential \n(V)')#,labelpad=lp)
-        summary_axs[1].set_ylim((1.8, 2.5))
+        #summary_axs[1].set_ylim((1.8, 2.5))
 
         # Add any relevant anode, cathode, and separator plots:
         summary_axs = an.output(summary_axs, solution, SV_offset, x_vec, ax_offset=2)

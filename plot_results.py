@@ -4,8 +4,10 @@ from math import floor
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
-tick_font = 10
-label_font = 12
+fig_width = 2.75
+fig_height = 1.5
+tick_font = 8
+label_font = 8
 legend_font = 8
 font = 'Arial'
 lw = 2.0 # linewidth
@@ -56,59 +58,63 @@ Cap_Kuzmina = solution_Kuzmina[3,:]
 V_cell_Kuzmina = solution_Kuzmina[72,:]
 C_k_Kuzmina = solution_Kuzmina[79:,:]
 
-fig_volt = plt.figure(figsize = (4, 3),label ='0.1 C')
+fig_volt = plt.figure(figsize = (fig_width, fig_height),label ='0.1 C')
 plt.plot(Cap_data, V_cell_data, 'ko', markersize=1)
 plt.plot(Cap_Tsuzuki, V_cell_Tsuzuki, linewidth = lw, color = cmap(1/3),label ='Tsuzuki')
 plt.plot(Cap_Assary, V_cell_Assary, linewidth = lw, color = cmap(2/3) ,label ='Assary')
 plt.plot(Cap_Kuzmina, V_cell_Kuzmina, linewidth = lw, color = cmap(3/3) ,label ='Kuzmina')
-#plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
+plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
 plt.legend(fontsize = legend_font)
 plt.ylabel('Cell Potential (V)', fontsize = label_font)
 plt.xlabel('Capacity (mAh cm$^{-2}$)', fontsize = label_font)
 plt.xticks([0, 500, 1000, 1500])
-plt.ylim([1.4,3])
+plt.ylim([1.5,3])
 ax  = plt.gca() 
 tick_format(ax)
 plt.tight_layout()
-plt.savefig('Discharge.png', bbox_inches='tight', dpi=450)
+#plt.savefig('Discharge.png', bbox_inches='tight', dpi = 300)
 
-fig_T = plt.figure(figsize = (4, 3))
+fig_T = plt.figure(figsize = (fig_width, fig_height))
 for i in range(len(labels)):
     plt_clr = cmap(val_colors[i])
     plt.plot(Cap_Tsuzuki,C_k_Tsuzuki[i],linewidth = lw,color= plt_clr, label = labels[i])
-plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
-plt.ylabel('Elyte Species Conc. (kmol m$^{-3}$)', fontsize = label_font)
+#plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
+plt.ylabel('Elyte Species Conc.\n (kmol m$^{-3}$)', fontsize = label_font)
 plt.xlabel('Capacity (mAh cm$^{-2}$)', fontsize = label_font)
 plt.xticks([0, 500, 1000, 1500])
 ax  = plt.gca() 
 tick_format(ax)
 plt.tight_layout()
+#plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
 plt.savefig('C_k_Tsuzuki.png', bbox_inches='tight', dpi=450)
 
-fig_A = plt.figure(figsize = (4, 3))
+fig_A = plt.figure(figsize = (fig_width, fig_height))
 for i in range(len(labels2)):
     plt_clr = cmap(val_colors2[i])
     plt.plot(Cap_Assary,C_k_Assary[i],color= plt_clr, label = labels2[i])
-plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
-plt.ylabel('Elyte Species Conc. (kmol m$^{-3}$)', fontsize = label_font)
+#plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
+plt.ylabel('Elyte Species Conc.\n (kmol m$^{-3}$)', fontsize = label_font)
 plt.xlabel('Capacity (mAh cm$^{-2}$)', fontsize = label_font)
 plt.xticks([0, 500, 1000, 1500])
 ax  = plt.gca() 
 tick_format(ax)
 plt.tight_layout()
+#plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
 plt.savefig('C_k_Assary.png', bbox_inches='tight', dpi=450)
 
-fig_K = plt.figure(figsize = (4, 3))
+fig_K = plt.figure(figsize = (fig_width, fig_height))
 for i in range(len(labels2)):
     plt_clr = cmap(val_colors2[i])
     plt.plot(Cap_Kuzmina,C_k_Kuzmina[i],color= plt_clr, label = labels2[i])
-plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
-plt.ylabel('Elyte Species Conc. (kmol m$^{-3}$)', fontsize = label_font)
+
+plt.ylabel('Elyte Species Conc. \n (kmol m$^{-3}$)', fontsize = label_font)
 plt.xlabel('Capacity (mAh cm$^{-2}$)', fontsize = label_font)
 plt.xticks([0, 500, 1000, 1500])
 ax  = plt.gca() 
 tick_format(ax)
 plt.tight_layout()
-plt.savefig('C_k_Kuzmina.png', bbox_inches='tight', dpi=450)
+#plt.legend(fontsize = legend_font, loc='center left', ncol=1, bbox_to_anchor=(1, 0.5))
+fig_K.set_size_inches((2.75, 1.5))
+plt.savefig('C_k_Kuzmina.png', bbox_inches='tight', dpi=450 )
 plt.show()
 
