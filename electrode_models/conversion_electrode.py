@@ -524,16 +524,19 @@ class electrode():
             A_surf_ratio = A_avail*self.dy
             A_conversion_ratio = A_conversion*self.dy
 
-            # Multiplier to scale phase destruction rates.  As eps_product
-            # drops below the user-specified minimum, any reactions that
-            # consume the phase have their rates quickly go to zero:
+            # This "switch" turns conversion phase destruction rates on or off.  As
+            # eps_product drops below the user-specified minimum, any reactions that
+            # consume the phase have their rates go to zero:
             sw_conv = np.where(eps_conversion < self.conv_ph_min, 0, self.sw_conv)
 
             # Chemical production rate of the conversion phases:
             # (kmol/m2-interface/s)
             for ph_i, ph in enumerate(self.conversion_surf_obj):
+                # sdot_conversion = \
+                #     ph.get_net_production_rates(self.conversion_obj[ph_i])
                 sdot_conversion = \
-                    ph.get_net_production_rates(self.conversion_obj[ph_i])
+                    (ph.get_creation_rates(self.conversion_obj[ph_i])
+                     - sw_conv*ph.get_destruction_rates(self.conversion_obj[ph_i]))
 
                 sdot_tpb = \
                     self.conversion_tpb_obj[ph_i].get_net_production_rates(self.conversion_obj[ph_i])

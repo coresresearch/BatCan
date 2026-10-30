@@ -354,7 +354,7 @@ def output(solution, an, sep, ca, params, sim, plot_flag=True,
                         sim['filename'] = (params['output']) #+ '/'
                                         #+ 'dataset' + str(dataset_num))
                 else:
-                    sim['filename'] = (params['output'] +'/'
+                    sim['filename'] = (params['output'] +'_'
                                         + sim['outputs']['save-name'])
 
                 if not os.path.exists(sim['filename']):
