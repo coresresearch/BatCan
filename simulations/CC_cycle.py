@@ -89,6 +89,9 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
         # Create an initial array of time derivatives and runs the integrator:
         SVdot_0 = np.zeros_like(SV_0)
+        # print("before run")
+        # ca_phi_ptr = ca.SV_offset + ca.SVptr['phi_ed']
+        # print(SV_0[ca_phi_ptr])
         solution = solver.solve(t_out, SV_0, SVdot_0)
 
         # Create an array of currents, one for each time step:
@@ -101,12 +104,17 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
         if i: # Not the first step. 'data_out' already exists:
             # Stack the times, the current at each time step, and the solution
             # vector at each time step into a single data array.
+            # print(data_out[0,-1])
             SV = np.vstack((solution.values.t+data_out[0,-1], cycle_number,
                 i_data, cycle_capacity, solution.values.y.T))
             data_out = np.hstack((data_out, SV))
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
+            # ca_phi_ptr = ca.SV_offset + ca.SVptr['phi_ed']
+            # print(SV_0[ca_phi_ptr])
+            # SV_0[ca_phi_ptr] *= 1.01
+            # print(SV_0[ca_phi_ptr])
 
         else: # First step. 'data_out' does not yet exist:
             # Stack the times, the current at each time step, and the solution
@@ -117,7 +125,12 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
             data_out = SV
 
             # Use SV at the end of the simualtion as the new initial condition:
+
             SV_0 = solution.values.y[-1,:]
+            ca_phi_ptr = ca.SV_offset + ca.SVptr['phi_ed']
+            # print(SV_0[ca_phi_ptr])
+            SV_0[ca_phi_ptr] *= 1.01
+            # print(SV_0[ca_phi_ptr])
 
     #t_elapsed = time.time() - t_count
     #print('t_cpu =', t_elapsed, '\n')
@@ -185,13 +198,13 @@ def setup_cycles(params, current, time):
     equil = 0
 
     if params['first-step'] == "discharge":
-        cycle = ('discharge', 'charge')
-        cycle_currents = (current, -current)
-        cycle_times = (time, time)
+        cycle = ('discharge', 'hold','charge')
+        cycle_currents = (current,0, -current)
+        cycle_times = (time, 10, time)
     else:
-        cycle = ('charge','discharge')
-        cycle_currents = (-current, current)
-        cycle_times = (time, time)
+        cycle = ('charge','hold','discharge')
+        cycle_currents = (-current, 0, current)
+        cycle_times = (time, 10, time)
 
     # At present, the only partial cycle accepted is for a single half-cycle
     # (i.e. a single charge or discharge step).
@@ -505,6 +518,7 @@ def plot(an, sep, ca, params, sim):
             if not os.path.exists(sim['filename']):
                 os.makedirs( sim['filename'])
 
+
             #solution_df.to_pickle(sim['filename']+'/output_'
             #    + sim['outputs']['save-name'] + '.pkl')
             #solution_df.to_csv(sim['filename']+'/output_'
@@ -514,9 +528,9 @@ def plot(an, sep, ca, params, sim):
             cycle_fig.savefig(sim['filename']+'/cycles_'
                 + sim['outputs']['save-name'] + '.pdf')
 
-            #if ('show-plots' not in sim['outputs'] or
-            #    sim['outputs']['show-plots']):
-            #    plt.show()
+            if ('show-plots' not in sim['outputs'] or
+               sim['outputs']['show-plots']):
+               plt.show()
 
 def final_state(solution):
     # Return the state vector at the final simulation time:

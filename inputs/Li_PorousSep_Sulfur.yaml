@@ -84,12 +84,12 @@ cell-description:
       - bulk-name: "sulfur" # Cantera phase name
         surf-name: "sulfur_surf" # Cantera name for surface phase
         elyte-name: "S8(e)"
-        min-vol-frac: 1E-10
+        min-vol-frac: 1E-7
         tpb-name: sulfur_tpb
       - bulk-name: "lithium_sulfide" # Cantera phase name
         surf-name: "lithium_sulfide_surf" # Cantera name for surface phase
         elyte-name: "s-(e)"
-        min-vol-frac: 1E-8
+        min-vol-frac: 1E-5
         tpb-name: lithium_sulfide_tpb
     initial-state: # Determine initial state of electrode
       method: "porosity"
@@ -144,33 +144,33 @@ parameters:
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: 0.1 # input C-rate
-      n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int. ### 0.5
+      n_cycles: 1.0 # Number of cycles. Currently must be 0.5 or an int. ### 0.5
       first-step: 'discharge'  # Start with charge or discharge?
       #first-step: 'charge'  # Start with charge or discharge?
       equilibrate:
         enable: True # Start with a hold at open circuit?
-        time: 5 # If true, how long is the hold, s
+        time: 100 # If true, how long is the hold, s
       phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V #######1.8
-      phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
+      phi-cutoff-upper: 8.5 # Simulation cuts off if E_Cell >= this value, V
       outputs:
-        show-plots: True # Show the plots and save them (True), or just save
+        show-plots: False # Show the plots and save them (True), or just save
                           # them (False)
-        save-name: 'Test_output1'
-    #- type: 'CC_cycle' # Constant current cycling
-      # Specify only one of i_ext or C-rate. The other should be null:
-    #  i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
-    #  C-rate: 0.5 # input C-rate
-    #  n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
-    #  first-step: 'discharge'  # Start with charge or discharge?
-    #  equilibrate:
-    #    enable: True # Start with a hold at open circuit?
-    #    time: 5 # If true, how long is the hold, s
-    #  phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V
-    #  phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
-    #  outputs:
-    #    show-plots: True # Show the plots and save them (True), or just save
-                          # them (False)
-    #    save-name: 'Test_output2'
+        save-name: 'Shuttle_discharge'
+    # - type: 'CC_cycle' # Constant current cycling
+    #   # Specify only one of i_ext or C-rate. The other should be null:
+    #   i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
+    #   C-rate: 0.1 # input C-rate
+    #   n_cycles: 0.5 # Number of cycles. Currently must be 0.5 or an int.
+    #   first-step: 'charge'  # Start with charge or discharge?
+    #   equilibrate:
+    #     enable: True # Start with a hold at open circuit?
+    #     time: 5 # If true, how long is the hold, s
+    #   phi-cutoff-lower: 1.9 # Simulation cuts off if E_Cell <= this value, V
+    #   phi-cutoff-upper: 5.2 # Simulation cuts off if E_Cell >= this value, V
+    #   outputs:
+    #     show-plots: False # Show the plots and save them (True), or just save
+    #                         # them (False)
+    #     save-name: 'Shuttle_charge'
     #- type: 'CC_cycle' # Constant current cycling
       # Specify only one of i_ext or C-rate. The other should be null:
     #  i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
@@ -314,7 +314,7 @@ species:
   composition: {Li: 1}
   thermo:
     model: constant-cp
-    h0: 0.0 kJ/mol
+    h0: -278 kJ/mol
     s0: 29.1 J/mol/K
   equation-of-state:
     model: constant-volume
@@ -413,7 +413,7 @@ species:
   composition: {Li: 2, S: 1}
   thermo:
     model: constant-cp
-    h0: -1112.48 kJ/mol
+    h0: -1112.48 kJ/mol # -1112.48 kJ/mol
     s0: 0.0 J/mol/K
   equation-of-state:
     model: constant-volume

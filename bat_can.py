@@ -143,11 +143,11 @@ def bat_can(input, cores):
     with Pool(processes = int(cores)) as p:
         SV_0 = p.map(model_run, list(parameters['simulations']))
 
-    if len(parameters['simulations']) == 1:
-        filename = (parameters['output'] +'_'
-                    + parameters['simulations'][0]['outputs']['save-name'] )
-    else:
-        filename = (parameters['output'] +'/')
+    # if len(parameters['simulations']) == 1:
+    #     filename = (parameters['output'] +'_'
+    #                 + parameters['simulations'][0]['outputs']['save-name'] )
+    # else:
+    filename = (parameters['output'] +'/')
 
     if not os.path.exists(filename):
         os.makedirs(filename)
