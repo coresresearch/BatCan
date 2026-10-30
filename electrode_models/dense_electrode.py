@@ -150,6 +150,8 @@ class electrode():
         mult = tanh(SV_loc[SVptr['thickness']]/self.min_thickness)
 
         # Molar production rate of electrons in the 'conductor' phase. Electrons are created when lithium is consumed. We scale the the electron creation rate, then, by our multiplier.  When the anode thickness is below the minimum, the electron creation rate goes quickly to zero, but the electron destruction rate is unaffected:
+        # print(mult)
+        # mult = 1
         sdot_electron = \
             (mult*self.surf_obj.get_creation_rates(self.conductor_obj)
             - self.surf_obj.get_destruction_rates(self.conductor_obj))
@@ -188,6 +190,7 @@ class electrode():
 
         # Double layer current has the same sign as i_Far, and is based on
         # charge balance in the electrolyte phase:
+        # print(i_io)
         i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
 
         # Differential equation for the double layer potential difference:

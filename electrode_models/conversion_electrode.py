@@ -54,7 +54,11 @@ class electrode():
             self.conv_ph_min.append(ph["min-vol-frac"])
             self.n_conversion_phases += 1
 
-        E0_ca = self.host_surf_obj.delta_standard_gibbs/ct.faraday
+        # for i_ph, ph in enumerate(self.conversion_phases):
+        #     print(self.conversion_surf_obj[i_ph].forward_rate_constants)
+        #     print(self.conversion_surf_obj[i_ph].reverse_rate_constants)
+
+        # adfad
 
         self.sw_conv = np.ones((self.n_conversion_phases))
 
@@ -159,7 +163,7 @@ class electrode():
         else:
             prod_stoich_tpb = np.array([])
             reac_stoich_tpb = np.array([])
-        
+
         '''
         prod_stoich = \
             self.conversion_surf_obj[init_spec_i].product_stoich_coeffs()[-1,:]
@@ -608,8 +612,8 @@ class electrode():
             i_el_in = i_el_out
             j = j_next
 
-        """ The final node is at the air boundary: """
-        # No ionic current or electrolyte flux to the air:
+        """ The final node is at the current collector boundary: """
+        # No ionic current or electrolyte flux to the CC:
         i_io_out = 0
         N_k_out = np.zeros_like(N_k_in)
 
@@ -662,18 +666,29 @@ class electrode():
 
         # Chemical production rate of the product phase: (mol/m2 interface/s)
         for ph_i, ph in enumerate(self.conversion_surf_obj):
-            sdot_conversion = \
-                ph.get_net_production_rates(self.conversion_obj[ph_i])
+            # sdot_conversion = \
+            #     ph.get_net_production_rates(self.conversion_obj[ph_i])
 
-            sdot_tpb = \
-                self.conversion_tpb_obj[ph_i].get_net_production_rates(self.conversion_obj[ph_i])
+            # sdot_tpb = \
+            #     self.conversion_tpb_obj[ph_i].get_net_production_rates(self.conversion_obj[ph_i])
 
             nu = self.conversion_obj[ph_i].partial_molar_volumes
             # Rate of change of the product phase volume fraction:
+            # resid[SVptr['eps_conversion'][j][ph_i]] = \
+            #     (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
+            #     - sw_conv[ph_i]*(A_conversion[ph_i]*np.dot(sdot_conversion, nu)
+            #     + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu)))
+
+            sdot_conversion = (ph.get_creation_rates(self.conversion_obj[ph_i])
+                    - sw_conv[ph_i]*ph.get_destruction_rates(self.conversion_obj[ph_i]))
+            # print(sw_conv, A_conversion[ph_i], sdot_conversion, nu)
             resid[SVptr['eps_conversion'][j][ph_i]] = \
                 (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
-                - sw_conv[ph_i]*(A_conversion[ph_i]*np.dot(sdot_conversion, nu)
-                + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu)))
+                - (A_conversion[ph_i]*sdot_conversion*nu))#np.dot(sdot_conversion, nu)))
+                # + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu)))
+
+            # print(sw_conv[ph_i])
+            # print(A_conversion[ph_i]*np.dot(sdot_conversion, nu))
 
         # Production rate of the electron (moles / m2 interface / s)
         sdot_electron = \
@@ -729,7 +744,6 @@ class electrode():
             - (R_elyte + (N_k_in - N_k_out)*self.dyInv)/eps_elyte
             + SV_loc[SVptr['C_k_elyte'][j]]*dEps_el/eps_elyte)  #theta_Ck*dEps_el/theta_eps_el)
 
-        #print(resid)
         return resid
 
     def voltage_lim(self, SV, val):
@@ -785,7 +799,7 @@ class electrode():
         """Plot the intercalation fraction vs. time"""
         cap_plot = np.copy(solution[0,:]/3600/self.m_conv_0)
         for ph in np.arange(self.n_conversion_phases):
-            
+
             for j in np.arange(self.n_points):
                 eps_product_ptr = (SV_offset + self.SV_offset
                     + self.SVptr['eps_conversion'][j][ph])
