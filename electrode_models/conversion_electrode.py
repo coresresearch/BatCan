@@ -684,7 +684,7 @@ class electrode():
             # print(sw_conv, A_conversion[ph_i], sdot_conversion, nu)
             resid[SVptr['eps_conversion'][j][ph_i]] = \
                 (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
-                - (A_conversion[ph_i]*sdot_conversion*nu))#np.dot(sdot_conversion, nu)))
+                - sw_conv[ph_i]*(A_conversion[ph_i]*sdot_conversion*nu))#np.dot(sdot_conversion, nu)))
                 # + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu)))
 
             # print(sw_conv[ph_i])

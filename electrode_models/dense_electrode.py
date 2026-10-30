@@ -153,8 +153,8 @@ class electrode():
         # print(mult)
         # mult = 1
         sdot_electron = \
-            (mult*self.surf_obj.get_creation_rates(self.conductor_obj)
-            - self.surf_obj.get_destruction_rates(self.conductor_obj))
+            (self.surf_obj.get_creation_rates(self.conductor_obj)
+            - mult*self.surf_obj.get_destruction_rates(self.conductor_obj))
 
         # Molar production rate of electrode species (kmol/m2/s). Here, we scale
         # the destruction rate by our multiplier.
@@ -207,8 +207,8 @@ class electrode():
         # Molar production rate of electrode species (kmol/m2/s). Here, we scale
         # the destruction rate by our multiplier.
         sdot_electrolyte = \
-            (mult*self.surf_obj.get_creation_rates(self.elyte_obj)
-            - self.surf_obj.get_destruction_rates(self.elyte_obj))
+            (self.surf_obj.get_creation_rates(self.elyte_obj)
+            - mult*self.surf_obj.get_destruction_rates(self.elyte_obj))
 
         # Double layer current removes Li from the electrolyte.  Add this to
         # sdot_electrolyte:
