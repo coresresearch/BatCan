@@ -111,10 +111,10 @@ def run(SV_0, an, sep, ca, algvars, params, sim):
 
             # Use SV at the end of the simualtion as the new initial condition:
             SV_0 = solution.values.y[-1,:]
-            # ca_phi_ptr = ca.SV_offset + ca.SVptr['phi_ed']
-            # print(SV_0[ca_phi_ptr])
-            # SV_0[ca_phi_ptr] *= 1.01
-            # print(SV_0[ca_phi_ptr])
+            ca_phi_ptr = ca.SV_offset + ca.SVptr['phi_ed']
+            print(SV_0[ca_phi_ptr])
+            SV_0[ca_phi_ptr] *= 1.01
+            print(SV_0[ca_phi_ptr])
 
         else: # First step. 'data_out' does not yet exist:
             # Stack the times, the current at each time step, and the solution

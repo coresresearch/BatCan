@@ -89,7 +89,7 @@ cell-description:
       - bulk-name: "lithium_sulfide" # Cantera phase name
         surf-name: "lithium_sulfide_surf" # Cantera name for surface phase
         elyte-name: "s-(e)"
-        min-vol-frac: 1E-5
+        min-vol-frac: 1E-7
         tpb-name: lithium_sulfide_tpb
     initial-state: # Determine initial state of electrode
       method: "porosity"
@@ -150,7 +150,7 @@ parameters:
       equilibrate:
         enable: True # Start with a hold at open circuit?
         time: 100 # If true, how long is the hold, s
-      phi-cutoff-lower: 1.8 # Simulation cuts off if E_Cell <= this value, V #######1.8
+      phi-cutoff-lower: 1.95 # Simulation cuts off if E_Cell <= this value, V #######1.8
       phi-cutoff-upper: 8.5 # Simulation cuts off if E_Cell >= this value, V
       outputs:
         show-plots: False # Show the plots and save them (True), or just save
