@@ -100,7 +100,8 @@ class electrode():
         self.r_host = inputs['r_host']
         self.V_host = 4./3. * np.pi * (self.r_host)**3  # Volume of a single carbon / host particle [m3]
         self.A_host = 4. * np.pi * (self.r_host / 2)**2 # Surface area of a single carbon / host particle [m2]
-        self.A_init = 2e4 #self.eps_host * self.A_host / self.V_host  # m2 of host-electrolyte interface / m3 of total volume [m-1]
+        self.A_init = (self.eps_host * self.A_host / self.V_host
+                       * inputs['surf-overlap']) # m2 of host-electrolyte interface / m3 of total volume [m-1]
 
         # For some models, the elyte thickness is different from that of the
         # electrode, so we specify it separately:
@@ -147,10 +148,6 @@ class electrode():
         # Determine the electrode capacity (Ah/m2)
         Conc = (self.conversion_obj[init_spec_i].concentrations[0])
 
-        #print(self.name)
-        #print(init_spec_i)
-        #print(self.conversion_surf_obj[init_spec_i].product_stoich_coeffs()[-1,:])
-        #print(self.conversion_tpb_obj[init_spec_i].product_stoich_coeffs())
         prod_stoich = \
             self.conversion_surf_obj[init_spec_i].product_stoich_coeffs()[-1,:]
         reac_stoich = \
@@ -177,8 +174,10 @@ class electrode():
 
         prod_stoich = np.concatenate((prod_stoich, prod_stoich_tpb))
         reac_stoich = np.concatenate((reac_stoich, reac_stoich_tpb))
-        net_conv_stoich = prod_stoich - reac_stoich
+
         '''
+        net_conv_stoich = prod_stoich - reac_stoich
+
         if net_conv_stoich > 0:
 
             # Get string of conversion element from conversion obj species
@@ -283,9 +282,10 @@ class electrode():
 
         Conc_end = self.conversion_obj[end_spec_i].concentrations[0]
 
-        # the issue with the stored ion being Li2S is that Li is the the conversion species
-        # and it is not in S8(s) so the ratio cannot be set because it would be infinate so I make it a large number
-        # this just means the other capacity value is used. I think this fix doesn't hurt anything
+        # the issue with the stored ion being Li2S is that Li is the the conversion
+        # species and it is not in S8(s) so the ratio cannot be set because it would be
+        # infinate so I make it a large number this just means the other capacity value
+        # is used. I think this fix doesn't hurt anything
         try:
             n_conv_elem_end = (self.conversion_obj[end_spec_i].species(0
                                                 ).composition[conv_elem_str])
@@ -463,7 +463,7 @@ class electrode():
         self.elyte_microstructure = eps_elyte**1.5
 
         N_k_in, i_io_in = (sep.electrode_boundary_flux(SV, self, params['T']))
-        #N_k_in, i_io_in = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])*N_k_in, i_io_in*0
+
         # No electronic current at the separator boundary:
         i_el_in = 0
 
@@ -481,7 +481,6 @@ class electrode():
             # Set microstructure multiplier for effective diffusivities
             #TODO #48
 
-            #print(self.elyte_microstructure)
             # Read out state variables for 'next' node toward CC boundary:
             phi_ed_next = SV_loc[SVptr['phi_ed'][j_next]]
             phi_elyte_next = phi_ed_next + SV_loc[SVptr['phi_dl'][j_next]]
@@ -624,6 +623,7 @@ class electrode():
         self.host_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
         self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+
         for ph in self.conversion_obj:
             ph.electric_potential = phi_ed
         for ph in self.conversion_surf_obj:
@@ -662,36 +662,22 @@ class electrode():
         A_surf_ratio = A_avail*self.dy
         A_conversion_ratio = A_conversion*self.dy
 
-        # Multiplier to scale phase destruction rates.  As eps_product drops
-        # below the user-specified minimum, any reactions that consume the
-        # phase have their rates quickly go to zero:
+        # This "switch" turns conversion phase destruction rates on or off.  As
+        # eps_product drops below the user-specified minimum, any reactions that
+        # consume the phase have their rates go to zero:
         sw_conv = np.where(eps_conversion < self.conv_ph_min, 0, self.sw_conv)
 
         # Chemical production rate of the product phase: (mol/m2 interface/s)
         for ph_i, ph in enumerate(self.conversion_surf_obj):
-            # sdot_conversion = \
-            #     ph.get_net_production_rates(self.conversion_obj[ph_i])
 
-            # sdot_tpb = \
-            #     self.conversion_tpb_obj[ph_i].get_net_production_rates(self.conversion_obj[ph_i])
-
-            nu = self.conversion_obj[ph_i].partial_molar_volumes
-            # Rate of change of the product phase volume fraction:
-            # resid[SVptr['eps_conversion'][j][ph_i]] = \
-            #     (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
-            #     - sw_conv[ph_i]*(A_conversion[ph_i]*np.dot(sdot_conversion, nu)
-            #     + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu)))
+            v_molar = self.conversion_obj[ph_i].partial_molar_volumes
 
             sdot_conversion = (ph.get_creation_rates(self.conversion_obj[ph_i])
                     - sw_conv[ph_i]*ph.get_destruction_rates(self.conversion_obj[ph_i]))
-            # print(sw_conv, A_conversion[ph_i], sdot_conversion, nu)
+
             resid[SVptr['eps_conversion'][j][ph_i]] = \
                 (SVdot_loc[SVptr['eps_conversion'][j][ph_i]]
-                - sw_conv[ph_i]*(A_conversion[ph_i]*sdot_conversion*nu))#np.dot(sdot_conversion, nu)))
-                # + tpb_conversion[ph_i]*np.dot(sdot_tpb, nu)))
-
-            # print(sw_conv[ph_i])
-            # print(A_conversion[ph_i]*np.dot(sdot_conversion, nu))
+                - sw_conv[ph_i]*(A_conversion[ph_i]*sdot_conversion*v_molar))
 
         # Production rate of the electron (moles / m2 interface / s)
         sdot_electron = \

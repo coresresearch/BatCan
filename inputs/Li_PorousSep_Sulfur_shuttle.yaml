@@ -13,7 +13,8 @@ cell-description:
     conductor-phase: 'electron' # Cantera phase name
     deposit-phase: 'lithium_sulfide'
     deposit-surf-name: 'lithium_sulfide_anode_surf'
-    deposit-density: 563475021696.5 #mol per m2 of interface
+    deposit-min-radius: 1.5e-9
+    deposit-density: 5000 # 563475021696.5E-18 #mol per m2 of interface
     stored-ion: # Details on the stored species. Used for capacity calc.
       name: Li(b)
       charge: 1
@@ -118,11 +119,12 @@ cell-description:
     r_host: 6e-6 # Particle radius, m
     phi_0: 3.4 # Initial electric potential, V
     sigma_el: 6.0e1 #electrical ondutivity of the host
-    eps_host: 0.056 # Solid phase volume fraction, -
+    eps_host: 0.35 # Solid phase volume fraction, -
+    surf-overlap: 0.45 # fraction of theoretical surface that is available (subract for particles that touch, or coverage by binder, particle size dispersion.)
     C_dl: 1.5e-2 #F/m2
     plot_conv_ph:
       - name: 'S8'
-      - name: 'Li2S' # said LiS8, I think that was a typo
+      - name: 'Li2S'
     plot-species: # any extra species in the electrolyte that you want to plot.
       - name: 'S8(e)'
       - name: 'S8-(e)'
@@ -148,9 +150,10 @@ parameters:
       # Specify only one of i_ext or C-rate. The other should be null:
       i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
       C-rate: 0.1 # input C-rate
-      n_cycles: 1.0 # Number of cycles. Currently must be 0.5 or an int. ### 0.5
+      n_cycles: 1 # Number of cycles. Currently must be 0.5 or an int. ### 0.5
       first-step: 'discharge'  # Start with charge or discharge?
       #first-step: 'charge'  # Start with charge or discharge?
+      hold-time: 100
       equilibrate:
         enable: True # Start with a hold at open circuit?
         time: 100 # If true, how long is the hold, s
@@ -159,7 +162,7 @@ parameters:
       outputs:
         show-plots: True # Show the plots and save them (True), or just save
                           # them (False)
-        save-name: 'Shuttle_discharge'
+        save-name: 'Shuttle_0p1C_35percentVolFrac'
     # - type: 'CC_cycle' # Constant current cycling
     #   # Specify only one of i_ext or C-rate. The other should be null:
     #   i_ext: null #0.01 A/cm2 # input current density, format: XX units. Units are 'current/area', with no carat for exponents (e.g. A/cm2)
@@ -463,27 +466,27 @@ sulfur-elyte-reactions:
 
 - equation: 0.5 S8(e) + electron <=> 0.5 S8-(e)
   id: anode_sulfur_reduction_1
-  rate-constant: {A: 8.725e-16, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 8.725e-11, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: 1.5 S8-(e) + electron <=> 2 S6-(e)
   id: anode_sulfur_reduction_2
-  rate-constant: {A: 4.331e-17, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 4.331e-12, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: S6-(e) + electron <=> 1.5 S4-(e)
   id: anode_sulfur_reduction_3
-  rate-constant: {A: 3.193e-15, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 3.193e-10, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: 0.5 S4-(e) + electron <=> S2-(e)
   id: anode_sulfur_reduction_4
-  rate-constant: {A: 2.375e-12, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 2.375e-7, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 - equation: 0.5 S2-(e) + electron <=> S-(e)
   id: anode_sulfur_reduction_5
-  rate-constant: {A: 8.655e-13, b: 0.0, Ea: 0.0}
+  rate-constant: {A: 8.655e-8, b: 0.0, Ea: 0.0}
   beta: 0.5
 
 carbon-elyte-reactions:

@@ -45,7 +45,11 @@ def bat_can(input, cores):
 
     # Save name of input file, without path or extension:
     parameters['input'] = input
-    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt
+    parameters['output'] = 'outputs/' + parameters['input']+ '_' + dt + '_'
+
+
+    os.makedirs(parameters['output'])
+
     #===========================================================================
     #   CREATE ELEMENT CLASSES AND INITIAL SOLUTION VECTOR SV_0
     #===========================================================================
