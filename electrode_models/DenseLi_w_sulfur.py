@@ -50,6 +50,7 @@ class electrode():
         # The electrode consumption rate quickly goes to zero, below a
         # user-specified minimum thickness:
         self.min_thickness = inputs['minimum-thickness']
+        self.Li2S_min_radius = inputs['deposit-min-radius']
 
         # Interfacial surface area, per unit geometric area.
         self.A_surf_ratio = inputs['A_surf_ratio']
@@ -151,7 +152,7 @@ class electrode():
         self.bulk_obj.electric_potential = phi_ed
         self.conductor_obj.electric_potential = phi_ed
         self.elyte_obj.electric_potential = phi_elyte
-        self.elyte_obj.X = c_k_elyte/sum(c_k_elyte)
+        self.elyte_obj.X = c_k_elyte[0,:]/sum(c_k_elyte[0,:])
 
         # Multiplier on the electrode removal reaction. Quickly goes to zero,
         # for thicknesses below a user-specified minimum:
@@ -163,8 +164,6 @@ class electrode():
         A_avail_ratio = 1 - A_occupied
 
         # Molar production rate of electrons in the 'conductor' phase. Electrons are created when lithium is consumed. We scale the the electron creation rate, then, by our multiplier.  When the anode thickness is below the minimum, the electron creation rate goes quickly to zero, but the electron destruction rate is unaffected:
-        # print(mult)
-        # mult = 1
         sdot_electron = (A_avail_ratio*
             (self.surf_obj.get_creation_rates(self.conductor_obj)
             - mult*self.surf_obj.get_destruction_rates(self.conductor_obj)))
@@ -205,7 +204,6 @@ class electrode():
 
         # Double layer current has the same sign as i_Far, and is based on
         # charge balance in the electrolyte phase:
-        # print(i_io)
         i_dl = self.i_ext_flag*i_io/self.A_surf_ratio - i_Far
 
         # Differential equation for the double layer potential difference:
@@ -224,17 +222,25 @@ class electrode():
             (self.surf_obj.get_creation_rates(self.elyte_obj)
             - mult*self.surf_obj.get_destruction_rates(self.elyte_obj)))
 
-        sw_Li2S = 0 #do not destroy the Li2S, ever (this is a placeholder)
+        sw_Li2S = int(r_Li2S > self.Li2S_min_radius)
+
         sdot_li2s = \
                     (self.Li2S_surf_obj.get_creation_rates(self.Li2S_obj)
                      - sw_Li2S*self.Li2S_surf_obj.get_destruction_rates(self.Li2S_obj))
 
+        A_Li2S = self.n_Li2S * 2 * pi * r_Li2S**2
+        sdot_elyte_li2s = (A_Li2S *
+                self.Li2S_surf_obj.get_net_production_rates(self.elyte_obj))
+
         # Double layer current removes Li from the electrolyte.  Add this to
         # sdot_electrolyte:
         sdot_electrolyte[self.index_Li] -= i_dl / ct.faraday
+
         dCk_elyte_dt = \
             (sdot_electrolyte * self.A_surf_ratio
+            + sdot_elyte_li2s
             + self.i_ext_flag * N_k_sep) / self.dy_elyte
+
         resid[SVptr['C_k_elyte']] = SVdot_loc[SVptr['C_k_elyte']] - dCk_elyte_dt
 
         v_molar = self.Li2S_obj.partial_molar_volumes
@@ -283,6 +289,7 @@ class electrode():
         # Set array of atol to pass to solver
         self.atol = np.ones_like(SV)*1e-3
         self.atol[self.SVptr['C_k_elyte']] = sep_inputs['C_k_atol']
+        self.atol[self.SVptr['r_Li2S']] = 1e-11
 
         # Load intial state variable values:
         SV[self.SVptr['phi_ed']] = inputs['phi_0']
@@ -327,8 +334,7 @@ class electrode():
         """
         The electrode domain considers the electrode object plus a thin layer of the separator, adjacent to the self. We subtract this thickness from the total separator thickness, so that we do not inadvertently increase the total transport resistance through the separator.
         """
-        #sep.H -= self.dy_elyte
-        #sep.dy -= self.dy_elyte
+
         # Reduce the number of points in the separator by one, unless the
         # separator already only contains one point (which is the case for the
         # `ionic_resistor` model. In this case, leave sep.n_points at 1.)
